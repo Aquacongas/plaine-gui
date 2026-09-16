@@ -1,0 +1,27 @@
+[package]
+name = "plaine-noded"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine node daemon: chain, storage, P2P, Stratum and JSON-RPC."
+
+[[bin]]
+name = "plaine-noded"
+path = "src/main.rs"
+
+[features]
+placeholder-keys = []
+
+placeholder-seeds = []
+
+[dependencies]
+plaine-consensus = { path = "../lib/consensus" }
+plaine-chain = { path = "../lib/chain" }
+plaine-storage = { path = "../lib/storage" }
+plaine-p2p = { path = "../lib/p2p" }
+plaine-stratum = { path = "../lib/stratum", features = ["server"] }
+plaine-rpc = { path = "../lib/rpc" }
+plaine-wallet = { path = "../wallet" }
+plaine-pow = { path = "../lib/pow" }
+tokio = { workspace = true, features = ["signal"] }

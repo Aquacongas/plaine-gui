@@ -1,0 +1,20 @@
+[package]
+name = "plaine-wallet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine command-line wallet. The one place a private key lives."
+
+[dependencies]
+plaine-consensus = { path = "../lib/consensus" }
+getrandom = "0.3"
+
+[features]
+default = []
+pow = []
+author-tools = []
+
+[[bin]]
+name = "plaine-wallet"
+path = "src/bin/plaine-wallet.rs"

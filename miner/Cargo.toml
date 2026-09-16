@@ -1,0 +1,23 @@
+[workspace]
+
+[package]
+name = "plaine-pow-mine"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.85"
+description = "CPU miner for Plaine: Isochron v1 JIT emitters and W^X code mapping. Not linked into the node."
+
+[[bin]]
+name = "plaine-miner"
+path = "src/bin/plaine-miner.rs"
+
+[dependencies]
+plaine-pow = { path = "../lib/pow" }
+plaine-consensus = { path = "../lib/consensus" }
+
+[dev-dependencies]
+plaine-stratum = { path = "../lib/stratum", default-features = false }
+
+[profile.release]
+overflow-checks = true

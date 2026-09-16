@@ -1,0 +1,13 @@
+[package]
+name = "plaine-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine node storage: append-only header and body segments, with redb for the mutable, random-access remainder."
+
+[dependencies]
+plaine-consensus = { path = "../consensus" }
+redb = { workspace = true }
+
+[dev-dependencies]

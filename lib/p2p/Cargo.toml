@@ -1,0 +1,14 @@
+[package]
+name = "plaine-p2p"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine peer-to-peer layer: peer connections, block and header sync, and address gossip."
+
+[dependencies]
+plaine-consensus = { path = "../consensus" }
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }

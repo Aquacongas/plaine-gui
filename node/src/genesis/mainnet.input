@@ -1,0 +1,13 @@
+format            = 1
+chain_id          = 504c4e45
+version           = 0x20000000
+time              = 1789556400
+bits              = 0x1f00ffff
+prev_hash         = 0000000000000000000000000000000000000000000000000000000000000000
+ext_root          = 0000000000000000000000000000000000000000000000000000000000000000
+nonce             = 66048
+coinbase_to       = plne1pjvhejseh7veg36dvuqn239puwu7rfsuf57xp5
+note_encoding     = 01
+note_text_file    = mainnet.note
+author_pubkey     = da8c68b1de3ba9c9ae94ea27cbc158c496643c50779edf6a302cef728813f76b
+checkpoint_pubkey = 0741b159b8a39d6460738f94f587cb07672c07d0285d33c7952efe6571d94e19

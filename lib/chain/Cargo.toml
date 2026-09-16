@@ -1,0 +1,13 @@
+[package]
+name = "plaine-chain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine chain manager: header ingest, fork choice, reorgs, block validation, and the mempool."
+
+[dependencies]
+plaine-consensus = { path = "../consensus" }
+
+[dev-dependencies]
+ed25519-dalek = { workspace = true }

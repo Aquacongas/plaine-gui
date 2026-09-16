@@ -1,0 +1,31 @@
+[profile.dev.package.plaine-pow]
+opt-level = 3
+
+[workspace]
+resolver = "2"
+members = [
+    "lib/consensus",
+    "lib/pow",
+    "lib/storage",
+    "lib/stratum",
+    "lib/p2p",
+    "lib/chain",
+    "lib/rpc",
+    "wallet",
+    "node",
+]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.85"
+
+[workspace.dependencies]
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
+redb = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+proptest = "1"
+
+[profile.release]
+overflow-checks = true

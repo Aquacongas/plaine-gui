@@ -1,0 +1,13 @@
+[package]
+name = "plaine-consensus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine consensus rules as pure functions: no I/O, no threads, no clocks."
+
+[dependencies]
+ed25519-dalek = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

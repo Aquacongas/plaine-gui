@@ -1,0 +1,12 @@
+[package]
+name = "plaine-rpc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine JSON-RPC server: block, chain, and wallet queries over HTTP."
+
+[dependencies]
+plaine-consensus = { path = "../consensus" }
+
+[dev-dependencies]

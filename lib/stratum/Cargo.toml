@@ -1,0 +1,16 @@
+[package]
+name = "plaine-stratum"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Plaine stratum mining protocol. Solo (node-embedded) and pool speak the same wire."
+
+[features]
+default = ["mock"]
+mock = []
+server = ["dep:tokio"]
+
+[dependencies]
+plaine-consensus = { path = "../consensus" }
+tokio = { workspace = true, optional = true }
