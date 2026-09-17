@@ -1,96 +1,235 @@
-Plaine is honest, censorship-free money open to everyone: built to shut out ASIC
-and GPU so every CPU earns for the real power it brings, with a steady reward that
-keeps issuance predictable and no supply cap to keep the network secure, while its
-inflation falls toward zero with every passing day. No premine, no presale, no
-dev fund.
+# Pla(i)n[e] GUI Wallet
 
-In tribute to Satoshi Nakamoto, and in the author's own name, Plaine stands for
-one CPU, one vote.
+A native desktop wallet for the Plaine network, written in Rust.
+
+Pla(i)n[e] GUI Wallet combines the Plaine node, wallet and blockchain functionality into a single desktop application. The embedded node runs directly inside the wallet, keeps the chain synchronized, tracks balances and transaction history, and broadcasts signed transactions without requiring a separately started node.
+
+The interface is built natively with Rust and egui/eframe. There is no browser frontend, Electron, npm or web runtime.
+
+## Plaine
+
+Plaine is honest, censorship-free money open to everyone: built to shut out ASIC and GPU so every CPU earns for the real power it brings, with a steady reward that keeps issuance predictable and no supply cap to keep the network secure, while its inflation falls toward zero with every passing day.
+
+No premine, no presale, no dev fund.
+
+In tribute to Satoshi Nakamoto, Plaine stands for:
+
+> One CPU, one vote.
 
 Nothing promised. Nothing hidden. See for yourself.
 
-## Start mining
+## GUI Wallet
 
-Three steps, on any machine with a CPU.
+The desktop wallet currently includes:
 
-1. Run a node. It finds the network through the built-in seeds and syncs the chain.
+- Embedded Plaine full node
+- Automatic blockchain synchronization
+- Create wallet
+- Open existing wallet
+- Import Plaine backup secret
+- Encrypted wallet keyfiles
+- Lock / unlock wallet
+- Change wallet password
+- Remove or enable wallet encryption
+- Automatic reopening of the last used wallet
+- Balance and spendable balance
+- Send PLNE
+- Economy / Normal / Priority fee selection
+- Receive address
+- Persistent transaction history
+- Incoming transactions
+- Outgoing transactions
+- Mining rewards
+- Pending transaction tracking
+- Full transaction IDs
+- Transaction links to the Blacksmith explorer
+- Direct internal access to Plaine node state without HTTP RPC for normal GUI operations
+- Plaine RPC and Stratum services remain available for external tools and miners
 
-       plaine-noded
+The wallet stores private keys locally. The embedded node does not hold private keys.
 
-2. Make an address to mine to. This prints the address and writes the key to miner.key.
+## Architecture
 
-       plaine-wallet new --role spend --out miner.key --no-passphrase
+The GUI uses the original Plaine Rust crates directly.
 
-3. Start the miner with the address from step 2. With no host it mines to the node
-   you started in step 1.
+Main components include:
 
-       plaine-miner <your-plne1-address>
+```text
+gui/
+    Desktop GUI wallet
 
-That is all. The node keeps running and stays in sync; the miner mines against it; a
-block you find pays its coinbase straight to your address. Stop either with Ctrl+C.
+node/
+    Embedded Plaine full node
 
-It does one thing and does it plainly: it moves coins. Accounts, nonces, ed25519
-signatures. Flat emission of 0.2 PLNE per block, on and on, with no supply cap,
-no premine, no founder's stash, and no developer tax. Nobody was paid before you
-showed up.
+wallet/
+    Plaine wallet, keyfile, signing and transaction building
 
-The full rules a node enforces are in [SPEC.md](SPEC.md). Nothing below is a
-summary of the consensus rules; it is just how to build and run the thing.
+lib/
+    chain
+    consensus
+    p2p
+    pow
+    rpc
+    storage
+    stratum
 
-## Build
+miner/
+    Plaine CPU miner
 
-You need a recent stable Rust, 1.85 or newer.
+The GUI links directly against these crates rather than reimplementing the Plaine protocol.
 
-```
+Upstream Plaine
+
+Plaine core code and protocol implementation originate from the Plaine project:
+
+https://github.com/noaltitude/plaine
+
+This repository adds and integrates a native desktop GUI wallet while retaining the Plaine core implementation and its MIT licensing.
+
+Plaine consensus rules are defined by the source code and by:
+
+SPEC.md
+
+Build
+
+Rust 1.85 or newer is required.
+
+Build the optimized GUI wallet:
+
+cargo build --release -p plaine-gui
+
+The binary will be created at:
+
+target/release/plaine-gui
+
+Run it with:
+
+./target/release/plaine-gui
+Build the complete Plaine workspace
 cargo build --release
+
+The repository also contains the original Plaine command-line components.
+
+Depending on the workspace target, binaries include:
+
+plaine-gui       native desktop wallet
+plaine-noded     Plaine node
+plaine-wallet    command-line wallet
+plaine-miner     CPU miner
+
+The miner has its own Cargo project and can also be built with:
+
 cargo build --release --manifest-path miner/Cargo.toml
-```
+Node
 
-The binaries come out in `target/release` and `miner/target/release`:
+Pla(i)n[e] GUI Wallet starts an embedded Plaine node automatically.
 
-```
-plaine-noded    the node
-plaine-wallet   the wallet
-plaine-miner    the CPU miner
-```
+The node:
 
-## Run a node
+connects to the Plaine network
+synchronizes the blockchain
+maintains peer connections
+validates blocks and transactions
+provides the wallet with direct chain and mempool access
+exposes RPC for external software
+exposes Stratum for miners
 
-```
-plaine-noded
-```
+Default services include:
 
-A fresh node dials the built-in seed, pulls headers and then bodies, and starts
-following the chain. Its stratum server listens on port 9258 and its RPC on
-127.0.0.1:9257. `plaine-noded --help` lists the rest.
+P2P       9256
+RPC       127.0.0.1:9257
+Stratum   9258
 
-## Mine
+A separate plaine-noded process is not required when using the GUI wallet.
 
-Point the miner at a node's stratum port and give it an address to pay:
+Mining
 
-```
+Plaine mining is CPU-oriented by design.
+
+The standalone miner can be built with:
+
+cargo build --release --manifest-path miner/Cargo.toml
+
+Run:
+
 plaine-miner --help
-```
 
-It is CPU only, by design. Isochron runs well on a normal processor and badly on
-GPUs and ASICs, so there is nothing to gain by reaching for either.
+The GUI's embedded node also exposes the Plaine Stratum server, so miners can connect directly to the node running inside the wallet.
 
-## Wallet
+Wallet security
 
-The wallet holds the keys and the node holds none. It never opens a socket: it
-prints a signed transaction as hex and you hand that to the node over RPC.
-Because it cannot see the chain, you pass `--nonce` and `--fee` yourself; there
-are no defaults to guess them for you.
+Plaine does not use a BIP39 word seed.
 
-```
+Wallet backup uses the Plaine backup secret format generated by the wallet.
+
+Encrypted keyfiles use the Plaine wallet keyfile and KDF implementation from the upstream wallet crate.
+
+Keep wallet keyfiles and backup secrets private.
+
+Files such as:
+
+*.plnekey
+*.plnekey.journal
+
+are excluded from this repository through .gitignore.
+
+Transaction history
+
+The GUI indexes wallet-related blockchain transactions locally.
+
+It tracks:
+
+incoming transfers
+outgoing transfers
+mining rewards
+pending transactions
+
+Confirmed transaction data is read directly from the embedded Plaine node storage.
+
+Transaction IDs can be opened in the Blacksmith explorer:
+
+https://blacksmith.best/explorer
+
+Command-line wallet
+
+The original Plaine command-line wallet remains available.
+
+Example:
+
 plaine-wallet new --out key.plnekey --role spend --seed-stdin --passphrase-file pass.txt
+
 plaine-wallet address --in key.plnekey
-plaine-wallet transfer --in key.plnekey --to plne1... \
-    --amount 5plne --fee 1000mile --nonce 0 --passphrase-file pass.txt
-```
 
-`plaine-wallet --help` has the full command list.
+plaine-wallet transfer \
+    --in key.plnekey \
+    --to plne1... \
+    --amount 5plne \
+    --fee 1000mile \
+    --nonce 0 \
+    --passphrase-file pass.txt
 
-## License
+See:
 
-MIT. See [LICENSE-MIT](LICENSE-MIT).
+plaine-wallet --help
+
+for the complete command list.
+
+Consensus
+
+The GUI does not define separate consensus rules.
+
+It uses the Plaine consensus, chain, storage, P2P and transaction crates directly.
+
+For the protocol specification see:
+
+SPEC.md
+
+License
+
+MIT.
+
+See LICENSE-MIT.
+
+This repository contains and builds upon code from the upstream Plaine project. The original Plaine code remains subject to its MIT license and copyright notices.
+
+Pla(i)n[e] GUI Wallet additions are distributed under the same MIT license.
