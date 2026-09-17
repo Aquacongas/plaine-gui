@@ -1,3 +1,9 @@
+[profile.dev.package.plaine-wallet]
+opt-level = 3
+
+[profile.dev.package.plaine-consensus]
+opt-level = 3
+
 [profile.dev.package.plaine-pow]
 opt-level = 3
 
@@ -13,6 +19,7 @@ members = [
     "lib/rpc",
     "wallet",
     "node",
+    "gui",
 ]
 
 [workspace.package]

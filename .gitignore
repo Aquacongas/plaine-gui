@@ -4,3 +4,11 @@
 *.plnekey.journal
 *.log
 .DS_Store
+
+# Local/editor files
+*.tmp
+*.swp
+*.swo
+*.orig
+.vscode/
+.idea/

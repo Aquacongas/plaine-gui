@@ -6,6 +6,10 @@ license.workspace = true
 rust-version.workspace = true
 description = "Plaine node daemon: chain, storage, P2P, Stratum and JSON-RPC."
 
+[lib]
+name = "plaine_noded"
+path = "src/lib.rs"
+
 [[bin]]
 name = "plaine-noded"
 path = "src/main.rs"
@@ -18,7 +22,7 @@ placeholder-seeds = []
 [dependencies]
 plaine-consensus = { path = "../lib/consensus" }
 plaine-chain = { path = "../lib/chain" }
-plaine-storage = { path = "../lib/storage" }
+plaine-storage = { version = "1.0.0", path = "../lib/storage" }
 plaine-p2p = { path = "../lib/p2p" }
 plaine-stratum = { path = "../lib/stratum", features = ["server"] }
 plaine-rpc = { path = "../lib/rpc" }
