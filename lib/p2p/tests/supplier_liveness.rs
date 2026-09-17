@@ -111,10 +111,8 @@ fn liveness_yield_stops_at_first_tier() {
     let denied: Vec<PeerId> = ids.iter().copied().filter(|p| *p != designated).collect();
     assert_eq!(denied.len(), 2, "fixture: two peers must be denied");
     for p in &denied {
-        sim.engine
-            .peer_mut(*p)
-            .expect("peer")
-            .body_slot_lost_until = Some(now.plus_ms(BODY_SLOT_LOST_MS));
+        sim.engine.peer_mut(*p).expect("peer").body_slot_lost_until =
+            Some(now.plus_ms(BODY_SLOT_LOST_MS));
     }
     let eligible: Vec<PeerId> = sim
         .engine
@@ -193,8 +191,7 @@ fn asking_denied_peer_costs_nothing() {
     }
 
     let before = scored(&sim);
-    let requests_before =
-        plaine_p2p::metrics::Metrics::get(&sim.engine.metrics.body_requests);
+    let requests_before = plaine_p2p::metrics::Metrics::get(&sim.engine.metrics.body_requests);
     sim.run(240_000, 1_000);
     let charged = scored(&sim) - before;
     let issued =

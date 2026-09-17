@@ -505,8 +505,7 @@ const _: () = assert!(
     "the standing outbound target is MAX_OUTBOUND minus the feeler slots; if either moves, re-derive this"
 );
 const _: () = assert!(
-    OUTBOUND_PER_GROUP <= OUTBOUND_PER_GROUP_WIDENED
-        && OUTBOUND_PER_GROUP_WIDENED <= MAX_OUTBOUND,
+    OUTBOUND_PER_GROUP <= OUTBOUND_PER_GROUP_WIDENED && OUTBOUND_PER_GROUP_WIDENED <= MAX_OUTBOUND,
     "widening relaxes the /16 diversity rule and never the count"
 );
 const _: () = assert!(
@@ -608,8 +607,7 @@ const _: () = assert!(
      least that much of the peer's own allowance"
 );
 const _: () = assert!(
-    POW_ANNOUNCE_RESERVE_MS
-        == SYNC_MIN_RATE_IBD_PER_10S / 10 * HEADER_VERIFY_US_MAX / 1_000
+    POW_ANNOUNCE_RESERVE_MS == SYNC_MIN_RATE_IBD_PER_10S / 10 * HEADER_VERIFY_US_MAX / 1_000
         && POW_ANNOUNCE_RESERVE_MS < POW_POOL_MS_PER_SEC,
     "the announcement floor is exactly our own IBD need at the rate floor we \
      enforce on our sync peer, and it must leave the pool usable"

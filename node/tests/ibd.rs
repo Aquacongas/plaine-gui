@@ -74,7 +74,10 @@ fn fresh_node_syncs_and_follows() {
     for h in 0..=reached {
         let ra = rpc(a.rpc, "chain_getBlockByHeight", &format!("[{h},0]"));
         let rb = rpc(b.rpc, "chain_getBlockByHeight", &format!("[{h},0]"));
-        assert!(rb.is_some(), "B claims height {reached} but cannot serve block {h}");
+        assert!(
+            rb.is_some(),
+            "B claims height {reached} but cannot serve block {h}"
+        );
         assert_eq!(ra, rb, "block {h} differs between A and B");
     }
 

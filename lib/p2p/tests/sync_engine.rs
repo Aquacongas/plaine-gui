@@ -296,7 +296,11 @@ fn wrong_anchor_hash_rejected() {
     let p = sim.add_peer(Behaviour::Honest, real);
     sim.connect(p);
     sim.run(40_000, 1_000);
-    assert_eq!(sim.engine.fatal(), None, "an anchor mismatch must not be fatal");
+    assert_eq!(
+        sim.engine.fatal(),
+        None,
+        "an anchor mismatch must not be fatal"
+    );
     assert!(
         sim.engine.verified_height() < anchor_at.height,
         "headers past a mismatched anchor were accepted (verified {})",

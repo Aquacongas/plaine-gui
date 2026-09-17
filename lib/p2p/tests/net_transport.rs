@@ -237,12 +237,14 @@ fn byte_at_a_time_still_decodes() {
     raw.send_one_byte_at_a_time(&Raw::hello(0, 0xABCD))
         .expect("hello");
     assert!(
-        raw.wait_for(|m| matches!(m, Msg::Hello(_)), 3_000).is_some(),
+        raw.wait_for(|m| matches!(m, Msg::Hello(_)), 3_000)
+            .is_some(),
         "no HELLO came back from a peer that trickled its own"
     );
     raw.send_one_byte_at_a_time(&Msg::HelloAck).expect("ack");
     assert!(
-        raw.wait_for(|m| matches!(m, Msg::HelloAck), 3_000).is_some(),
+        raw.wait_for(|m| matches!(m, Msg::HelloAck), 3_000)
+            .is_some(),
         "no HELLO_ACK"
     );
 
@@ -613,7 +615,10 @@ fn getcheckpoint_answered_over_socket() {
     let record = plaine_p2p::traits::SignedCheckpoint {
         height: 12,
         hash: [0x5C; 32],
-        sigs: vec![plaine_p2p::traits::CheckpointSig { pubkey: key, sig: [0x9E; 64] }],
+        sigs: vec![plaine_p2p::traits::CheckpointSig {
+            pubkey: key,
+            sig: [0x9E; 64],
+        }],
     };
     n.chain.set_anchor_record(Some(record.clone()));
 
@@ -624,7 +629,9 @@ fn getcheckpoint_answered_over_socket() {
     let got = c
         .wait_for(|m| matches!(m, Msg::Checkpoint(_)), 3_000)
         .expect("a GETCHECKPOINT must be answered now that the record exists");
-    let Msg::Checkpoint(cp) = got else { unreachable!() };
+    let Msg::Checkpoint(cp) = got else {
+        unreachable!()
+    };
     assert_eq!(cp.height, record.height);
     assert_eq!(cp.hash, record.hash);
 
@@ -638,7 +645,8 @@ fn no_record_answers_nothing() {
     assert!(c.handshake(20, 0xBBBB), "handshake");
     c.send(&Msg::GetCheckpoint).expect("send");
     assert!(
-        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700).is_none(),
+        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700)
+            .is_none(),
         "an unsigned or absent anchor must never reach the wire"
     );
 
@@ -652,16 +660,21 @@ fn no_record_answers_nothing() {
 #[test]
 fn unknown_key_not_served() {
     let n = node_with_keys(20, BASE_TIME + 20 * 60, vec![[0xA7u8; 32]]);
-    n.chain.set_anchor_record(Some(plaine_p2p::traits::SignedCheckpoint {
-        height: 12,
-        hash: [0x5C; 32],
-        sigs: vec![plaine_p2p::traits::CheckpointSig { pubkey: [0x11u8; 32], sig: [0x9E; 64] }],
-    }));
+    n.chain
+        .set_anchor_record(Some(plaine_p2p::traits::SignedCheckpoint {
+            height: 12,
+            hash: [0x5C; 32],
+            sigs: vec![plaine_p2p::traits::CheckpointSig {
+                pubkey: [0x11u8; 32],
+                sig: [0x9E; 64],
+            }],
+        }));
     let mut c = Raw::connect(n.node.local_addr()).expect("connect");
     assert!(c.handshake(20, 0xCCCC), "handshake");
     c.send(&Msg::GetCheckpoint).expect("send");
     assert!(
-        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700).is_none(),
+        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700)
+            .is_none(),
         "a frame whose signatures we had to drop is one the asker will refuse after paying"
     );
 }
@@ -670,40 +683,53 @@ fn unknown_key_not_served() {
 fn getcheckpoint_ladder_serves_then_bans() {
     let key = [0xA7u8; 32];
     let n = node_with_keys(20, BASE_TIME + 20 * 60, vec![key]);
-    n.chain.set_anchor_record(Some(plaine_p2p::traits::SignedCheckpoint {
-        height: 12,
-        hash: [0x5C; 32],
-        sigs: vec![plaine_p2p::traits::CheckpointSig { pubkey: key, sig: [0x9E; 64] }],
-    }));
+    n.chain
+        .set_anchor_record(Some(plaine_p2p::traits::SignedCheckpoint {
+            height: 12,
+            hash: [0x5C; 32],
+            sigs: vec![plaine_p2p::traits::CheckpointSig {
+                pubkey: key,
+                sig: [0x9E; 64],
+            }],
+        }));
     let mut c = Raw::connect(n.node.local_addr()).expect("connect");
     assert!(c.handshake(20, 0xDDDD), "handshake");
 
     for i in 0..GETCHECKPOINT_PER_CONN {
         c.send(&Msg::GetCheckpoint).expect("send");
         assert!(
-            c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 3_000).is_some(),
+            c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 3_000)
+                .is_some(),
             "request {i} inside the allowance went unanswered"
         );
     }
 
     c.send(&Msg::GetCheckpoint).expect("send");
     assert!(
-        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700).is_none(),
+        c.wait_for(|m| matches!(m, Msg::Checkpoint(_)), 700)
+            .is_none(),
         "the allowance is not enforced: an unlimited answer is the serve cost the limit exists for"
     );
     c.send(&Msg::Ping(9)).expect("send");
-    assert!(c.wait_for(|m| matches!(m, Msg::Pong(9)), 3_000).is_some(), "one over is not a ban");
+    assert!(
+        c.wait_for(|m| matches!(m, Msg::Pong(9)), 3_000).is_some(),
+        "one over is not a ban"
+    );
 
     for _ in 0..GETCHECKPOINT_ABUSE_MAX + 2 {
         let _ = c.send(&Msg::GetCheckpoint);
     }
     let mut dead = false;
     for _ in 0..40 {
-        if c.send(&Msg::Ping(1)).is_err() || c.wait_for(|m| matches!(m, Msg::Pong(1)), 100).is_none()
+        if c.send(&Msg::Ping(1)).is_err()
+            || c.wait_for(|m| matches!(m, Msg::Pong(1)), 100).is_none()
         {
             dead = true;
             break;
         }
     }
-    assert!(dead, "a GETCHECKPOINT flood past the abuse threshold must cost the connection");
+    assert!(
+        dead,
+        "a GETCHECKPOINT flood past the abuse threshold must cost the connection"
+    );
 }

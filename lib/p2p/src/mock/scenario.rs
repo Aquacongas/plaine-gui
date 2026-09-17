@@ -11,33 +11,20 @@ use std::sync::Arc;
 pub enum Behaviour {
     Honest,
 
-    Slow {
-        every_ms: u64,
-    },
+    Slow { every_ms: u64 },
     Silent,
 
-    Trickle {
-        n: usize,
-    },
+    Trickle { n: usize },
     Lying,
 
-    Flapping {
-        up_ms: u64,
-        down_ms: u64,
-    },
+    Flapping { up_ms: u64, down_ms: u64 },
     HeadersOnly,
 
-    WithholdsBelow {
-        height: u64,
-    },
+    WithholdsBelow { height: u64 },
 
-    RepeatsFirstBatch {
-        n: usize,
-    },
+    RepeatsFirstBatch { n: usize },
 
-    AnswersOnce {
-        n: u64,
-    },
+    AnswersOnce { n: u64 },
 }
 
 #[derive(Clone, Debug)]
@@ -442,8 +429,13 @@ impl Sim {
                 if take == 0 {
                     return None;
                 }
-                let raw: Vec<[u8; HEADER_BYTES]> =
-                    p.chain.iter().skip(start).take(take).map(|h| h.raw).collect();
+                let raw: Vec<[u8; HEADER_BYTES]> = p
+                    .chain
+                    .iter()
+                    .skip(start)
+                    .take(take)
+                    .map(|h| h.raw)
+                    .collect();
                 if raw.is_empty() {
                     return None;
                 }

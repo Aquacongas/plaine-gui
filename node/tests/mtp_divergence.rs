@@ -1,6 +1,6 @@
 use plaine_chain::gates;
 use plaine_p2p::gate::{check_context, BitsRule, ContextParams, Rejection};
-use plaine_p2p::traits::{HeaderRec, Hash32};
+use plaine_p2p::traits::{Hash32, HeaderRec};
 
 const TIMES_51_TO_61: [u64; 11] = [
     1_786_573_454,
@@ -69,7 +69,10 @@ fn p2p_admits_the_same_second_block_when_it_cannot_establish_an_mtp() {
     );
 
     let mut child2 = rec(62, [2u8; 32], parent.hash, CHILD_TIME);
-    let fallback = ContextParams { mtp: Some(parent.time), ..params };
+    let fallback = ContextParams {
+        mtp: Some(parent.time),
+        ..params
+    };
     assert_eq!(
         check_context(&AnyBits, &parent, &mut child2, &fallback),
         Err(Rejection::TimePast),
@@ -99,7 +102,10 @@ fn same_header_passes_with_window() {
         fork_depth: 0,
         branch_contains_anchor: false,
     };
-    assert_eq!(check_context(&AnyBits, &parent, &mut child, &params), Ok(()));
+    assert_eq!(
+        check_context(&AnyBits, &parent, &mut child, &params),
+        Ok(())
+    );
 }
 
 #[test]
@@ -112,6 +118,12 @@ fn later_block_unaffected() {
         fork_depth: 0,
         branch_contains_anchor: false,
     };
-    assert_eq!(check_context(&AnyBits, &parent, &mut child, &params), Ok(()));
-    assert_eq!(gates::s4_time(&TIMES_51_TO_61, CHILD_TIME + 1, CHILD_TIME + 10), Ok(()));
+    assert_eq!(
+        check_context(&AnyBits, &parent, &mut child, &params),
+        Ok(())
+    );
+    assert_eq!(
+        gates::s4_time(&TIMES_51_TO_61, CHILD_TIME + 1, CHILD_TIME + 10),
+        Ok(())
+    );
 }

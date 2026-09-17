@@ -186,13 +186,11 @@ pub fn asert_next_target_from_ref(
     time_diff: i128,
     pow_limit: &Target,
 ) -> Target {
-    let ideal: i128 =
-        (ASERT_TARGET_SPACING_SECS as i128) * (height_diff as i128 + 1);
+    let ideal: i128 = (ASERT_TARGET_SPACING_SECS as i128) * (height_diff as i128 + 1);
 
     // Truncating division, matching the BCH C++ int64 `/`. div_euclid and floor
     // disagree with it on negative exponents; either one forks the chain.
-    let exponent: i128 =
-        ((time_diff - ideal) * RADIX) / (ASERT_HALF_LIFE_SECS as i128);
+    let exponent: i128 = ((time_diff - ideal) * RADIX) / (ASERT_HALF_LIFE_SECS as i128);
 
     // Only the final target is clamped, never the exponent. Split it into whole
     // shifts (arithmetic >> is floor) and a non-negative 16-bit fraction.
@@ -202,8 +200,7 @@ pub fn asert_next_target_from_ref(
 
     let f = frac as u128;
     let factor: u64 = (RADIX as u64)
-        + (((CUBE_C1 * f + CUBE_C2 * f * f + CUBE_C3 * f * f * f + (1u128 << 47))
-            >> 48) as u64);
+        + (((CUBE_C1 * f + CUBE_C2 * f * f + CUBE_C3 * f * f * f + (1u128 << 47)) >> 48) as u64);
 
     // 320-bit intermediate: an overshoot clamps high, never wraps to an easy target.
     let mut wide = mul_256_by_64(ref_target, factor);
@@ -447,7 +444,12 @@ mod tests {
             }
             assert!(t <= POW_LIMIT, "test input must be inside the clamp range");
             let back = Target::from_compact(t.to_compact()).unwrap();
-            assert!(back <= t, "re-encoding {} rounded up to {}", t.to_be_hex(), back.to_be_hex());
+            assert!(
+                back <= t,
+                "re-encoding {} rounded up to {}",
+                t.to_be_hex(),
+                back.to_be_hex()
+            );
             assert!(back <= POW_LIMIT);
         }
     }
@@ -575,8 +577,7 @@ mod tests {
     fn deep_behind_clamps_no_wrap() {
         let limit = t0();
 
-        let next =
-            asert_next_target(T0_BITS, 0, 0, 100, 1_000_000_000, &limit).unwrap();
+        let next = asert_next_target(T0_BITS, 0, 0, 100, 1_000_000_000, &limit).unwrap();
         assert_eq!(next, limit);
 
         let next2 = asert_next_target_from_ref(&limit, 100, 6060 + 2 * 3600, &limit);
@@ -653,12 +654,7 @@ mod tests {
 
     #[test]
     fn bits_reject_overflow() {
-        for bits in [
-            0xff00_0001u32,
-            0x2300_0001,
-            0x2200_0100,
-            0x2101_0000,
-        ] {
+        for bits in [0xff00_0001u32, 0x2300_0001, 0x2200_0100, 0x2101_0000] {
             assert_eq!(
                 Target::from_compact(bits),
                 Err(AsertError::OverflowCompact),

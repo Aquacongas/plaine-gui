@@ -26,8 +26,13 @@ fn begin_write_in_one_file() {
             .map(|l| count(l, "begin_write("))
             .sum::<usize>();
         if calls > 0 {
-            let name: &'static str =
-                Box::leak(p.file_name().unwrap().to_string_lossy().into_owned().into_boxed_str());
+            let name: &'static str = Box::leak(
+                p.file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+                    .into_boxed_str(),
+            );
             per_file.insert(name, calls);
         }
     }

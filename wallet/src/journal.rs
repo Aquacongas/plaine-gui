@@ -85,9 +85,10 @@ fn missing(lineno: usize, field: &str) -> WalletError {
 fn hash32(v: &str, lineno: usize, field: &str) -> Result<[u8; 32]> {
     let bytes = plaine_consensus::hex::decode(v)
         .map_err(|e| WalletError::format(format!("journal line {lineno}: {field}: {e}")))?;
-    bytes.as_slice().try_into().map_err(|_| {
-        WalletError::format(format!("journal line {lineno}: {field} is not 32 bytes"))
-    })
+    bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| WalletError::format(format!("journal line {lineno}: {field} is not 32 bytes")))
 }
 
 pub fn path_for(keyfile: &Path) -> PathBuf {
@@ -183,10 +184,21 @@ mod tests {
     fn append_and_read_roundtrip() {
         let key = tmp("rt");
         let jp = path_for(&key);
-        assert_eq!(read(&jp).unwrap().len(), 0, "missing file is an empty journal");
+        assert_eq!(
+            read(&jp).unwrap().len(),
+            0,
+            "missing file is an empty journal"
+        );
         let e = entry(7, 50_000, 1, b"hello");
         append(&jp, &e).unwrap();
-        append(&jp, &Entry { nonce: 8, ..e.clone() }).unwrap();
+        append(
+            &jp,
+            &Entry {
+                nonce: 8,
+                ..e.clone()
+            },
+        )
+        .unwrap();
         let back = read(&jp).unwrap();
         assert_eq!(back.len(), 2);
         assert_eq!(back[0], e);

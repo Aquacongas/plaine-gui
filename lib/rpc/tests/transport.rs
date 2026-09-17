@@ -14,12 +14,19 @@ struct Harness {
 impl Harness {
     fn start(cfg: RpcConfig) -> Harness {
         let shutdown = Shutdown::new();
-        let server =
-            RpcServer::bind(cfg, MockNode::synced().with_notes().into_node(), shutdown.clone())
-                .expect("bind");
+        let server = RpcServer::bind(
+            cfg,
+            MockNode::synced().with_notes().into_node(),
+            shutdown.clone(),
+        )
+        .expect("bind");
         let addr = server.local_addr().expect("addr");
         let handle = std::thread::spawn(move || server.serve());
-        Harness { addr, shutdown, handle: Some(handle) }
+        Harness {
+            addr,
+            shutdown,
+            handle: Some(handle),
+        }
     }
 }
 
@@ -48,7 +55,8 @@ fn head_for(addr: &SocketAddr, len: usize, keep_alive: bool) -> String {
 }
 
 fn read_all(sock: &mut TcpStream) -> String {
-    sock.set_read_timeout(Some(Duration::from_secs(3))).expect("timeout");
+    sock.set_read_timeout(Some(Duration::from_secs(3)))
+        .expect("timeout");
     let mut out = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
@@ -99,7 +107,9 @@ fn accepted_socket_is_blocking() {
         }
     };
 
-    stream.set_read_timeout(Some(Duration::from_millis(200))).expect("timeout");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .expect("timeout");
     let started = Instant::now();
     let mut buf = [0u8; 64];
     let inherited = matches!(stream.read(&mut buf), Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock)
@@ -109,8 +119,12 @@ fn accepted_socket_is_blocking() {
          (true on Windows, false on Linux)"
     );
 
-    stream.set_nonblocking(false).expect("clear the inherited flag");
-    stream.set_read_timeout(Some(Duration::from_secs(2))).expect("timeout");
+    stream
+        .set_nonblocking(false)
+        .expect("clear the inherited flag");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("timeout");
 
     let started = Instant::now();
     let r = stream.read(&mut buf);
@@ -128,7 +142,8 @@ fn segmented_body_still_answered() {
     let h = Harness::start(base_cfg());
 
     let raw_hex = "ab".repeat(4_096);
-    let payload = format!(r#"{{"jsonrpc":"2.0","method":"tx_sendRaw","params":["{raw_hex}"],"id":1}}"#);
+    let payload =
+        format!(r#"{{"jsonrpc":"2.0","method":"tx_sendRaw","params":["{raw_hex}"],"id":1}}"#);
     let head = head_for(&h.addr, payload.len(), false);
 
     let mut sock = TcpStream::connect(h.addr).expect("connect");
@@ -157,14 +172,21 @@ fn keep_alive_survives_second_request() {
 
     let mut sock = TcpStream::connect(h.addr).expect("connect");
     sock.set_nodelay(true).expect("nodelay");
-    sock.set_read_timeout(Some(Duration::from_secs(3))).expect("timeout");
+    sock.set_read_timeout(Some(Duration::from_secs(3)))
+        .expect("timeout");
     sock.write_all(request.as_bytes()).expect("first request");
 
     let mut buf = [0u8; 8192];
     let n = sock.read(&mut buf).expect("first response");
     let first = String::from_utf8_lossy(&buf[..n]).into_owned();
-    assert!(first.starts_with("HTTP/1.1 200"), "first request failed: {first}");
-    assert!(first.contains("Connection: keep-alive"), "server did not promise keep-alive: {first}");
+    assert!(
+        first.starts_with("HTTP/1.1 200"),
+        "first request failed: {first}"
+    );
+    assert!(
+        first.contains("Connection: keep-alive"),
+        "server did not promise keep-alive: {first}"
+    );
 
     std::thread::sleep(Duration::from_millis(300));
     let second = sock.write_all(request.as_bytes()).and_then(|_| {
@@ -188,8 +210,9 @@ fn concurrency_cap_refuses_then_recovers() {
     cfg.idle_timeout = Duration::from_secs(5);
     let h = Harness::start(cfg);
 
-    let holders: Vec<TcpStream> =
-        (0..2).map(|_| TcpStream::connect(h.addr).expect("connect")).collect();
+    let holders: Vec<TcpStream> = (0..2)
+        .map(|_| TcpStream::connect(h.addr).expect("connect"))
+        .collect();
     std::thread::sleep(Duration::from_millis(300));
 
     let payload = r#"{"jsonrpc":"2.0","method":"fee_suggest","id":1}"#;
@@ -203,7 +226,10 @@ fn concurrency_cap_refuses_then_recovers() {
         refused.starts_with("HTTP/1.1 503"),
         "the third caller against max_connections = 2 was not refused: {refused:?}"
     );
-    assert!(refused.contains("Retry-After: 1"), "503 carried no Retry-After: {refused}");
+    assert!(
+        refused.contains("Retry-After: 1"),
+        "503 carried no Retry-After: {refused}"
+    );
 
     drop(holders);
     std::thread::sleep(Duration::from_millis(300));
@@ -211,7 +237,10 @@ fn concurrency_cap_refuses_then_recovers() {
     ok.set_nodelay(true).expect("nodelay");
     ok.write_all(request.as_bytes()).expect("write");
     let after = read_all(&mut ok);
-    assert!(after.starts_with("HTTP/1.1 200"), "the slots did not come back: {after:?}");
+    assert!(
+        after.starts_with("HTTP/1.1 200"),
+        "the slots did not come back: {after:?}"
+    );
 }
 
 #[test]
@@ -225,12 +254,16 @@ fn socket_bounded_by_max_requests() {
 
     let mut sock = TcpStream::connect(h.addr).expect("connect");
     sock.set_nodelay(true).expect("nodelay");
-    sock.set_read_timeout(Some(Duration::from_secs(3))).expect("timeout");
+    sock.set_read_timeout(Some(Duration::from_secs(3)))
+        .expect("timeout");
 
     for i in 1..=2 {
-        sock.write_all(request.as_bytes()).unwrap_or_else(|e| panic!("request {i}: {e}"));
+        sock.write_all(request.as_bytes())
+            .unwrap_or_else(|e| panic!("request {i}: {e}"));
         let mut buf = [0u8; 8192];
-        let n = sock.read(&mut buf).unwrap_or_else(|e| panic!("response {i}: {e}"));
+        let n = sock
+            .read(&mut buf)
+            .unwrap_or_else(|e| panic!("response {i}: {e}"));
         let text = String::from_utf8_lossy(&buf[..n]).into_owned();
         assert!(text.starts_with("HTTP/1.1 200"), "request {i} of 2: {text}");
     }
@@ -260,7 +293,8 @@ fn stalled_body_answered_408() {
     sock.set_nodelay(true).expect("nodelay");
 
     sock.write_all(head.as_bytes()).expect("head");
-    sock.write_all(&payload.as_bytes()[..10]).expect("half a body");
+    sock.write_all(&payload.as_bytes()[..10])
+        .expect("half a body");
 
     let response = read_all(&mut sock);
     assert!(
@@ -300,8 +334,10 @@ fn slow_drip_hits_read_timeout() {
 
     let mut sock = TcpStream::connect(h.addr).expect("connect");
     sock.set_nodelay(true).expect("nodelay");
-    sock.set_read_timeout(Some(Duration::from_secs(5))).expect("timeout");
-    sock.write_all(b"POST / HTTP/1.1\r\n").expect("request line");
+    sock.set_read_timeout(Some(Duration::from_secs(5)))
+        .expect("timeout");
+    sock.write_all(b"POST / HTTP/1.1\r\n")
+        .expect("request line");
 
     let started = Instant::now();
 
@@ -326,7 +362,10 @@ fn slow_drip_hits_read_timeout() {
     );
     let response = read_all(&mut sock);
     if !response.is_empty() {
-        assert!(response.starts_with("HTTP/1.1 408"), "unexpected answer to a drip: {response:?}");
+        assert!(
+            response.starts_with("HTTP/1.1 408"),
+            "unexpected answer to a drip: {response:?}"
+        );
     }
 }
 

@@ -197,7 +197,11 @@ impl ChainView for NodeView {
         let out = self.store.headers_range(from, max);
         crate::log::debug(
             "serve",
-            format!("headers_from: locator {} entries -> from {from}, serving {}", loc.len(), out.len()),
+            format!(
+                "headers_from: locator {} entries -> from {from}, serving {}",
+                loc.len(),
+                out.len()
+            ),
         );
         out
     }
@@ -216,7 +220,11 @@ impl ChainView for NodeView {
         out.extend_from_slice(&body);
         crate::log::debug(
             "serve",
-            format!("block {} -> {} bytes", plaine_consensus::hex::encode(&h[..8]), out.len()),
+            format!(
+                "block {} -> {} bytes",
+                plaine_consensus::hex::encode(&h[..8]),
+                out.len()
+            ),
         );
         Some(out)
     }
@@ -328,7 +336,10 @@ impl BlockSink for ValidatorSink {
         {
             let mut g = self.refusal.lock().expect("refusal cell");
             if let Some(brk) = g.take() {
-                return Err(SinkError::RefusedAt { height: brk.height, why: brk.why });
+                return Err(SinkError::RefusedAt {
+                    height: brk.height,
+                    why: brk.why,
+                });
             }
         }
         let bytes = (b.headers.len() * plaine_p2p::constants::HEADER_BYTES) as u64;
@@ -343,14 +354,22 @@ impl BlockSink for ValidatorSink {
             plaine_p2p::traits::Door::Requested => Solicit::Steady,
         };
         self.push(
-            Cmd::Headers { source: b.source.0 as u32, raws, solicitation },
+            Cmd::Headers {
+                source: b.source.0 as u32,
+                raws,
+                solicitation,
+            },
             bytes,
         )?;
 
         // connected is 0 on purpose - the batch is only queued here. nothing has
         // validated it yet, so claiming a header connected would be a lie.
         let held = self.held.lock().expect("held cell").take();
-        Ok(Accepted { connected: 0, verified_height: self.tip.height(), held })
+        Ok(Accepted {
+            connected: 0,
+            verified_height: self.tip.height(),
+            held,
+        })
     }
 
     fn submit_block(&self, hash: Hash32, bytes: Vec<u8>) -> Result<(), SinkError> {
@@ -363,7 +382,9 @@ impl BlockSink for ValidatorSink {
         // check the body's header hashes to the id we asked for, before reserving or
         // queueing. a mismatched block then never reaches the validator or the budget.
         if plaine_consensus::crypto::header_hash(&raw) != hash {
-            return Err(SinkError::Invalid("block header does not hash to the requested id"));
+            return Err(SinkError::Invalid(
+                "block header does not hash to the requested id",
+            ));
         }
         self.reserve(n)?;
         let body = bytes[plaine_p2p::constants::HEADER_BYTES..].to_vec();
@@ -386,7 +407,10 @@ impl BlockSink for ValidatorSink {
     fn submit_checkpoint(&self, cp: SignedCheckpoint) -> Result<AnchorUpdate, SinkError> {
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         self.tx
-            .try_send(Cmd::Checkpoint { cp: Box::new(cp), reply: tx })
+            .try_send(Cmd::Checkpoint {
+                cp: Box::new(cp),
+                reply: tx,
+            })
             .map_err(|_| SinkError::Full)?;
         rx.recv_timeout(std::time::Duration::from_secs(5))
             .map(|v| v.anchor_update())
@@ -484,10 +508,17 @@ mod tests {
         let (tx, rx) = tokio::sync::mpsc::channel::<Cmd>(4);
         let view = view_with(tx);
         let (anchor, enforced, _record) = view.anchor_cells();
-        assert_eq!(ChainView::anchor(&view), None, "an empty chain has no anchor");
+        assert_eq!(
+            ChainView::anchor(&view),
+            None,
+            "an empty chain has no anchor"
+        );
         assert!(ChainView::checkpoints(&view).is_empty());
 
-        let a = plaine_p2p::traits::Anchor { height: 4_242, hash: [0xC1; 32] };
+        let a = plaine_p2p::traits::Anchor {
+            height: 4_242,
+            hash: [0xC1; 32],
+        };
         *anchor.lock().expect("anchor") = Some(a);
         *enforced.lock().expect("enforced") = Arc::new(vec![(1u64, [2u8; 32]), (3u64, [4u8; 32])]);
 
@@ -521,10 +552,19 @@ mod tests {
         let (_, bytes) = block(1);
         assert_eq!(
             s.submit_block([0xAAu8; 32], bytes),
-            Err(SinkError::Invalid("block header does not hash to the requested id"))
+            Err(SinkError::Invalid(
+                "block header does not hash to the requested id"
+            ))
         );
-        assert!(rx.try_recv().is_err(), "a mismatched block must not reach the validator");
-        assert_eq!(s.byte_counter().load(Ordering::Relaxed), 0, "and must reserve nothing");
+        assert!(
+            rx.try_recv().is_err(),
+            "a mismatched block must not reach the validator"
+        );
+        assert_eq!(
+            s.byte_counter().load(Ordering::Relaxed),
+            0,
+            "and must reserve nothing"
+        );
     }
 
     fn header_batch() -> HeaderBatch {
@@ -591,10 +631,19 @@ mod tests {
         let s = ValidatorSink::new(tx, TipCell::default());
         assert!(s.submit_headers(header_batch()).is_ok());
 
-        ValidatorSink::refuse(&s.refusal_cell(), Break { height: 42, why: "test" });
+        ValidatorSink::refuse(
+            &s.refusal_cell(),
+            Break {
+                height: 42,
+                why: "test",
+            },
+        );
         assert_eq!(
             s.submit_headers(header_batch()),
-            Err(SinkError::RefusedAt { height: 42, why: "test" })
+            Err(SinkError::RefusedAt {
+                height: 42,
+                why: "test"
+            })
         );
 
         assert!(s.submit_headers(header_batch()).is_ok());
@@ -608,10 +657,19 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::channel::<Cmd>(8);
         let s = ValidatorSink::new(tx, TipCell::default());
         assert_eq!(s.submit_headers(header_batch()).expect("queued").held, None);
-        ValidatorSink::hold(&s.held_cell(), Held { hash: [7u8; 32], height: 148 });
+        ValidatorSink::hold(
+            &s.held_cell(),
+            Held {
+                hash: [7u8; 32],
+                height: 148,
+            },
+        );
         assert_eq!(
             s.submit_headers(header_batch()).expect("queued").held,
-            Some(Held { hash: [7u8; 32], height: 148 })
+            Some(Held {
+                hash: [7u8; 32],
+                height: 148
+            })
         );
 
         assert_eq!(s.submit_headers(header_batch()).expect("queued").held, None);
@@ -624,15 +682,33 @@ mod tests {
 
         let (tx, _rx) = tokio::sync::mpsc::channel::<Cmd>(8);
         let s = ValidatorSink::new(tx, TipCell::default());
-        ValidatorSink::refuse(&s.refusal_cell(), Break { height: 42, why: "test" });
-        ValidatorSink::hold(&s.held_cell(), Held { hash: [7u8; 32], height: 40 });
+        ValidatorSink::refuse(
+            &s.refusal_cell(),
+            Break {
+                height: 42,
+                why: "test",
+            },
+        );
+        ValidatorSink::hold(
+            &s.held_cell(),
+            Held {
+                hash: [7u8; 32],
+                height: 40,
+            },
+        );
         assert_eq!(
             s.submit_headers(header_batch()),
-            Err(SinkError::RefusedAt { height: 42, why: "test" })
+            Err(SinkError::RefusedAt {
+                height: 42,
+                why: "test"
+            })
         );
         assert_eq!(
             s.submit_headers(header_batch()).expect("queued").held,
-            Some(Held { hash: [7u8; 32], height: 40 }),
+            Some(Held {
+                hash: [7u8; 32],
+                height: 40
+            }),
             "the hold was dropped by the call that answered the break"
         );
     }
@@ -644,11 +720,32 @@ mod tests {
         let (tx, _rx) = tokio::sync::mpsc::channel::<Cmd>(8);
         let s = ValidatorSink::new(tx, TipCell::default());
         let cell = s.held_cell();
-        ValidatorSink::hold(&cell, Held { hash: [9u8; 32], height: 90 });
-        ValidatorSink::hold(&cell, Held { hash: [5u8; 32], height: 50 });
-        ValidatorSink::hold(&cell, Held { hash: [7u8; 32], height: 70 });
+        ValidatorSink::hold(
+            &cell,
+            Held {
+                hash: [9u8; 32],
+                height: 90,
+            },
+        );
+        ValidatorSink::hold(
+            &cell,
+            Held {
+                hash: [5u8; 32],
+                height: 50,
+            },
+        );
+        ValidatorSink::hold(
+            &cell,
+            Held {
+                hash: [7u8; 32],
+                height: 70,
+            },
+        );
         assert_eq!(
-            s.submit_headers(header_batch()).expect("queued").held.map(|h| h.height),
+            s.submit_headers(header_batch())
+                .expect("queued")
+                .held
+                .map(|h| h.height),
             Some(50)
         );
     }
@@ -658,12 +755,33 @@ mod tests {
         let (tx, _rx) = tokio::sync::mpsc::channel::<Cmd>(8);
         let s = ValidatorSink::new(tx, TipCell::default());
         let cell = s.refusal_cell();
-        ValidatorSink::refuse(&cell, Break { height: 77, why: "later" });
-        ValidatorSink::refuse(&cell, Break { height: 42, why: "the break" });
-        ValidatorSink::refuse(&cell, Break { height: 90, why: "later still" });
+        ValidatorSink::refuse(
+            &cell,
+            Break {
+                height: 77,
+                why: "later",
+            },
+        );
+        ValidatorSink::refuse(
+            &cell,
+            Break {
+                height: 42,
+                why: "the break",
+            },
+        );
+        ValidatorSink::refuse(
+            &cell,
+            Break {
+                height: 90,
+                why: "later still",
+            },
+        );
         assert_eq!(
             s.submit_headers(header_batch()),
-            Err(SinkError::RefusedAt { height: 42, why: "the break" })
+            Err(SinkError::RefusedAt {
+                height: 42,
+                why: "the break"
+            })
         );
     }
 
@@ -671,10 +789,19 @@ mod tests {
     fn break_reserves_and_queues_nothing() {
         let (tx, mut rx) = tokio::sync::mpsc::channel::<Cmd>(8);
         let s = ValidatorSink::new(tx, TipCell::default());
-        ValidatorSink::refuse(&s.refusal_cell(), Break { height: 42, why: "test" });
+        ValidatorSink::refuse(
+            &s.refusal_cell(),
+            Break {
+                height: 42,
+                why: "test",
+            },
+        );
         assert!(s.submit_headers(header_batch()).is_err());
         assert_eq!(s.byte_counter().load(Ordering::Relaxed), 0);
-        assert!(rx.try_recv().is_err(), "nothing may be queued behind a break");
+        assert!(
+            rx.try_recv().is_err(),
+            "nothing may be queued behind a break"
+        );
     }
 
     #[test]

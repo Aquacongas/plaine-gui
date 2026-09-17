@@ -156,7 +156,11 @@ impl<D: Driver> NetNode<D> {
     }
 
     pub fn conditions_since(&self, cursor: u64) -> (Vec<Condition>, u64, u64) {
-        self.net.conditions.lock().expect("conditions").since(cursor)
+        self.net
+            .conditions
+            .lock()
+            .expect("conditions")
+            .since(cursor)
     }
 
     pub fn shutdown(mut self) -> D {

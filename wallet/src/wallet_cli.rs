@@ -12,7 +12,7 @@ use crate::sig;
 use crate::txbuild;
 use crate::ui::{self, PassMode, Streams};
 use plaine_consensus::codec::{AnnouncementTx, TransferTx};
-use plaine_consensus::constants::{FEE_FLOOR_MILE, Network};
+use plaine_consensus::constants::{Network, FEE_FLOOR_MILE};
 use plaine_consensus::crypto;
 use std::path::Path;
 
@@ -259,7 +259,9 @@ fn cmd_verify(argv: &[String], s: &mut Streams) -> Result<()> {
     let seed = kf.open(pass.as_ref())?;
     let derived = sig::public_key_of(&seed);
     if derived != kf.pubkey {
-        return Err(WalletError::crypto("derived public key does not match the file"));
+        return Err(WalletError::crypto(
+            "derived public key does not match the file",
+        ));
     }
     s.say(&format!("verify: OK  {path}"));
     s.say(&format!("  address    {}", kf.address));
@@ -323,7 +325,13 @@ fn cmd_backup(argv: &[String], s: &mut Streams) -> Result<()> {
 }
 
 const PASSPHRASE_SPEC: Spec = Spec {
-    values: &["in", "out", "old-passphrase-file", "new-passphrase-file", "kdf-iters"],
+    values: &[
+        "in",
+        "out",
+        "old-passphrase-file",
+        "new-passphrase-file",
+        "kdf-iters",
+    ],
     switches: &["old-no-passphrase", "new-no-passphrase"],
 };
 
@@ -457,8 +465,8 @@ fn read_named_passphrase(
              used here because two passphrases would be ambiguous)"
         ))),
         (Some(p), false) => {
-            let bytes = std::fs::read(p)
-                .map_err(|e| WalletError::io(format!("cannot read {p}: {e}")))?;
+            let bytes =
+                std::fs::read(p).map_err(|e| WalletError::io(format!("cannot read {p}: {e}")))?;
             let mut v = bytes;
             if v.last() == Some(&b'\n') {
                 v.pop();
@@ -484,7 +492,15 @@ fn chain_line(network: Network) -> String {
 }
 
 const TRANSFER_SPEC: Spec = Spec {
-    values: &["in", "to", "amount", "fee", "nonce", "out", "passphrase-file"],
+    values: &[
+        "in",
+        "to",
+        "amount",
+        "fee",
+        "nonce",
+        "out",
+        "passphrase-file",
+    ],
     switches: &["passphrase-stdin", "no-passphrase"],
 };
 
@@ -504,7 +520,10 @@ fn cmd_transfer(argv: &[String], s: &mut Streams) -> Result<()> {
 
     let hex = plaine_consensus::hex::encode(&tx.encode());
     s.say("transfer: signed (type 0x01)");
-    s.say(&format!("  txid       {}", plaine_consensus::hex::encode(&tx.txid())));
+    s.say(&format!(
+        "  txid       {}",
+        plaine_consensus::hex::encode(&tx.txid())
+    ));
     s.say(&format!("  from       {}", kf.address));
     s.say(&format!("  to         {}", to));
     s.say(&format!("  amount     {}", amount::describe(amount)));
@@ -597,8 +616,7 @@ fn cmd_announce(argv: &[String], s: &mut Streams) -> Result<()> {
 
     let pass = open_passphrase(&a, s, &kf)?;
     let seed = kf.open(pass.as_ref())?;
-    let tx =
-        txbuild::build_announcement(network, &seed, &author, &payload, encoding, fee, nonce)?;
+    let tx = txbuild::build_announcement(network, &seed, &author, &payload, encoding, fee, nonce)?;
     drop(seed);
 
     let signed_msg = crypto::announcement_message_of(network, &tx)
@@ -619,7 +637,10 @@ fn cmd_announce(argv: &[String], s: &mut Streams) -> Result<()> {
     let hex = plaine_consensus::hex::encode(&encoded);
 
     s.say("announce: signed author announcement (type 0x02)");
-    s.say(&format!("  txid       {}", plaine_consensus::hex::encode(&txid)));
+    s.say(&format!(
+        "  txid       {}",
+        plaine_consensus::hex::encode(&txid)
+    ));
     s.say(&format!("  from       {}", kf.address));
     s.say(&format!(
         "  author key {}",
@@ -732,12 +753,18 @@ fn cmd_decode(argv: &[String], s: &mut Streams) -> Result<()> {
             let tx = TransferTx::decode(&bytes)
                 .map_err(|e| WalletError::format(format!("not a valid transfer: {e}")))?;
             s.say("decode: transfer (type 0x01)");
-            s.say(&format!("  txid       {}", plaine_consensus::hex::encode(&tx.txid())));
+            s.say(&format!(
+                "  txid       {}",
+                plaine_consensus::hex::encode(&tx.txid())
+            ));
             s.say(&format!(
                 "  from       {}",
                 crypto::address_from_pubkey(&tx.from_pub)
             ));
-            s.say(&format!("  from_pub   {}", plaine_consensus::hex::encode(&tx.from_pub)));
+            s.say(&format!(
+                "  from_pub   {}",
+                plaine_consensus::hex::encode(&tx.from_pub)
+            ));
             s.say(&format!("  to         {}", crypto::encode_address(&tx.to)));
             s.say(&format!("  amount     {}", amount::describe(tx.amount)));
             s.say(&format!("  fee        {}", amount::describe(tx.fee)));
@@ -757,11 +784,15 @@ fn cmd_decode(argv: &[String], s: &mut Streams) -> Result<()> {
             s.say("decode: author announcement (type 0x02)");
             s.say(&format!(
                 "  txid       {}",
-                plaine_consensus::hex::encode(&tx.txid().map_err(|e| WalletError::format(
-                    format!("txid: {e}")
-                ))?)
+                plaine_consensus::hex::encode(
+                    &tx.txid()
+                        .map_err(|e| WalletError::format(format!("txid: {e}")))?
+                )
             ));
-            s.say(&format!("  from_pub   {}", plaine_consensus::hex::encode(&tx.from_pub)));
+            s.say(&format!(
+                "  from_pub   {}",
+                plaine_consensus::hex::encode(&tx.from_pub)
+            ));
             s.say(&format!(
                 "  from       {}",
                 crypto::address_from_pubkey(&tx.from_pub)
@@ -782,9 +813,8 @@ fn cmd_decode(argv: &[String], s: &mut Streams) -> Result<()> {
             match a.get("author-pubkey") {
                 Some(v) => {
                     let author = args::parse_pubkey("author-pubkey", v)?;
-                    match plaine_consensus::tx::check_announcement_stateless(
-                        network, &tx, &author,
-                    ) {
+                    match plaine_consensus::tx::check_announcement_stateless(network, &tx, &author)
+                    {
                         Ok(()) => s.say("  rule 1     from_pub == --author-pubkey"),
                         Err(e) => {
                             s.say(&format!("  rule 1     REJECTED: {e}"));
@@ -862,13 +892,15 @@ mod drift_guards {
             assert!(CREATE_SPEC.values.contains(f), "new/import must take --{f}");
         }
         for f in SEED_SWITCH_FLAGS {
-            assert!(CREATE_SPEC.switches.contains(f), "new/import must take --{f}");
+            assert!(
+                CREATE_SPEC.switches.contains(f),
+                "new/import must take --{f}"
+            );
         }
     }
 
     #[test]
     fn amounts_are_parsed_with_a_named_flag() {
-
         let flagless = String::from("parse_mile") + "(";
         let flagged = String::from("parse_mile_for") + "(";
         let src = include_str!("wallet_cli.rs");

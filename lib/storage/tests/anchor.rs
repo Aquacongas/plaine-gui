@@ -19,13 +19,19 @@ fn cfg_of(s: &Scratch) -> StoreConfig {
 }
 
 fn bseg(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bseg"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bseg"))
 }
 fn bidx(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bidx"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bidx"))
 }
 fn hdr(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 
 fn grow(cfg: StoreConfig, chain: &mut Chain, n: u64) {
@@ -61,7 +67,10 @@ fn lost_sidecar_rebuilt_verifies() {
         rep.integrity
     );
     assert!(!r.is_degraded(), "a healthy store was quarantined");
-    assert_eq!(r.body_availability(SEG + 7), plaine_storage::RangeAvailability::Verified);
+    assert_eq!(
+        r.body_availability(SEG + 7),
+        plaine_storage::RangeAvailability::Verified
+    );
     let mut buf = Vec::new();
     assert!(body_verified(&r, SEG + 7, &mut buf) > 0);
     assert!(r.vouches_for_all_bodies(), "{:?}", r.body_vouch());
@@ -81,17 +90,28 @@ fn overlong_truncated_still_verifies() {
     grow(cfg_of(&s), &mut ch, 3 * SEG);
     let before = std::fs::metadata(bseg(&s, 1)).unwrap().len();
     {
-        let mut f = std::fs::OpenOptions::new().write(true).open(bseg(&s, 1)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(bseg(&s, 1))
+            .unwrap();
         f.seek(SeekFrom::Start(before + 50_000)).unwrap();
         f.write_all(&[0xAB; 4_096]).unwrap();
         f.sync_all().unwrap();
     }
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
-    assert_eq!(rep.integrity.overlong_truncated.len(), 1, "{:?}", rep.integrity);
+    assert_eq!(
+        rep.integrity.overlong_truncated.len(),
+        1,
+        "{:?}",
+        rep.integrity
+    );
     assert!(rep.integrity.is_clean(), "{:?}", rep.integrity);
     assert_eq!(std::fs::metadata(bseg(&s, 1)).unwrap().len(), before);
-    assert_eq!(r.body_availability(SEG + 7), plaine_storage::RangeAvailability::Verified);
+    assert_eq!(
+        r.body_availability(SEG + 7),
+        plaine_storage::RangeAvailability::Verified
+    );
     assert!(r.vouches_for_all_bodies());
     drop(c);
 }
@@ -106,7 +126,10 @@ fn header_damage_not_body_damage() {
     let zeros = vec![0u8; plaine_storage::HDR_SEG_BYTES as usize];
     {
         use std::io::Write;
-        let mut f = std::fs::OpenOptions::new().write(true).open(hdr(&s, 1)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(hdr(&s, 1))
+            .unwrap();
         f.write_all(&zeros).unwrap();
         f.sync_all().unwrap();
     }
@@ -172,7 +195,9 @@ fn anchorless_store_opens_honest() {
         assert_eq!(
             r.body_availability(h),
             plaine_storage::RangeAvailability::Unverifiable {
-                cause: UnverifiableCause::PreAnchor { anchor_floor: 3 * SEG }
+                cause: UnverifiableCause::PreAnchor {
+                    anchor_floor: 3 * SEG
+                }
             }
         );
     }
@@ -181,7 +206,10 @@ fn anchorless_store_opens_honest() {
     assert_eq!(v.unverifiable.len(), 3, "two sealed + the live tail: {v:?}");
     assert!(v.damaged.is_empty());
     assert!(!r.vouches_for_all_bodies());
-    println!("  upgraded store: floor {}, vouch {:?}", rep.anchor_floor, v);
+    println!(
+        "  upgraded store: floor {}, vouch {:?}",
+        rep.anchor_floor, v
+    );
     drop(c);
     drop(r);
 
@@ -191,12 +219,20 @@ fn anchorless_store_opens_honest() {
     assert_eq!(
         r.body_availability(2 * SEG + 5),
         plaine_storage::RangeAvailability::Unverifiable {
-            cause: UnverifiableCause::UnchangedSince { anchor_floor: 3 * SEG }
+            cause: UnverifiableCause::UnchangedSince {
+                anchor_floor: 3 * SEG
+            }
         },
         "a backfilled-in-place segment reported provenance it does not have"
     );
-    assert_eq!(r.body_availability(3 * SEG + 5), plaine_storage::RangeAvailability::Verified);
-    assert_eq!(rep.anchors_verified, 1, "only segment 3 is grade 1 and sealed");
+    assert_eq!(
+        r.body_availability(3 * SEG + 5),
+        plaine_storage::RangeAvailability::Verified
+    );
+    assert_eq!(
+        rep.anchors_verified, 1,
+        "only segment 3 is grade 1 and sealed"
+    );
     assert!(rep.anchor_floor_raised.is_none());
     println!(
         "  after the upgrade: anchors {}, verified {}, vouch {:?}",
@@ -237,10 +273,16 @@ fn downgrade_gap_raises_floor() {
             }
         );
     }
-    assert_eq!(r.body_availability(5), plaine_storage::RangeAvailability::Verified);
+    assert_eq!(
+        r.body_availability(5),
+        plaine_storage::RangeAvailability::Verified
+    );
     assert!(!r.is_degraded());
     let mut buf = Vec::new();
-    assert!(body(&r, 2 * SEG + 5, &mut buf) > 0, "a forgiven range stopped serving");
+    assert!(
+        body(&r, 2 * SEG + 5, &mut buf) > 0,
+        "a forgiven range stopped serving"
+    );
     println!(
         "  downgrade scar: floor {:?} -> {}, {} segments unvouched, nothing damaged",
         rep.anchor_floor_raised.map(|p| p.0),
@@ -271,7 +313,10 @@ fn interior_anchor_hole_is_damage() {
     let d = rep.integrity.body_damage[0];
     assert_eq!(d.reason, DamageKind::AnchorMissing);
     assert_eq!((d.first_height, d.last_height), (SEG, 2 * SEG - 1));
-    assert_eq!(rep.anchor_floor_raised, None, "an interior hole moved the floor");
+    assert_eq!(
+        rep.anchor_floor_raised, None,
+        "an interior hole moved the floor"
+    );
     assert_eq!(rep.anchor_floor, 0);
     assert!(r.is_degraded());
     let mut buf = Vec::new();
@@ -295,9 +340,15 @@ fn batch_on_boundary_anchors() {
     assert!(!bseg(&s, 1).exists(), "segment 1 should not exist");
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
-    assert!(r.body_anchor(0).unwrap().is_some(), "the sealed segment has no anchor");
+    assert!(
+        r.body_anchor(0).unwrap().is_some(),
+        "the sealed segment has no anchor"
+    );
     assert_eq!(rep.anchors_verified, 1);
-    assert_eq!(r.body_availability(4_000), plaine_storage::RangeAvailability::Verified);
+    assert_eq!(
+        r.body_availability(4_000),
+        plaine_storage::RangeAvailability::Verified
+    );
     assert!(r.vouches_for_all_bodies());
     drop(c);
 }
@@ -319,7 +370,10 @@ fn reorg_across_boundary_remints() {
     let before = r.body_anchor(0).unwrap().expect("segment 0 anchored");
 
     let fork = SEG - 10;
-    assert!(SEG + tail - fork <= MAX_REORG_DEPTH, "the fixture outgrew the depth cap");
+    assert!(
+        SEG + tail - fork <= MAX_REORG_DEPTH,
+        "the fixture outgrew the depth cap"
+    );
     ch.rewind(&main, fork, main[fork as usize].hash);
 
     let alt = ch.build(tail + 20, 2);
@@ -371,7 +425,10 @@ fn deep_reorg_no_anchor_above_wm() {
     assert!(r.body_anchor(0).unwrap().is_some());
 
     let fork = SEG - 300;
-    let rewind_to = r.checkpoint_at_or_below(fork).unwrap().expect("a checkpoint");
+    let rewind_to = r
+        .checkpoint_at_or_below(fork)
+        .unwrap()
+        .expect("a checkpoint");
     let mut replay_ch = Chain::new(64, 64, 2);
     let replay_blocks = replay_ch.build(fork + 1, 1);
     ch.rewind(&main, fork, main[fork as usize].hash);
@@ -415,15 +472,25 @@ fn anchor_above_wm_is_dropped() {
     drop(c0);
     drop(r0);
     {
-        let mut f = std::fs::OpenOptions::new().write(true).open(bseg(&s, 1)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(bseg(&s, 1))
+            .unwrap();
         f.seek(SeekFrom::Start(off + 8)).unwrap();
         f.write_all(&[0xA5]).unwrap();
         f.sync_all().unwrap();
     }
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open must not refuse and must not panic");
-    assert_eq!(r.body_watermark(), SEG + 100, "the watermark did not come down");
-    assert_eq!(rep.anchors_dropped, 1, "a stale anchor survived above the watermark");
+    assert_eq!(
+        r.body_watermark(),
+        SEG + 100,
+        "the watermark did not come down"
+    );
+    assert_eq!(
+        rep.anchors_dropped, 1,
+        "a stale anchor survived above the watermark"
+    );
     assert!(r.body_anchor(1).unwrap().is_none());
     assert!(rep.integrity.is_clean(), "{:?}", rep.integrity);
     drop(c);
@@ -462,7 +529,11 @@ fn pruning_drops_anchor_with_bodies() {
     assert_eq!(r.body_anchor_count().unwrap(), sealed_retained);
     assert!(r.vouches_for_all_bodies());
     let v = r.body_vouch();
-    assert_eq!(v.verified, vec![(2 * SEG, 4 * SEG - 1)], "runs must coalesce");
+    assert_eq!(
+        v.verified,
+        vec![(2 * SEG, 4 * SEG - 1)],
+        "runs must coalesce"
+    );
     drop(c);
 }
 
@@ -485,7 +556,10 @@ fn deep_tier_closes_boot_gap() {
     let payload = vec![0x5Au8; len];
     let crc = plaine_storage::crc32c(&payload);
     {
-        let mut f = std::fs::OpenOptions::new().write(true).open(bseg(&s, 0)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(bseg(&s, 0))
+            .unwrap();
         f.seek(SeekFrom::Start(off + 4)).unwrap();
         f.write_all(&crc.to_le_bytes()).unwrap();
         f.write_all(&payload).unwrap();
@@ -498,9 +572,16 @@ fn deep_tier_closes_boot_gap() {
         "L1 caught more than it claims to: {:?}",
         rep.integrity
     );
-    assert_eq!(r.body_availability(2_000), plaine_storage::RangeAvailability::Verified);
+    assert_eq!(
+        r.body_availability(2_000),
+        plaine_storage::RangeAvailability::Verified
+    );
     let mut buf = Vec::new();
-    assert_eq!(body(&r, 2_000, &mut buf), len, "the substitution reads back clean");
+    assert_eq!(
+        body(&r, 2_000, &mut buf),
+        len,
+        "the substitution reads back clean"
+    );
     assert_eq!(buf, payload, "L1 must not read interior payloads");
 
     assert_eq!(
@@ -508,7 +589,11 @@ fn deep_tier_closes_boot_gap() {
         Some(false),
         "the deep tier missed an interior substitution"
     );
-    assert_eq!(r.verify_segment_frames(2).unwrap(), None, "segment 2 is not sealed");
+    assert_eq!(
+        r.verify_segment_frames(2).unwrap(),
+        None,
+        "segment 2 is not sealed"
+    );
     println!("  L1 passes an interior CRC-fixed substitution, L2 refuses it");
     drop(c);
 }

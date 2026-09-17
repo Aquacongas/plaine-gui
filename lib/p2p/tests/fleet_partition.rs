@@ -168,7 +168,11 @@ fn inbound_only_miner_propagates() {
         shape(&all)
     );
     for e in &edges {
-        assert_eq!(e.chain.tip().hash, hub.chain.tip().hash, "same height, different tip");
+        assert_eq!(
+            e.chain.tip().hash,
+            hub.chain.tip().hash,
+            "same height, different tip"
+        );
     }
 
     let fds: Vec<Arc<FdBudget>> = all.iter().map(|n| Arc::clone(&n.fd)).collect();
@@ -205,7 +209,10 @@ fn dead_outbound_redialled() {
         "core never noticed A leaving: {}",
         shape(&rest)
     );
-    assert!(core.node.peer_count() > 0, "core must not be cold for this test to mean anything");
+    assert!(
+        core.node.peer_count() > 0,
+        "core must not be cold for this test to mean anything"
+    );
 
     let a2 = node_on(a_addr, 1, unix);
     let all2: Vec<&Node> = vec![&a2, &b, &core];
@@ -253,7 +260,11 @@ fn restart_no_partition() {
         rounds += 1;
         refs.iter().all(|n| n.height() == 4)
     });
-    assert!(ok, "the ring did not converge before the restart: {}", shape(&refs));
+    assert!(
+        ok,
+        "the ring did not converge before the restart: {}",
+        shape(&refs)
+    );
     let virtual_ms = rounds * TICK_MS as usize;
     assert!(
         virtual_ms <= 60_000,
@@ -405,7 +416,10 @@ fn peer_rows_carry_metadata() {
         "the peer's height is the one number the watchtower reads a peer for, \
          and it was 0 for every peer of every node on the fleet"
     );
-    assert!(r.bytes_recv > 0 && r.bytes_sent > 0, "byte counters stayed at zero");
+    assert!(
+        r.bytes_recv > 0 && r.bytes_sent > 0,
+        "byte counters stayed at zero"
+    );
     assert!(
         !r.user_agent.is_empty(),
         "the user agent is decoded by the handshake and was dropped on the floor"
@@ -437,7 +451,11 @@ fn one_dial_per_retry_interval() {
     am.add(ip, 9256, true, 0);
 
     let t0 = Mono(1_000_000);
-    assert_eq!(am.select_dial(4, &[], t0, false).len(), 1, "never tried, must be offered");
+    assert_eq!(
+        am.select_dial(4, &[], t0, false).len(),
+        1,
+        "never tried, must be offered"
+    );
     am.note_attempt(&ip, 9256, t0);
 
     let mid = t0.plus_ms(DIAL_RETRY_MS - 1);

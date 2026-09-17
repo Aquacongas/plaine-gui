@@ -14,10 +14,23 @@ pub struct Staged {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VerifyOutcome {
     Idle,
-    Verified { rec: HeaderRec, from: PeerId },
-    FastForwarded { rec: HeaderRec, from: PeerId },
-    BadPow { rec: HeaderRec, from: PeerId },
-    AnchorMismatch { height: u64, got: Hash32, from: PeerId },
+    Verified {
+        rec: HeaderRec,
+        from: PeerId,
+    },
+    FastForwarded {
+        rec: HeaderRec,
+        from: PeerId,
+    },
+    BadPow {
+        rec: HeaderRec,
+        from: PeerId,
+    },
+    AnchorMismatch {
+        height: u64,
+        got: Hash32,
+        from: PeerId,
+    },
 }
 
 #[derive(Debug)]
@@ -139,7 +152,10 @@ impl Staging {
         let h = s.rec;
 
         if s.verified {
-            return VerifyOutcome::Verified { rec: h, from: s.from };
+            return VerifyOutcome::Verified {
+                rec: h,
+                from: s.from,
+            };
         }
 
         if let Some(a) = anchor {
@@ -157,7 +173,10 @@ impl Staging {
                 }
 
                 self.mark_front_verified();
-                return VerifyOutcome::Verified { rec: h, from: s.from };
+                return VerifyOutcome::Verified {
+                    rec: h,
+                    from: s.from,
+                };
             }
             // below the anchor the checkpoint vouches for the work; skip pow on
             // most headers, spot-check a random 1-in-N so a liar stays cheap to catch
@@ -167,7 +186,10 @@ impl Staging {
                     self.pow_calls += 1;
                     if !pow.verify(&h.raw) {
                         self.pop_front();
-                        return VerifyOutcome::BadPow { rec: h, from: s.from };
+                        return VerifyOutcome::BadPow {
+                            rec: h,
+                            from: s.from,
+                        };
                     }
                 } else {
                     self.countdown -= 1;
@@ -176,17 +198,26 @@ impl Staging {
                 if let Some(f) = self.queue.front_mut() {
                     f.fast_forwarded = true;
                 }
-                return VerifyOutcome::FastForwarded { rec: h, from: s.from };
+                return VerifyOutcome::FastForwarded {
+                    rec: h,
+                    from: s.from,
+                };
             }
         }
 
         self.pow_calls += 1;
         if !pow.verify(&h.raw) {
             self.pop_front();
-            return VerifyOutcome::BadPow { rec: h, from: s.from };
+            return VerifyOutcome::BadPow {
+                rec: h,
+                from: s.from,
+            };
         }
         self.mark_front_verified();
-        VerifyOutcome::Verified { rec: h, from: s.from }
+        VerifyOutcome::Verified {
+            rec: h,
+            from: s.from,
+        }
     }
 
     pub fn commit_front(&mut self) -> Option<HeaderRec> {

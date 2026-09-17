@@ -101,19 +101,14 @@ pub struct AccountRecord {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TxLocation {
     Mempool,
-    Block {
-        height: u64,
-        confirmations: u64,
-    },
+    Block { height: u64, confirmations: u64 },
 }
 
 #[derive(Clone, Debug)]
 pub enum TxLookup {
     Found(TxRecord),
     Absent,
-    NotIndexed {
-        indexed_from: Option<u64>,
-    },
+    NotIndexed { indexed_from: Option<u64> },
 }
 
 #[derive(Clone, Debug)]
@@ -291,37 +286,17 @@ pub struct Budgets {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SubmitError {
     Malformed(String),
-    TooLarge {
-        len: usize,
-        max: usize,
-    },
-    FeeBelowRelayFloor {
-        fee: u128,
-        floor: u128,
-    },
+    TooLarge { len: usize, max: usize },
+    FeeBelowRelayFloor { fee: u128, floor: u128 },
     BadSignature,
-    NonceOutOfRange {
-        got: u64,
-        next: u64,
-        max_gap: u64,
-    },
-    InsufficientFunds {
-        need: u128,
-        have: u128,
-    },
+    NonceOutOfRange { got: u64, next: u64, max_gap: u64 },
+    InsufficientFunds { need: u128, have: u128 },
     NotAuthorKey,
     Duplicate,
-    ReplacementUnderpriced {
-        need: u128,
-        got: u128,
-    },
-    PoolFull {
-        cap: usize,
-    },
+    ReplacementUnderpriced { need: u128, got: u128 },
+    PoolFull { cap: usize },
     NotReady,
-    TypeNotAcceptedHere {
-        type_byte: u8,
-    },
+    TypeNotAcceptedHere { type_byte: u8 },
 }
 
 impl SubmitError {

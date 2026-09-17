@@ -62,7 +62,12 @@ pub fn plan_reorg(index: &HeaderIndex, best: u32) -> Option<Plan> {
     let tip_height = index.tip_height();
     let rollback: Vec<u64> = ((fork_height + 1)..=tip_height).rev().collect();
     let depth = tip_height.saturating_sub(fork_height);
-    Some(Plan { fork_height, rollback, apply: branch, depth })
+    Some(Plan {
+        fork_height,
+        rollback,
+        apply: branch,
+        depth,
+    })
 }
 
 pub struct ArenaView<'a> {

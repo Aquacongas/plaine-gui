@@ -191,7 +191,11 @@ fn parse_and_check_consts() -> Vectors {
             padck: hex64(l, "padck"),
         });
     }
-    assert_eq!(opcodes.len(), n, "opcodes section: count= disagrees with rows");
+    assert_eq!(
+        opcodes.len(),
+        n,
+        "opcodes section: count= disagrees with rows"
+    );
 
     let n = section_count(&mut cur, "nonces");
     let mut nonces = Vec::with_capacity(n);
@@ -206,7 +210,11 @@ fn parse_and_check_consts() -> Vectors {
             codesize: dec(l, "codesize"),
         });
     }
-    assert_eq!(nonces.len(), n, "nonces section: count= disagrees with rows");
+    assert_eq!(
+        nonces.len(),
+        n,
+        "nonces section: count= disagrees with rows"
+    );
 
     let n = section_count(&mut cur, "fills");
     let mut fills = Vec::with_capacity(n);
@@ -239,7 +247,8 @@ fn parse_and_check_consts() -> Vectors {
             bytes += hl.len() / 2;
         }
         assert_eq!(
-            bytes, size,
+            bytes,
+            size,
             "code block for seed {:016x}: size= says {size}, hex carries {bytes}",
             hex64(l, "seed")
         );
@@ -370,11 +379,19 @@ fn tier1_fill_is_deterministic_and_seed_sensitive() {
     let p1 = iso.fill(&mut a, 42);
     let p2 = iso.fill(&mut b, 42);
     assert_eq!(p1, p2, "same seed must give the same program seed");
-    assert_eq!(a.checksum(), b.checksum(), "same seed must give the same pad");
+    assert_eq!(
+        a.checksum(),
+        b.checksum(),
+        "same seed must give the same pad"
+    );
 
     let p3 = iso.fill(&mut b, 43);
     assert_ne!(p3, p2, "seed+1 must give a different program seed");
-    assert_ne!(a.checksum(), b.checksum(), "seed+1 must give a different pad");
+    assert_ne!(
+        a.checksum(),
+        b.checksum(),
+        "seed+1 must give a different pad"
+    );
 }
 
 #[test]
@@ -533,7 +550,8 @@ fn tier2_histogram_frozen_per_nonce() {
         }
         for (i, op) in ALL_OPS.iter().enumerate() {
             assert_eq!(
-                tally[i], HIST[i],
+                tally[i],
+                HIST[i],
                 "nonce i={} progseed {:016x}: opcode {} appears {} times, frozen histogram says {}",
                 row.i,
                 row.progseed,

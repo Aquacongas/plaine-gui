@@ -28,7 +28,11 @@ pub struct NegativeCache {
 
 impl NegativeCache {
     pub fn new(cap: usize) -> NegativeCache {
-        NegativeCache { set: HashSet::new(), ring: VecDeque::new(), cap: cap.max(1) }
+        NegativeCache {
+            set: HashSet::new(),
+            ring: VecDeque::new(),
+            cap: cap.max(1),
+        }
     }
 
     pub fn contains(&self, h: &Hash32) -> bool {
@@ -92,15 +96,16 @@ impl SourceState {
             let refill = elapsed.saturating_mul(params.pow_budget_micros)
                 / params.pow_budget_window_ms.max(1);
             if refill > 0 {
-                self.tokens =
-                    self.tokens.saturating_add(refill).min(params.pow_budget_burst_micros);
+                self.tokens = self
+                    .tokens
+                    .saturating_add(refill)
+                    .min(params.pow_budget_burst_micros);
                 self.last_ms = mono_ms;
             }
         }
         let elapsed = mono_ms.saturating_sub(self.reserve_last_ms);
         if elapsed > 0 {
-            let refill =
-                elapsed.saturating_mul(params.class_reserve_rate_micros_per_sec()) / 1_000;
+            let refill = elapsed.saturating_mul(params.class_reserve_rate_micros_per_sec()) / 1_000;
             if refill > 0 {
                 self.reserve_tokens = self
                     .reserve_tokens
@@ -187,11 +192,12 @@ impl Ingest {
         if elapsed == 0 {
             return;
         }
-        let refill =
-            elapsed.saturating_mul(params.class_shared_rate_micros_per_sec()) / 1_000;
+        let refill = elapsed.saturating_mul(params.class_shared_rate_micros_per_sec()) / 1_000;
         if refill > 0 {
-            self.shared_tokens =
-                self.shared_tokens.saturating_add(refill).min(params.class_shared_burst_micros());
+            self.shared_tokens = self
+                .shared_tokens
+                .saturating_add(refill)
+                .min(params.class_shared_burst_micros());
             self.shared_last_ms = mono_ms;
         }
     }
@@ -225,7 +231,12 @@ impl Ingest {
                 Some(id) => {
                     self.sources.remove(&id);
                 }
-                None => return Err(Reject::TooManySources { source, cap: params.max_sources }),
+                None => {
+                    return Err(Reject::TooManySources {
+                        source,
+                        cap: params.max_sources,
+                    })
+                }
             }
         }
         let st = self.sources.entry(source).or_default();
@@ -270,16 +281,25 @@ pub fn submit_headers<S: Store + ?Sized, P: PowVerifier + ?Sized>(
         st.dups = 0;
     }
 
-    let mut out = Accepted { verified_height: index.tip_height(), ..Default::default() };
+    let mut out = Accepted {
+        verified_height: index.tip_height(),
+        ..Default::default()
+    };
     let mut batch_dups = 0u32;
 
     let mut staged_first: Option<(Hash32, u64)> = None;
 
     for raw in raws {
         let hash = plaine_consensus::crypto::header_hash(raw);
-        let staged_here =
-            ing.sources.get(&source).is_some_and(|s| s.staged_hashes.contains(&hash));
-        if staged_here || index.contains(&hash) || ing.neg.contains(&hash) || ctx.store.is_invalid(&hash) {
+        let staged_here = ing
+            .sources
+            .get(&source)
+            .is_some_and(|s| s.staged_hashes.contains(&hash));
+        if staged_here
+            || index.contains(&hash)
+            || ing.neg.contains(&hash)
+            || ctx.store.is_invalid(&hash)
+        {
             if staged_here && out.first_held.is_none() {
                 if let Some(h) = ing
                     .sources
@@ -295,27 +315,32 @@ pub fn submit_headers<S: Store + ?Sized, P: PowVerifier + ?Sized>(
             let st = ing.sources.get_mut(&source).expect("inserted above");
             st.dups += 1;
             if st.dups > params.max_duplicates_per_window {
-                observe(Condition::DuplicateFlood { source, count: st.dups });
+                observe(Condition::DuplicateFlood {
+                    source,
+                    count: st.dups,
+                });
             }
             if batch_dups > params.max_duplicates_per_batch {
-                observe(Condition::BudgetExhausted { source, class: BudgetClass::Duplicates });
+                observe(Condition::BudgetExhausted {
+                    source,
+                    class: BudgetClass::Duplicates,
+                });
                 break;
             }
             continue;
         }
 
         if ing.staged(source) >= params.max_staged_headers {
-            out.connected +=
-                promote(
-                    ing,
-                    index,
-                    ctx,
-                    source,
-                    connected_out,
-                    observe,
-                    &mut out.first_rejection,
-                    &mut out.first_held,
-                );
+            out.connected += promote(
+                ing,
+                index,
+                ctx,
+                source,
+                connected_out,
+                observe,
+                &mut out.first_rejection,
+                &mut out.first_held,
+            );
         }
         match stage_one(ing, index, memo, ctx, source, *raw, hash) {
             Ok(()) => {
@@ -353,23 +378,26 @@ pub fn submit_headers<S: Store + ?Sized, P: PowVerifier + ?Sized>(
         }
     }
 
-    let promoted =
-        promote(
-            ing,
-            index,
-            ctx,
-            source,
-            connected_out,
-            observe,
-            &mut out.first_rejection,
-            &mut out.first_held,
-        );
+    let promoted = promote(
+        ing,
+        index,
+        ctx,
+        source,
+        connected_out,
+        observe,
+        &mut out.first_rejection,
+        &mut out.first_held,
+    );
     out.connected += promoted;
     out.staged = ing.staged(source) as u32;
 
     if out.first_held.is_none() {
         if let Some((hash, height)) = staged_first {
-            if ing.sources.get(&source).is_some_and(|s| s.staged_hashes.contains(&hash)) {
+            if ing
+                .sources
+                .get(&source)
+                .is_some_and(|s| s.staged_hashes.contains(&hash))
+            {
                 out.first_held = Some(crate::types::Held { hash, height });
             }
         }
@@ -398,9 +426,14 @@ fn stage_one<S: Store + ?Sized, P: PowVerifier + ?Sized>(
 
     gates::s1b_checkpoint(ctx.checkpoints, hdr.height, &hash)?;
 
-    let staged = ing.sources.get(&source).map(|s| s.staged.as_slice()).unwrap_or(&[]);
-    let parent = find_parent(index, staged, &hdr.prev_hash)
-        .ok_or(Reject::UnknownParent { prev: hdr.prev_hash })?;
+    let staged = ing
+        .sources
+        .get(&source)
+        .map(|s| s.staged.as_slice())
+        .unwrap_or(&[]);
+    let parent = find_parent(index, staged, &hdr.prev_hash).ok_or(Reject::UnknownParent {
+        prev: hdr.prev_hash,
+    })?;
 
     gates::s2_height(hdr.height, parent.height)?;
 
@@ -426,8 +459,13 @@ fn stage_one<S: Store + ?Sized, P: PowVerifier + ?Sized>(
     let child_base = child_branch_base(index, &parent);
     gates::s5_fork_depth(&ctx.tip, child_base, ctx.anchor.as_ref(), reach, params)?;
 
-    let w = memo.work(hdr.bits, &params.pow_limit).ok_or(Reject::BadBits { got: hdr.bits })?;
-    let cum_work = parent.cum_work.checked_add(&w).ok_or(Reject::ArithmeticOverflow)?;
+    let w = memo
+        .work(hdr.bits, &params.pow_limit)
+        .ok_or(Reject::BadBits { got: hdr.bits })?;
+    let cum_work = parent
+        .cum_work
+        .checked_add(&w)
+        .ok_or(Reject::ArithmeticOverflow)?;
 
     let st = ing.sources.entry(source).or_default();
     if st.staged.len() >= params.max_staged_headers {
@@ -460,7 +498,9 @@ fn promote<S: Store + ?Sized, P: PowVerifier + ?Sized>(
     lost: &mut Option<crate::types::Rejection>,
     held: &mut Option<crate::types::Held>,
 ) -> u64 {
-    let Some(st) = ing.sources.get(&source) else { return 0 };
+    let Some(st) = ing.sources.get(&source) else {
+        return 0;
+    };
     if st.staged.is_empty() {
         return 0;
     }
@@ -470,7 +510,11 @@ fn promote<S: Store + ?Sized, P: PowVerifier + ?Sized>(
         .staged
         .iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| a.cum_work.cmp(&b.cum_work).then(b.rec.hash.cmp(&a.rec.hash)))
+        .max_by(|(_, a), (_, b)| {
+            a.cum_work
+                .cmp(&b.cum_work)
+                .then(b.rec.hash.cmp(&a.rec.hash))
+        })
         .map(|(i, s)| (i, s.clone()))
         .expect("non-empty");
     let depth = ctx.tip.height.saturating_sub(terminal.1.branch_base_height);
@@ -485,7 +529,10 @@ fn promote<S: Store + ?Sized, P: PowVerifier + ?Sized>(
     {
         if held.is_none() {
             if let Some(low) = st.staged.iter().min_by_key(|x| x.rec.height) {
-                *held = Some(crate::types::Held { hash: low.rec.hash, height: low.rec.height });
+                *held = Some(crate::types::Held {
+                    hash: low.rec.hash,
+                    height: low.rec.height,
+                });
             }
         }
         return 0;
@@ -495,12 +542,20 @@ fn promote<S: Store + ?Sized, P: PowVerifier + ?Sized>(
     if ctx.solicitation.charges_child_quota() {
         let st = ing.sources.get(&source).expect("checked");
         if st.pow_failures >= ctx.params.child_pow_failures_per_source {
-            observe(Condition::BudgetExhausted { source, class: BudgetClass::ChildQuota });
+            observe(Condition::BudgetExhausted {
+                source,
+                class: BudgetClass::ChildQuota,
+            });
             return 0;
         }
     }
 
-    let staged = ing.sources.get_mut(&source).expect("checked").staged.clone();
+    let staged = ing
+        .sources
+        .get_mut(&source)
+        .expect("checked")
+        .staged
+        .clone();
     let cost = ctx.pow.cost_micros();
     let charge = ctx.solicitation.charges_budget();
     let mut connected = 0u64;
@@ -509,11 +564,17 @@ fn promote<S: Store + ?Sized, P: PowVerifier + ?Sized>(
 
     for s in &staged {
         if connected as usize >= ctx.side_capacity {
-            observe(Condition::BudgetExhausted { source, class: BudgetClass::Staging });
+            observe(Condition::BudgetExhausted {
+                source,
+                class: BudgetClass::Staging,
+            });
             break;
         }
         if charge && !spend_class_budget(ing, source, cost) {
-            observe(Condition::BudgetExhausted { source, class: BudgetClass::Interpreter });
+            observe(Condition::BudgetExhausted {
+                source,
+                class: BudgetClass::Interpreter,
+            });
             break;
         }
         if !ctx.pow.verify(&s.rec.raw) {
@@ -574,7 +635,12 @@ fn spend_class_budget(ing: &mut Ingest, source: SourceId, cost: u64) -> bool {
 
     // Shared class pool first, then the source's own reserve.
     let from_shared = ing.shared_tokens >= cost;
-    if !from_shared && !ing.sources.get(&source).is_some_and(|s| s.reserve_tokens >= cost) {
+    if !from_shared
+        && !ing
+            .sources
+            .get(&source)
+            .is_some_and(|s| s.reserve_tokens >= cost)
+    {
         return false;
     }
     if from_shared {
@@ -615,16 +681,20 @@ fn find_parent(index: &HeaderIndex, staged: &[Staged], hash: &Hash32) -> Option<
         });
     }
     // TODO: linear scan of staged; staged_hashes answers membership but not the record.
-    staged.iter().rev().find(|s| s.rec.hash == *hash).map(|s| Lite {
-        height: s.rec.height,
-        hash: s.rec.hash,
-        prev_hash: s.rec.prev_hash,
-        time: s.rec.time,
-        bits: s.rec.bits,
-        cum_work: s.cum_work,
-        branch_base_height: s.branch_base_height,
-        arena: None,
-    })
+    staged
+        .iter()
+        .rev()
+        .find(|s| s.rec.hash == *hash)
+        .map(|s| Lite {
+            height: s.rec.height,
+            hash: s.rec.hash,
+            prev_hash: s.rec.prev_hash,
+            time: s.rec.time,
+            bits: s.rec.bits,
+            cum_work: s.cum_work,
+            branch_base_height: s.branch_base_height,
+            arena: None,
+        })
 }
 
 fn child_branch_base(index: &HeaderIndex, node: &Lite) -> u64 {
@@ -746,15 +816,24 @@ mod tests {
         c.insert(a, Reject::ExtRootNotZero.permanence());
         assert!(c.contains(&a));
         let b = [2u8; 32];
-        c.insert(b, Reject::TimestampTooFarInFuture { time: 1, limit: 0 }.permanence());
-        assert!(!c.contains(&b), "future drift is transient and must not be cached");
+        c.insert(
+            b,
+            Reject::TimestampTooFarInFuture { time: 1, limit: 0 }.permanence(),
+        );
+        assert!(
+            !c.contains(&b),
+            "future drift is transient and must not be cached"
+        );
         let d = [3u8; 32];
         c.insert(d, Reject::UnknownParent { prev: [0u8; 32] }.permanence());
         assert!(!c.contains(&d), "unknown parent must not be cached");
         let e = [4u8; 32];
 
         c.insert(e, Reject::ForkTooDeep { depth: 7, cap: 5 }.permanence());
-        assert!(!c.contains(&e), "the fork-depth verdict is relative to a tip that may regress");
+        assert!(
+            !c.contains(&e),
+            "the fork-depth verdict is relative to a tip that may regress"
+        );
     }
 
     #[test]

@@ -28,8 +28,9 @@ pub fn validate_block_body<S: Store + ?Sized>(
     params: &ChainParams,
     trust: Trust,
 ) -> Result<ValidatedBlock, Reject> {
-    let body = BlockBody::parse(raw_body)
-        .map_err(|_| Reject::BodyStructure { detail: "body envelope" })?;
+    let body = BlockBody::parse(raw_body).map_err(|_| Reject::BodyStructure {
+        detail: "body envelope",
+    })?;
 
     let txs = ctx::decode_body(&body).map_err(|e| {
         let index = match e {
@@ -39,7 +40,9 @@ pub fn validate_block_body<S: Store + ?Sized>(
         Reject::Tx { index, err: e }
     })?;
 
-    let cb = ctx::check_body_structure(&txs).map_err(|e| Reject::Tx { index: 0, err: e })?.clone();
+    let cb = ctx::check_body_structure(&txs)
+        .map_err(|e| Reject::Tx { index: 0, err: e })?
+        .clone();
 
     if body.tx_root() != header.tx_root {
         return Err(Reject::TxRootMismatch);
@@ -56,11 +59,7 @@ pub fn validate_block_body<S: Store + ?Sized>(
                         .map_err(|_| Reject::BadTransferSignature { index: i })?;
                 }
                 Tx::Announcement(a) => {
-                    ctx::check_announcement_stateless(
-                        params.network,
-                        a,
-                        &params.author_pubkey,
-                    )
+                    ctx::check_announcement_stateless(params.network, a, &params.author_pubkey)
                         .map_err(|err| Reject::Tx { index: i, err })?;
                 }
             }
@@ -69,13 +68,17 @@ pub fn validate_block_body<S: Store + ?Sized>(
         for (i, tx) in txs.iter().enumerate() {
             if let Tx::Announcement(a) = tx {
                 if a.from_pub != params.author_pubkey {
-                    return Err(Reject::Tx { index: i, err: ctx::TxError::NotAuthorKey });
+                    return Err(Reject::Tx {
+                        index: i,
+                        err: ctx::TxError::NotAuthorKey,
+                    });
                 }
             }
         }
     }
 
-    let fee_total = ctx::block_fee_total(txs.iter()).map_err(|e| Reject::Tx { index: 0, err: e })?;
+    let fee_total =
+        ctx::block_fee_total(txs.iter()).map_err(|e| Reject::Tx { index: 0, err: e })?;
     ctx::check_coinbase(&cb, header.height, header.author_note_len, fee_total)
         .map_err(|e| Reject::Tx { index: 0, err: e })?;
     let credit = ctx::coinbase_credit(&cb).map_err(|e| Reject::Tx { index: 0, err: e })?;
@@ -87,7 +90,9 @@ pub fn validate_block_body<S: Store + ?Sized>(
     let mut txids = Vec::with_capacity(txs.len());
     let mut spent_nonces = Vec::new();
     let mut non_coinbase_bytes = Vec::new();
-    txids.push(cb.txid().map_err(|_| Reject::BodyStructure { detail: "coinbase txid" })?);
+    txids.push(cb.txid().map_err(|_| Reject::BodyStructure {
+        detail: "coinbase txid",
+    })?);
 
     for (i, tx) in txs.iter().enumerate().skip(1) {
         let raw = body.tx_bytes(i).expect("i < len").to_vec();
@@ -100,9 +105,16 @@ pub fn validate_block_body<S: Store + ?Sized>(
                 let from = crypto::address_payload(&t.from_pub);
                 let acct = overlay.get(&from);
                 if acct.nonce != t.nonce {
-                    return Err(Reject::BadNonce { index: i, expected: acct.nonce, got: t.nonce });
+                    return Err(Reject::BadNonce {
+                        index: i,
+                        expected: acct.nonce,
+                        got: t.nonce,
+                    });
                 }
-                let outlay = t.amount.checked_add(t.fee).ok_or(Reject::ArithmeticOverflow)?;
+                let outlay = t
+                    .amount
+                    .checked_add(t.fee)
+                    .ok_or(Reject::ArithmeticOverflow)?;
                 let spendable = ledger.spendable(&from, acct.balance, header.height);
                 if spendable < outlay {
                     return Err(Reject::InsufficientBalance {
@@ -112,9 +124,14 @@ pub fn validate_block_body<S: Store + ?Sized>(
                     });
                 }
                 let mut updated = acct;
-                updated.balance =
-                    acct.balance.checked_sub(outlay).ok_or(Reject::ArithmeticOverflow)?;
-                updated.nonce = acct.nonce.checked_add(1).ok_or(Reject::ArithmeticOverflow)?;
+                updated.balance = acct
+                    .balance
+                    .checked_sub(outlay)
+                    .ok_or(Reject::ArithmeticOverflow)?;
+                updated.nonce = acct
+                    .nonce
+                    .checked_add(1)
+                    .ok_or(Reject::ArithmeticOverflow)?;
                 overlay.set(&from, updated);
                 overlay.credit(&t.to, t.amount)?;
                 txids.push(t.txid());
@@ -131,10 +148,19 @@ pub fn validate_block_body<S: Store + ?Sized>(
                 };
                 ctx::check_announcement_stateful(a, &cs, spendable)
                     .map_err(|err| Reject::Tx { index: i, err })?;
-                let next = ctx::apply_announcement(&cs, a)
-                    .map_err(|err| Reject::Tx { index: i, err })?;
-                overlay.set(&from, crate::types::Account { balance: next.balance, nonce: next.nonce });
-                txids.push(a.txid().map_err(|_| Reject::BodyStructure { detail: "ann txid" })?);
+                let next =
+                    ctx::apply_announcement(&cs, a).map_err(|err| Reject::Tx { index: i, err })?;
+                overlay.set(
+                    &from,
+                    crate::types::Account {
+                        balance: next.balance,
+                        nonce: next.nonce,
+                    },
+                );
+                txids.push(
+                    a.txid()
+                        .map_err(|_| Reject::BodyStructure { detail: "ann txid" })?,
+                );
                 spent_nonces.push((from, a.nonce));
                 non_coinbase_bytes.push(raw);
             }

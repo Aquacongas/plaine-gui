@@ -67,14 +67,9 @@ impl LogLevel {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CheckpointPolicy {
-    Embedded {
-        key: [u8; 32],
-        placeholder: bool,
-    },
+    Embedded { key: [u8; 32], placeholder: bool },
 
-    Configured {
-        keys: Vec<[u8; 32]>,
-    },
+    Configured { keys: Vec<[u8; 32]> },
     Disabled,
 }
 
@@ -222,80 +217,359 @@ struct Field {
 }
 
 const SCHEMA: &[Field] = &[
-    Field { section: "node", key: "network", kind: Kind::Str },
-    Field { section: "node", key: "data_dir", kind: Kind::Str },
-    Field { section: "node", key: "prune", kind: Kind::Bool },
-    Field { section: "node", key: "txindex", kind: Kind::Bool },
-    Field { section: "node", key: "verify_frames", kind: Kind::Bool },
-    Field { section: "p2p", key: "listen", kind: Kind::Str },
-    Field { section: "p2p", key: "max_peers", kind: Kind::Int },
-    Field { section: "p2p", key: "seeds", kind: Kind::StrArray },
-    Field { section: "p2p", key: "use_embedded_seeds", kind: Kind::Bool },
-    Field { section: "p2p", key: "accept_local_addrs", kind: Kind::Bool },
-    Field { section: "stratum", key: "listen", kind: Kind::Str },
-    Field { section: "stratum", key: "max_connections", kind: Kind::Int },
-    Field { section: "stratum", key: "enforcement", kind: Kind::Bool },
-    Field { section: "stratum", key: "max_per_ip", kind: Kind::Int },
-    Field { section: "stratum", key: "new_conns_per_ip_per_min", kind: Kind::Int },
-    Field { section: "stratum", key: "global_accept_per_sec", kind: Kind::Int },
-    Field { section: "stratum", key: "bans_enabled", kind: Kind::Bool },
-    Field { section: "stratum", key: "ban_threshold", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_soft_cap", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_decay_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_base_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_ladder_factor", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_max_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "ban_table_entries", kind: Kind::Int },
-    Field { section: "stratum", key: "garbage_throttle_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "submit_rate_per_sec", kind: Kind::Int },
-    Field { section: "stratum", key: "submit_burst", kind: Kind::Int },
-    Field { section: "stratum", key: "line_rate_per_sec", kind: Kind::Int },
-    Field { section: "stratum", key: "line_burst", kind: Kind::Int },
-    Field { section: "stratum", key: "auth_deadline_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "idle_evict_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "read_deadline_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "write_timeout_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "out_buf_cap_bytes", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_setpoint_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_start_diff", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_min_diff", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_tick_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_retarget_gate_shares", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_retarget_gate_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_warmup_shares", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_warmup_gate_shares", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_mature_shares", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_max_step", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_enabled", kind: Kind::Bool },
-    Field { section: "stratum", key: "vardiff_fixed_diff", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_max_diff", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_dead_zone_pct", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_mature_zone_pct", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_fast_escape_pct", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_silence_slack", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_dsps_tau_fast_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_dsps_tau_mid_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_dsps_tau_slow_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "vardiff_ladder", kind: Kind::IntArray },
-    Field { section: "stratum", key: "diff_cache_entries", kind: Kind::Int },
-    Field { section: "stratum", key: "diff_cache_ttl_secs", kind: Kind::Int },
-    Field { section: "stratum", key: "reconnect_storm_per_min", kind: Kind::Int },
-    Field { section: "stratum", key: "reconnect_storm_window_secs", kind: Kind::Int },
-    Field { section: "rpc", key: "listen", kind: Kind::Str },
-    Field { section: "rpc", key: "token", kind: Kind::Str },
-    Field { section: "mempool", key: "relay_fee_mile", kind: Kind::Int },
-    Field { section: "mempool", key: "max_txs", kind: Kind::Int },
-    Field { section: "mining", key: "author_note", kind: Kind::Str },
-    Field { section: "checkpoints", key: "enabled", kind: Kind::Bool },
-    Field { section: "checkpoints", key: "threshold", kind: Kind::Int },
-    Field { section: "checkpoints", key: "keys", kind: Kind::StrArray },
-    Field { section: "author", key: "pubkey", kind: Kind::Str },
-    Field { section: "author", key: "show_in_log", kind: Kind::Bool },
-    Field { section: "log", key: "level", kind: Kind::Str },
+    Field {
+        section: "node",
+        key: "network",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "node",
+        key: "data_dir",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "node",
+        key: "prune",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "node",
+        key: "txindex",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "node",
+        key: "verify_frames",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "p2p",
+        key: "listen",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "p2p",
+        key: "max_peers",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "p2p",
+        key: "seeds",
+        kind: Kind::StrArray,
+    },
+    Field {
+        section: "p2p",
+        key: "use_embedded_seeds",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "p2p",
+        key: "accept_local_addrs",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "stratum",
+        key: "listen",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "stratum",
+        key: "max_connections",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "enforcement",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "stratum",
+        key: "max_per_ip",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "new_conns_per_ip_per_min",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "global_accept_per_sec",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "bans_enabled",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_threshold",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_soft_cap",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_decay_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_base_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_ladder_factor",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_max_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "ban_table_entries",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "garbage_throttle_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "submit_rate_per_sec",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "submit_burst",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "line_rate_per_sec",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "line_burst",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "auth_deadline_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "idle_evict_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "read_deadline_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "write_timeout_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "out_buf_cap_bytes",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_setpoint_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_start_diff",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_min_diff",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_tick_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_retarget_gate_shares",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_retarget_gate_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_warmup_shares",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_warmup_gate_shares",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_mature_shares",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_max_step",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_enabled",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_fixed_diff",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_max_diff",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_dead_zone_pct",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_mature_zone_pct",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_fast_escape_pct",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_silence_slack",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_dsps_tau_fast_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_dsps_tau_mid_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_dsps_tau_slow_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "vardiff_ladder",
+        kind: Kind::IntArray,
+    },
+    Field {
+        section: "stratum",
+        key: "diff_cache_entries",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "diff_cache_ttl_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "reconnect_storm_per_min",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "stratum",
+        key: "reconnect_storm_window_secs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "rpc",
+        key: "listen",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "rpc",
+        key: "token",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "mempool",
+        key: "relay_fee_mile",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "mempool",
+        key: "max_txs",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "mining",
+        key: "author_note",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "checkpoints",
+        key: "enabled",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "checkpoints",
+        key: "threshold",
+        kind: Kind::Int,
+    },
+    Field {
+        section: "checkpoints",
+        key: "keys",
+        kind: Kind::StrArray,
+    },
+    Field {
+        section: "author",
+        key: "pubkey",
+        kind: Kind::Str,
+    },
+    Field {
+        section: "author",
+        key: "show_in_log",
+        kind: Kind::Bool,
+    },
+    Field {
+        section: "log",
+        key: "level",
+        kind: Kind::Str,
+    },
 ];
 
-pub const STRATUM_CONNECTION_CEILING: usize =
-    plaine_stratum::limits::SOLO_MAX_CONNECTIONS_CEILING;
+pub const STRATUM_CONNECTION_CEILING: usize = plaine_stratum::limits::SOLO_MAX_CONNECTIONS_CEILING;
 
 #[derive(Clone, Debug, Default)]
 pub struct Overrides {
@@ -329,7 +603,11 @@ fn check_unknown(path: &str, doc: &Document) -> Result<(), Diagnostic> {
         }
         let mut sections: Vec<&str> = SCHEMA.iter().map(|f| f.section).collect();
         sections.dedup();
-        let best = sections.iter().min_by_key(|s| edit_distance(name, s)).copied().unwrap_or("node");
+        let best = sections
+            .iter()
+            .min_by_key(|s| edit_distance(name, s))
+            .copied()
+            .unwrap_or("node");
         let d = Diagnostic {
             path: path.to_string(),
             line: *line,
@@ -350,9 +628,15 @@ fn check_unknown(path: &str, doc: &Document) -> Result<(), Diagnostic> {
         if field(&e.section, &e.key).is_some() {
             continue;
         }
-        let candidates: Vec<&str> =
-            SCHEMA.iter().filter(|f| f.section == e.section).map(|f| f.key).collect();
-        let best = candidates.iter().min_by_key(|c| edit_distance(&e.key, c)).copied();
+        let candidates: Vec<&str> = SCHEMA
+            .iter()
+            .filter(|f| f.section == e.section)
+            .map(|f| f.key)
+            .collect();
+        let best = candidates
+            .iter()
+            .min_by_key(|c| edit_distance(&e.key, c))
+            .copied();
         let help = match best {
             Some(b) if edit_distance(&e.key, b) <= 3 => format!("did you mean `{b}`?"),
             _ => format!("keys in [{}] are: {}", e.section, candidates.join(", ")),
@@ -382,12 +666,17 @@ fn section_list() -> String {
             out.push(f.section);
         }
     }
-    out.iter().map(|s| format!("[{s}]")).collect::<Vec<_>>().join(", ")
+    out.iter()
+        .map(|s| format!("[{s}]"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn check_types(path: &str, doc: &Document) -> Result<(), Diagnostic> {
     for e in &doc.entries {
-        let Some(f) = field(&e.section, &e.key) else { continue };
+        let Some(f) = field(&e.section, &e.key) else {
+            continue;
+        };
         let ok = matches!(
             (f.kind, &e.value),
             (Kind::Str, Value::Str(_))
@@ -400,7 +689,12 @@ fn check_types(path: &str, doc: &Document) -> Result<(), Diagnostic> {
             return Err(diag_at(
                 path,
                 e,
-                format!("`{}` takes {}, but this is {}", e.key, f.kind.name(), e.value.type_name()),
+                format!(
+                    "`{}` takes {}, but this is {}",
+                    e.key,
+                    f.kind.name(),
+                    e.value.type_name()
+                ),
             ));
         }
         if f.kind == Kind::StrArray {
@@ -409,7 +703,11 @@ fn check_types(path: &str, doc: &Document) -> Result<(), Diagnostic> {
                     return Err(diag_at(
                         path,
                         e,
-                        format!("every element of `{}` must be a string, found {}", e.key, bad.type_name()),
+                        format!(
+                            "every element of `{}` must be a string, found {}",
+                            e.key,
+                            bad.type_name()
+                        ),
                     ));
                 }
             }
@@ -420,7 +718,11 @@ fn check_types(path: &str, doc: &Document) -> Result<(), Diagnostic> {
                     return Err(diag_at(
                         path,
                         e,
-                        format!("every element of `{}` must be an integer, found {}", e.key, bad.type_name()),
+                        format!(
+                            "every element of `{}` must be an integer, found {}",
+                            e.key,
+                            bad.type_name()
+                        ),
                     ));
                 }
             }
@@ -450,12 +752,16 @@ struct Reader<'a> {
 
 impl<'a> Reader<'a> {
     fn note(&mut self, section: &str, key: &str, source: Source) {
-        self.provenance.push((section.to_string(), key.to_string(), source));
+        self.provenance
+            .push((section.to_string(), key.to_string(), source));
     }
 
     fn str(&mut self, section: &str, key: &str, default: &str) -> String {
         match self.doc.get(section, key) {
-            Some(toml::Entry { value: Value::Str(s), .. }) => {
+            Some(toml::Entry {
+                value: Value::Str(s),
+                ..
+            }) => {
                 self.note(section, key, Source::File);
                 s.clone()
             }
@@ -468,7 +774,10 @@ impl<'a> Reader<'a> {
 
     fn int(&mut self, section: &str, key: &str, default: i64) -> i64 {
         match self.doc.get(section, key) {
-            Some(toml::Entry { value: Value::Int(i), .. }) => {
+            Some(toml::Entry {
+                value: Value::Int(i),
+                ..
+            }) => {
                 self.note(section, key, Source::File);
                 *i
             }
@@ -481,7 +790,10 @@ impl<'a> Reader<'a> {
 
     fn bool(&mut self, section: &str, key: &str, default: bool) -> bool {
         match self.doc.get(section, key) {
-            Some(toml::Entry { value: Value::Bool(b), .. }) => {
+            Some(toml::Entry {
+                value: Value::Bool(b),
+                ..
+            }) => {
                 self.note(section, key, Source::File);
                 *b
             }
@@ -494,7 +806,10 @@ impl<'a> Reader<'a> {
 
     fn strings(&mut self, section: &str, key: &str) -> Option<Vec<String>> {
         match self.doc.get(section, key) {
-            Some(toml::Entry { value: Value::Arr(items), .. }) => {
+            Some(toml::Entry {
+                value: Value::Arr(items),
+                ..
+            }) => {
                 self.note(section, key, Source::File);
                 Some(
                     items
@@ -515,7 +830,10 @@ impl<'a> Reader<'a> {
 
     fn ints(&mut self, section: &str, key: &str) -> Option<Vec<i64>> {
         match self.doc.get(section, key) {
-            Some(toml::Entry { value: Value::Arr(items), .. }) => {
+            Some(toml::Entry {
+                value: Value::Arr(items),
+                ..
+            }) => {
                 self.note(section, key, Source::File);
                 Some(
                     items
@@ -543,7 +861,11 @@ impl<'a> Reader<'a> {
 }
 
 fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnostic> {
-    let mut r = Reader { path, doc, provenance: Vec::new() };
+    let mut r = Reader {
+        path,
+        doc,
+        provenance: Vec::new(),
+    };
     let mut warnings: Vec<String> = Vec::new();
 
     let network_text = r.str("node", "network", "main");
@@ -584,8 +906,14 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
 
     let p2p_default = format!("0.0.0.0:{}", k::PORT_P2P);
     let p2p_listen = socket(&mut r, "p2p", "listen", &p2p_default)?;
-    let max_peers = int_in_range(&mut r, "p2p", "max_peers", k::MAX_PEERS as i64, 1, k::MAX_PEERS as i64)?
-        as usize;
+    let max_peers = int_in_range(
+        &mut r,
+        "p2p",
+        "max_peers",
+        k::MAX_PEERS as i64,
+        1,
+        k::MAX_PEERS as i64,
+    )? as usize;
 
     let embedded_seeds = match network {
         Network::Main => &embedded::SEEDS_MAIN,
@@ -609,21 +937,25 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     }
 
     let seed_port = k::PORT_P2P;
-    if seeds
-        .iter()
-        .any(|s| matches!(crate::seeds::parse(s, seed_port), crate::seeds::Seed::Placeholder(_)))
-    {
+    if seeds.iter().any(|s| {
+        matches!(
+            crate::seeds::parse(s, seed_port),
+            crate::seeds::Seed::Placeholder(_)
+        )
+    }) {
         warnings.push(format!(
             "a seed in force is a BUILD PLACEHOLDER ({}); `.invalid` is reserved by RFC 6761 \
              and can never resolve, so it can never produce a peer. The release gate refuses \
              to compile an optimised binary carrying the embedded ones at all, so this is \
              either a development build or a placeholder written into p2p.seeds by hand. Set \
              p2p.seeds to names that exist.",
-
             seeds
                 .iter()
                 .find(|s| {
-                    matches!(crate::seeds::parse(s, seed_port), crate::seeds::Seed::Placeholder(_))
+                    matches!(
+                        crate::seeds::parse(s, seed_port),
+                        crate::seeds::Seed::Placeholder(_)
+                    )
                 })
                 .cloned()
                 .unwrap_or_default()
@@ -652,8 +984,14 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     let stratum_enforcement = r.bool("stratum", "enforcement", true);
     let table_ceiling: i64 = 16_777_216;
 
-    let mut stratum_max_per_ip =
-        int_in_range(&mut r, "stratum", "max_per_ip", Caps::SOLO.max_per_ip as i64, 0, i64::MAX)? as usize;
+    let mut stratum_max_per_ip = int_in_range(
+        &mut r,
+        "stratum",
+        "max_per_ip",
+        Caps::SOLO.max_per_ip as i64,
+        0,
+        i64::MAX,
+    )? as usize;
     let mut stratum_new_conns_per_ip_per_min = int_in_range(
         &mut r,
         "stratum",
@@ -673,20 +1011,105 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
 
     let mut stratum_bans = BanPolicy {
         enabled: r.bool("stratum", "bans_enabled", BanPolicy::DEFAULT.enabled),
-        threshold: int_in_range(&mut r, "stratum", "ban_threshold", BanPolicy::DEFAULT.threshold as i64, 0, u32::MAX as i64)? as u32,
-        soft_cap: int_in_range(&mut r, "stratum", "ban_soft_cap", BanPolicy::DEFAULT.soft_cap as i64, 0, u32::MAX as i64)? as u32,
-        decay_secs: int_in_range(&mut r, "stratum", "ban_decay_secs", BanPolicy::DEFAULT.decay_secs as i64, 1, i64::MAX)? as u64,
-        base_secs: int_in_range(&mut r, "stratum", "ban_base_secs", BanPolicy::DEFAULT.base_secs as i64, 1, i64::MAX)? as u64,
-        ladder_factor: int_in_range(&mut r, "stratum", "ban_ladder_factor", BanPolicy::DEFAULT.ladder_factor as i64, 1, i64::MAX)? as u64,
-        max_secs: int_in_range(&mut r, "stratum", "ban_max_secs", BanPolicy::DEFAULT.max_secs as i64, 1, i64::MAX)? as u64,
-        table_entries: int_in_range(&mut r, "stratum", "ban_table_entries", BanPolicy::DEFAULT.table_entries as i64, 1, table_ceiling)? as usize,
-        throttle_ms: int_in_range(&mut r, "stratum", "garbage_throttle_secs", (BanPolicy::DEFAULT.throttle_ms / 1000) as i64, 0, i64::MAX)? as u64 * 1000,
+        threshold: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_threshold",
+            BanPolicy::DEFAULT.threshold as i64,
+            0,
+            u32::MAX as i64,
+        )? as u32,
+        soft_cap: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_soft_cap",
+            BanPolicy::DEFAULT.soft_cap as i64,
+            0,
+            u32::MAX as i64,
+        )? as u32,
+        decay_secs: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_decay_secs",
+            BanPolicy::DEFAULT.decay_secs as i64,
+            1,
+            i64::MAX,
+        )? as u64,
+        base_secs: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_base_secs",
+            BanPolicy::DEFAULT.base_secs as i64,
+            1,
+            i64::MAX,
+        )? as u64,
+        ladder_factor: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_ladder_factor",
+            BanPolicy::DEFAULT.ladder_factor as i64,
+            1,
+            i64::MAX,
+        )? as u64,
+        max_secs: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_max_secs",
+            BanPolicy::DEFAULT.max_secs as i64,
+            1,
+            i64::MAX,
+        )? as u64,
+        table_entries: int_in_range(
+            &mut r,
+            "stratum",
+            "ban_table_entries",
+            BanPolicy::DEFAULT.table_entries as i64,
+            1,
+            table_ceiling,
+        )? as usize,
+        throttle_ms: int_in_range(
+            &mut r,
+            "stratum",
+            "garbage_throttle_secs",
+            (BanPolicy::DEFAULT.throttle_ms / 1000) as i64,
+            0,
+            i64::MAX,
+        )? as u64
+            * 1000,
     };
 
-    let submit_per_sec = int_in_range(&mut r, "stratum", "submit_rate_per_sec", RatePolicy::DEFAULT.submit_per_sec as i64, 0, i64::MAX)? as f64;
-    let submit_burst = int_in_range(&mut r, "stratum", "submit_burst", RatePolicy::DEFAULT.submit_burst as i64, 0, i64::MAX)? as f64;
-    let line_per_sec = int_in_range(&mut r, "stratum", "line_rate_per_sec", RatePolicy::DEFAULT.line_per_sec as i64, 0, i64::MAX)? as f64;
-    let line_burst = int_in_range(&mut r, "stratum", "line_burst", RatePolicy::DEFAULT.line_burst as i64, 0, i64::MAX)? as f64;
+    let submit_per_sec = int_in_range(
+        &mut r,
+        "stratum",
+        "submit_rate_per_sec",
+        RatePolicy::DEFAULT.submit_per_sec as i64,
+        0,
+        i64::MAX,
+    )? as f64;
+    let submit_burst = int_in_range(
+        &mut r,
+        "stratum",
+        "submit_burst",
+        RatePolicy::DEFAULT.submit_burst as i64,
+        0,
+        i64::MAX,
+    )? as f64;
+    let line_per_sec = int_in_range(
+        &mut r,
+        "stratum",
+        "line_rate_per_sec",
+        RatePolicy::DEFAULT.line_per_sec as i64,
+        0,
+        i64::MAX,
+    )? as f64;
+    let line_burst = int_in_range(
+        &mut r,
+        "stratum",
+        "line_burst",
+        RatePolicy::DEFAULT.line_burst as i64,
+        0,
+        i64::MAX,
+    )? as f64;
     let mut stratum_rates = RatePolicy {
         submit_enabled: submit_per_sec > 0.0,
         submit_per_sec,
@@ -704,42 +1127,71 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
         int_in_range(&mut r, "stratum", "read_deadline_secs", 600, 0, i64::MAX)? as u64 * 1000;
     let mut stratum_write_timeout_ms =
         int_in_range(&mut r, "stratum", "write_timeout_secs", 30, 0, i64::MAX)? as u64 * 1000;
-    let mut stratum_out_buf_cap =
-        int_in_range(&mut r, "stratum", "out_buf_cap_bytes", 4 * 1024, 0, i64::MAX)? as usize;
+    let mut stratum_out_buf_cap = int_in_range(
+        &mut r,
+        "stratum",
+        "out_buf_cap_bytes",
+        4 * 1024,
+        0,
+        i64::MAX,
+    )? as usize;
 
     let stratum_setpoint_secs =
         int_in_range(&mut r, "stratum", "vardiff_setpoint_secs", 0, 0, i64::MAX)? as u64;
     let stratum_tick_ms =
         int_in_range(&mut r, "stratum", "vardiff_tick_secs", 2, 1, i64::MAX)? as u64 * 1000;
-    let vardiff_min_diff =
-        int_in_range(&mut r, "stratum", "vardiff_min_diff", DiffPolicy::DEFAULT.min_diff as i64, 1, i64::MAX)? as u64;
-    let vardiff_start_diff =
-        int_in_range(&mut r, "stratum", "vardiff_start_diff", DiffPolicy::DEFAULT.start_diff as i64, 1, i64::MAX)? as u64;
+    let vardiff_min_diff = int_in_range(
+        &mut r,
+        "stratum",
+        "vardiff_min_diff",
+        DiffPolicy::DEFAULT.min_diff as i64,
+        1,
+        i64::MAX,
+    )? as u64;
+    let vardiff_start_diff = int_in_range(
+        &mut r,
+        "stratum",
+        "vardiff_start_diff",
+        DiffPolicy::DEFAULT.start_diff as i64,
+        1,
+        i64::MAX,
+    )? as u64;
 
     let (ladder, ladder_len) = match r.ints("stratum", "vardiff_ladder") {
         Some(list) => {
             if list.is_empty() || list.len() > plaine_stratum::limits::LADDER_MAX {
                 return Err(r
-                    .at("stratum", "vardiff_ladder", format!(
-                        "vardiff_ladder must have 1..={} entries", plaine_stratum::limits::LADDER_MAX
-                    ))
-                    .with_help("each entry is a mantissa x10 in 10..=999, e.g. [10, 12, 15, 20, 40]"));
+                    .at(
+                        "stratum",
+                        "vardiff_ladder",
+                        format!(
+                            "vardiff_ladder must have 1..={} entries",
+                            plaine_stratum::limits::LADDER_MAX
+                        ),
+                    )
+                    .with_help(
+                        "each entry is a mantissa x10 in 10..=999, e.g. [10, 12, 15, 20, 40]",
+                    ));
             }
             let mut arr = [0f64; plaine_stratum::limits::LADDER_MAX];
             let mut prev = 0i64;
             for (i, v) in list.iter().enumerate() {
                 if *v < 10 || *v > 999 {
                     return Err(r
-                        .at("stratum", "vardiff_ladder", format!(
-                            "vardiff_ladder entry {v} is outside 10..=999"
-                        ))
+                        .at(
+                            "stratum",
+                            "vardiff_ladder",
+                            format!("vardiff_ladder entry {v} is outside 10..=999"),
+                        )
                         .with_help("entries are mantissas x10: 10 = 1.0, 15 = 1.5, 80 = 8.0"));
                 }
                 if *v <= prev {
                     return Err(r
-                        .at("stratum", "vardiff_ladder", format!(
-                            "vardiff_ladder must strictly increase; {v} follows {prev}"
-                        ))
+                        .at(
+                            "stratum",
+                            "vardiff_ladder",
+                            format!("vardiff_ladder must strictly increase; {v} follows {prev}"),
+                        )
                         .with_help("list the rungs low to high with no repeats"));
                 }
                 prev = *v;
@@ -751,20 +1203,114 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     };
 
     let stratum_cadence = Cadence {
-        warmup_shares: int_in_range(&mut r, "stratum", "vardiff_warmup_shares", Cadence::DEFAULT.warmup_shares as i64, 0, u32::MAX as i64)? as u32,
-        warmup_gate_shares: int_in_range(&mut r, "stratum", "vardiff_warmup_gate_shares", Cadence::DEFAULT.warmup_gate_shares as i64, 1, u32::MAX as i64)? as u32,
-        retarget_gate_shares: int_in_range(&mut r, "stratum", "vardiff_retarget_gate_shares", Cadence::DEFAULT.retarget_gate_shares as i64, 1, u32::MAX as i64)? as u32,
-        retarget_gate_secs: int_in_range(&mut r, "stratum", "vardiff_retarget_gate_secs", Cadence::DEFAULT.retarget_gate_secs as i64, 1, i64::MAX)? as f64,
-        mature_shares: int_in_range(&mut r, "stratum", "vardiff_mature_shares", Cadence::DEFAULT.mature_shares as i64, 0, u32::MAX as i64)? as u32,
-        max_step: int_in_range(&mut r, "stratum", "vardiff_max_step", Cadence::DEFAULT.max_step as i64, 2, 1_000_000)? as f64,
-        dead_zone: int_in_range(&mut r, "stratum", "vardiff_dead_zone_pct", (Cadence::DEFAULT.dead_zone * 100.0) as i64, 101, 100_000)? as f64 / 100.0,
-        mature_zone: int_in_range(&mut r, "stratum", "vardiff_mature_zone_pct", (Cadence::DEFAULT.mature_zone * 100.0) as i64, 101, 100_000)? as f64 / 100.0,
-        fast_escape: int_in_range(&mut r, "stratum", "vardiff_fast_escape_pct", (Cadence::DEFAULT.fast_escape * 100.0) as i64, 101, 100_000)? as f64 / 100.0,
-        silence_slack: int_in_range(&mut r, "stratum", "vardiff_silence_slack", Cadence::DEFAULT.silence_slack as i64, 1, i64::MAX)? as f64,
+        warmup_shares: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_warmup_shares",
+            Cadence::DEFAULT.warmup_shares as i64,
+            0,
+            u32::MAX as i64,
+        )? as u32,
+        warmup_gate_shares: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_warmup_gate_shares",
+            Cadence::DEFAULT.warmup_gate_shares as i64,
+            1,
+            u32::MAX as i64,
+        )? as u32,
+        retarget_gate_shares: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_retarget_gate_shares",
+            Cadence::DEFAULT.retarget_gate_shares as i64,
+            1,
+            u32::MAX as i64,
+        )? as u32,
+        retarget_gate_secs: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_retarget_gate_secs",
+            Cadence::DEFAULT.retarget_gate_secs as i64,
+            1,
+            i64::MAX,
+        )? as f64,
+        mature_shares: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_mature_shares",
+            Cadence::DEFAULT.mature_shares as i64,
+            0,
+            u32::MAX as i64,
+        )? as u32,
+        max_step: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_max_step",
+            Cadence::DEFAULT.max_step as i64,
+            2,
+            1_000_000,
+        )? as f64,
+        dead_zone: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_dead_zone_pct",
+            (Cadence::DEFAULT.dead_zone * 100.0) as i64,
+            101,
+            100_000,
+        )? as f64
+            / 100.0,
+        mature_zone: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_mature_zone_pct",
+            (Cadence::DEFAULT.mature_zone * 100.0) as i64,
+            101,
+            100_000,
+        )? as f64
+            / 100.0,
+        fast_escape: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_fast_escape_pct",
+            (Cadence::DEFAULT.fast_escape * 100.0) as i64,
+            101,
+            100_000,
+        )? as f64
+            / 100.0,
+        silence_slack: int_in_range(
+            &mut r,
+            "stratum",
+            "vardiff_silence_slack",
+            Cadence::DEFAULT.silence_slack as i64,
+            1,
+            i64::MAX,
+        )? as f64,
         tau: [
-            int_in_range(&mut r, "stratum", "vardiff_dsps_tau_fast_secs", Cadence::DEFAULT.tau[0] as i64, 1, i64::MAX)? as f64,
-            int_in_range(&mut r, "stratum", "vardiff_dsps_tau_mid_secs", Cadence::DEFAULT.tau[1] as i64, 1, i64::MAX)? as f64,
-            int_in_range(&mut r, "stratum", "vardiff_dsps_tau_slow_secs", Cadence::DEFAULT.tau[2] as i64, 1, i64::MAX)? as f64,
+            int_in_range(
+                &mut r,
+                "stratum",
+                "vardiff_dsps_tau_fast_secs",
+                Cadence::DEFAULT.tau[0] as i64,
+                1,
+                i64::MAX,
+            )? as f64,
+            int_in_range(
+                &mut r,
+                "stratum",
+                "vardiff_dsps_tau_mid_secs",
+                Cadence::DEFAULT.tau[1] as i64,
+                1,
+                i64::MAX,
+            )? as f64,
+            int_in_range(
+                &mut r,
+                "stratum",
+                "vardiff_dsps_tau_slow_secs",
+                Cadence::DEFAULT.tau[2] as i64,
+                1,
+                i64::MAX,
+            )? as f64,
         ],
         ladder,
         ladder_len,
@@ -793,11 +1339,41 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     let mut stratum_diff = DiffPolicy {
         start_diff: vardiff_start_diff,
         min_diff: vardiff_min_diff,
-        cache_entries: int_in_range(&mut r, "stratum", "diff_cache_entries", DiffPolicy::DEFAULT.cache_entries as i64, 1, table_ceiling)? as usize,
-        cache_ttl_ms: int_in_range(&mut r, "stratum", "diff_cache_ttl_secs", (DiffPolicy::DEFAULT.cache_ttl_ms / 1000) as i64, 1, i64::MAX)? as u64 * 1000,
+        cache_entries: int_in_range(
+            &mut r,
+            "stratum",
+            "diff_cache_entries",
+            DiffPolicy::DEFAULT.cache_entries as i64,
+            1,
+            table_ceiling,
+        )? as usize,
+        cache_ttl_ms: int_in_range(
+            &mut r,
+            "stratum",
+            "diff_cache_ttl_secs",
+            (DiffPolicy::DEFAULT.cache_ttl_ms / 1000) as i64,
+            1,
+            i64::MAX,
+        )? as u64
+            * 1000,
         storm_enabled: true,
-        storm_per_min: int_in_range(&mut r, "stratum", "reconnect_storm_per_min", DiffPolicy::DEFAULT.storm_per_min as i64, 0, u32::MAX as i64)? as u32,
-        storm_window_ms: int_in_range(&mut r, "stratum", "reconnect_storm_window_secs", (DiffPolicy::DEFAULT.storm_window_ms / 1000) as i64, 1, i64::MAX)? as u64 * 1000,
+        storm_per_min: int_in_range(
+            &mut r,
+            "stratum",
+            "reconnect_storm_per_min",
+            DiffPolicy::DEFAULT.storm_per_min as i64,
+            0,
+            u32::MAX as i64,
+        )? as u32,
+        storm_window_ms: int_in_range(
+            &mut r,
+            "stratum",
+            "reconnect_storm_window_secs",
+            (DiffPolicy::DEFAULT.storm_window_ms / 1000) as i64,
+            1,
+            i64::MAX,
+        )? as u64
+            * 1000,
     };
     stratum_diff.storm_enabled = stratum_diff.storm_per_min > 0;
 
@@ -824,17 +1400,25 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     }
     if stratum_diff.min_diff > stratum_diff.start_diff {
         return Err(r
-            .at("stratum", "vardiff_start_diff", format!(
-                "vardiff_start_diff = {} is below vardiff_min_diff = {}",
-                stratum_diff.start_diff, stratum_diff.min_diff
-            ))
+            .at(
+                "stratum",
+                "vardiff_start_diff",
+                format!(
+                    "vardiff_start_diff = {} is below vardiff_min_diff = {}",
+                    stratum_diff.start_diff, stratum_diff.min_diff
+                ),
+            )
             .with_help("the starting difficulty cannot be under the floor"));
     }
 
     let rpc_default = format!("127.0.0.1:{}", k::PORT_RPC);
     let rpc_listen = socket(&mut r, "rpc", "listen", &rpc_default)?;
     let token_text = r.str("rpc", "token", "");
-    let rpc_token = if token_text.is_empty() { None } else { Some(token_text) };
+    let rpc_token = if token_text.is_empty() {
+        None
+    } else {
+        Some(token_text)
+    };
 
     let probe = plaine_rpc::RpcConfig {
         bind: rpc_listen,
@@ -843,7 +1427,11 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     };
     if let Err(e) = plaine_rpc::check_bind_policy(&probe) {
         return Err(r
-            .at("rpc", "listen", "the RPC listener is not safe as configured")
+            .at(
+                "rpc",
+                "listen",
+                "the RPC listener is not safe as configured",
+            )
             .with_help(e.to_string()));
     }
     if !plaine_rpc::server::is_loopback(&rpc_listen) {
@@ -858,8 +1446,7 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     // bitcoin node ships a tiny minrelay. The fee market does the rest: the
     // mempool orders and evicts by fee-per-byte, so congestion raises the real
     // floor on its own. Raise this only to shed dust when a node is under load.
-    let relay_fee_mile =
-        int_in_range(&mut r, "mempool", "relay_fee_mile", 1, 1, i64::MAX)? as u128;
+    let relay_fee_mile = int_in_range(&mut r, "mempool", "relay_fee_mile", 1, 1, i64::MAX)? as u128;
     let mempool_max_txs = int_in_range(
         &mut r,
         "mempool",
@@ -897,7 +1484,11 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
 
     if key_texts.iter().any(|s| s.trim().is_empty()) {
         return Err(r
-            .at("checkpoints", "keys", "`checkpoints.keys` contains an empty string")
+            .at(
+                "checkpoints",
+                "keys",
+                "`checkpoints.keys` contains an empty string",
+            )
             .with_help(
                 "an empty entry is not a way to switch the layer off, and it is not a key \
                  either. Say which you meant:\n\n  \
@@ -938,8 +1529,10 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
                         t.chars().count()
                     ),
                 )
-                .with_help("this is the public half of the authority key, published by whoever \
-                            operates it. There is no private key anywhere in a node."));
+                .with_help(
+                    "this is the public half of the authority key, published by whoever \
+                            operates it. There is no private key anywhere in a node.",
+                ));
         }
         let bytes = plaine_consensus::hex::decode(t).map_err(|_| {
             r.at(
@@ -1027,7 +1620,9 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
     // same zero-config shape as the checkpoint key: empty means the embedded author
     // key. A value set here has to decode to a real curve point, or startup fails.
     let author_text = r.str("author", "pubkey", "");
-    let (author_pubkey, author_key_source, author_key_placeholder) = if author_text.trim().is_empty()
+    let (author_pubkey, author_key_source, author_key_placeholder) = if author_text
+        .trim()
+        .is_empty()
     {
         (
             embedded::AUTHOR_KEY.bytes,
@@ -1145,12 +1740,20 @@ fn build(path: &str, doc: &Document, ov: &Overrides) -> Result<Config, Diagnosti
 }
 
 fn set_source(prov: &mut [(String, String, Source)], section: &str, key: &str, s: Source) {
-    if let Some(e) = prov.iter_mut().find(|(sec, k, _)| sec == section && k == key) {
+    if let Some(e) = prov
+        .iter_mut()
+        .find(|(sec, k, _)| sec == section && k == key)
+    {
         e.2 = s;
     }
 }
 
-fn socket(r: &mut Reader<'_>, section: &str, key: &str, default: &str) -> Result<SocketAddr, Diagnostic> {
+fn socket(
+    r: &mut Reader<'_>,
+    section: &str,
+    key: &str,
+    default: &str,
+) -> Result<SocketAddr, Diagnostic> {
     let text = r.str(section, key, default);
     text.parse::<SocketAddr>().map_err(|_| {
         let help = if text.contains(':') {
@@ -1159,7 +1762,12 @@ fn socket(r: &mut Reader<'_>, section: &str, key: &str, default: &str) -> Result
         } else {
             "the port is missing. Write it as `address:port`, for example \"0.0.0.0:9256\"."
         };
-        r.at(section, key, format!("`{text}` is not an address to listen on")).with_help(help)
+        r.at(
+            section,
+            key,
+            format!("`{text}` is not an address to listen on"),
+        )
+        .with_help(help)
     })
 }
 
@@ -1190,7 +1798,11 @@ fn int_in_range(
             _ => None,
         };
         let d = r
-            .at(section, key, format!("{section}.{key} = {v} is outside {lo}..={hi}"))
+            .at(
+                section,
+                key,
+                format!("{section}.{key} = {v} is outside {lo}..={hi}"),
+            )
             .with_help(format!("the default is {default}"));
         return Err(match extra {
             Some(n) => d.with_note(n),
@@ -1396,7 +2008,10 @@ pub fn default_config_text(network: Network) -> String {
 # level = "info"               # error | warn | info | debug | trace
 "##,
         network = network.as_str(),
-        data_dir = crate::paths::default_data_dir().display().to_string().replace('\\', "\\\\"),
+        data_dir = crate::paths::default_data_dir()
+            .display()
+            .to_string()
+            .replace('\\', "\\\\"),
         year = k::BLOCKS_PER_YEAR,
         p2p = k::PORT_P2P,
         stratum = k::PORT_STRATUM,
@@ -1433,7 +2048,6 @@ impl Config {
                 plaine_rpc::views::KeySource::Config => "config",
             },
             embedded::fingerprint(&self.author_pubkey),
-
             if embedded::placeholder_role(&self.author_pubkey).is_some() {
                 ", PLACEHOLDER"
             } else {
@@ -1442,7 +2056,10 @@ impl Config {
         ));
         out.push_str(&format!("config file  = {}\n", paths.config_file.display()));
         out.push_str(&format!("chain dir    = {}\n", paths.chain_dir.display()));
-        out.push_str(&format!("database     = {}\n", paths.database_file.display()));
+        out.push_str(&format!(
+            "database     = {}\n",
+            paths.database_file.display()
+        ));
         out.push_str(&format!(
             "sunset       = height {} (compile-time; config cannot change it)\n",
             k::CHECKPOINT_SUNSET_HEIGHT
@@ -1465,7 +2082,9 @@ impl Config {
             ("stratum", "max_connections") => self.stratum_max_connections.to_string(),
             ("stratum", "enforcement") => self.stratum_enforcement.to_string(),
             ("stratum", "max_per_ip") => self.stratum_max_per_ip.to_string(),
-            ("stratum", "new_conns_per_ip_per_min") => self.stratum_new_conns_per_ip_per_min.to_string(),
+            ("stratum", "new_conns_per_ip_per_min") => {
+                self.stratum_new_conns_per_ip_per_min.to_string()
+            }
             ("stratum", "global_accept_per_sec") => self.stratum_global_accept_per_sec.to_string(),
             ("stratum", "bans_enabled") => self.stratum_bans.enabled.to_string(),
             ("stratum", "ban_threshold") => self.stratum_bans.threshold.to_string(),
@@ -1475,10 +2094,16 @@ impl Config {
             ("stratum", "ban_ladder_factor") => self.stratum_bans.ladder_factor.to_string(),
             ("stratum", "ban_max_secs") => self.stratum_bans.max_secs.to_string(),
             ("stratum", "ban_table_entries") => self.stratum_bans.table_entries.to_string(),
-            ("stratum", "garbage_throttle_secs") => (self.stratum_bans.throttle_ms / 1000).to_string(),
-            ("stratum", "submit_rate_per_sec") => (self.stratum_rates.submit_per_sec as u64).to_string(),
+            ("stratum", "garbage_throttle_secs") => {
+                (self.stratum_bans.throttle_ms / 1000).to_string()
+            }
+            ("stratum", "submit_rate_per_sec") => {
+                (self.stratum_rates.submit_per_sec as u64).to_string()
+            }
             ("stratum", "submit_burst") => (self.stratum_rates.submit_burst as u64).to_string(),
-            ("stratum", "line_rate_per_sec") => (self.stratum_rates.line_per_sec as u64).to_string(),
+            ("stratum", "line_rate_per_sec") => {
+                (self.stratum_rates.line_per_sec as u64).to_string()
+            }
             ("stratum", "line_burst") => (self.stratum_rates.line_burst as u64).to_string(),
             ("stratum", "auth_deadline_secs") => (self.stratum_auth_deadline_ms / 1000).to_string(),
             ("stratum", "idle_evict_secs") => (self.stratum_idle_evict_ms / 1000).to_string(),
@@ -1489,22 +2114,42 @@ impl Config {
             ("stratum", "vardiff_start_diff") => self.stratum_diff.start_diff.to_string(),
             ("stratum", "vardiff_min_diff") => self.stratum_diff.min_diff.to_string(),
             ("stratum", "vardiff_tick_secs") => (self.stratum_tick_ms / 1000).to_string(),
-            ("stratum", "vardiff_retarget_gate_shares") => self.stratum_cadence.retarget_gate_shares.to_string(),
-            ("stratum", "vardiff_retarget_gate_secs") => (self.stratum_cadence.retarget_gate_secs as u64).to_string(),
+            ("stratum", "vardiff_retarget_gate_shares") => {
+                self.stratum_cadence.retarget_gate_shares.to_string()
+            }
+            ("stratum", "vardiff_retarget_gate_secs") => {
+                (self.stratum_cadence.retarget_gate_secs as u64).to_string()
+            }
             ("stratum", "vardiff_warmup_shares") => self.stratum_cadence.warmup_shares.to_string(),
-            ("stratum", "vardiff_warmup_gate_shares") => self.stratum_cadence.warmup_gate_shares.to_string(),
+            ("stratum", "vardiff_warmup_gate_shares") => {
+                self.stratum_cadence.warmup_gate_shares.to_string()
+            }
             ("stratum", "vardiff_mature_shares") => self.stratum_cadence.mature_shares.to_string(),
             ("stratum", "vardiff_max_step") => (self.stratum_cadence.max_step as u64).to_string(),
             ("stratum", "vardiff_enabled") => self.stratum_vardiff_enabled.to_string(),
             ("stratum", "vardiff_fixed_diff") => self.stratum_vardiff_fixed_diff.to_string(),
             ("stratum", "vardiff_max_diff") => self.stratum_vardiff_max_diff.to_string(),
-            ("stratum", "vardiff_dead_zone_pct") => ((self.stratum_cadence.dead_zone * 100.0).round() as i64).to_string(),
-            ("stratum", "vardiff_mature_zone_pct") => ((self.stratum_cadence.mature_zone * 100.0).round() as i64).to_string(),
-            ("stratum", "vardiff_fast_escape_pct") => ((self.stratum_cadence.fast_escape * 100.0).round() as i64).to_string(),
-            ("stratum", "vardiff_silence_slack") => (self.stratum_cadence.silence_slack as i64).to_string(),
-            ("stratum", "vardiff_dsps_tau_fast_secs") => (self.stratum_cadence.tau[0] as i64).to_string(),
-            ("stratum", "vardiff_dsps_tau_mid_secs") => (self.stratum_cadence.tau[1] as i64).to_string(),
-            ("stratum", "vardiff_dsps_tau_slow_secs") => (self.stratum_cadence.tau[2] as i64).to_string(),
+            ("stratum", "vardiff_dead_zone_pct") => {
+                ((self.stratum_cadence.dead_zone * 100.0).round() as i64).to_string()
+            }
+            ("stratum", "vardiff_mature_zone_pct") => {
+                ((self.stratum_cadence.mature_zone * 100.0).round() as i64).to_string()
+            }
+            ("stratum", "vardiff_fast_escape_pct") => {
+                ((self.stratum_cadence.fast_escape * 100.0).round() as i64).to_string()
+            }
+            ("stratum", "vardiff_silence_slack") => {
+                (self.stratum_cadence.silence_slack as i64).to_string()
+            }
+            ("stratum", "vardiff_dsps_tau_fast_secs") => {
+                (self.stratum_cadence.tau[0] as i64).to_string()
+            }
+            ("stratum", "vardiff_dsps_tau_mid_secs") => {
+                (self.stratum_cadence.tau[1] as i64).to_string()
+            }
+            ("stratum", "vardiff_dsps_tau_slow_secs") => {
+                (self.stratum_cadence.tau[2] as i64).to_string()
+            }
             ("stratum", "vardiff_ladder") => format!(
                 "{:?}",
                 (0..self.stratum_cadence.ladder_len)
@@ -1512,13 +2157,21 @@ impl Config {
                     .collect::<Vec<_>>()
             ),
             ("stratum", "diff_cache_entries") => self.stratum_diff.cache_entries.to_string(),
-            ("stratum", "diff_cache_ttl_secs") => (self.stratum_diff.cache_ttl_ms / 1000).to_string(),
+            ("stratum", "diff_cache_ttl_secs") => {
+                (self.stratum_diff.cache_ttl_ms / 1000).to_string()
+            }
             ("stratum", "reconnect_storm_per_min") => self.stratum_diff.storm_per_min.to_string(),
-            ("stratum", "reconnect_storm_window_secs") => (self.stratum_diff.storm_window_ms / 1000).to_string(),
+            ("stratum", "reconnect_storm_window_secs") => {
+                (self.stratum_diff.storm_window_ms / 1000).to_string()
+            }
             ("rpc", "listen") => format!("{:?}", self.rpc_listen.to_string()),
 
             ("rpc", "token") => {
-                if self.rpc_token.is_some() { "\"<set, not shown>\"".into() } else { "\"\"".into() }
+                if self.rpc_token.is_some() {
+                    "\"<set, not shown>\"".into()
+                } else {
+                    "\"\"".into()
+                }
             }
             ("mempool", "relay_fee_mile") => self.relay_fee_mile.to_string(),
             ("mempool", "max_txs") => self.mempool_max_txs.to_string(),
@@ -1564,7 +2217,10 @@ mod tests {
         assert_eq!(c.log_level, LogLevel::Info);
 
         assert!(matches!(c.checkpoints, CheckpointPolicy::Embedded { .. }));
-        assert_eq!(c.checkpoints.keys(), vec![embedded::CHECKPOINT_AUTHORITY_KEY.bytes]);
+        assert_eq!(
+            c.checkpoints.keys(),
+            vec![embedded::CHECKPOINT_AUTHORITY_KEY.bytes]
+        );
         assert_eq!(c.author_pubkey, embedded::AUTHOR_KEY.bytes);
         assert_eq!(c.author_key_source, plaine_rpc::views::KeySource::Embedded);
     }
@@ -1600,7 +2256,10 @@ network = \"main\"
     fn absent_seeds_uses_embedded_table() {
         let main = ok("");
         assert_eq!(main.seeds, embedded::SEEDS_MAIN.hosts.to_vec());
-        assert!(!main.seeds.is_empty(), "a stock node must have somewhere to call");
+        assert!(
+            !main.seeds.is_empty(),
+            "a stock node must have somewhere to call"
+        );
     }
 
     #[test]
@@ -1612,7 +2271,13 @@ network = \"main\"
     #[test]
     fn explicit_seeds_win() {
         let c = ok("[p2p]\nseeds = [\"10.44.0.11:9256\", \"seed.example.net\"]\n");
-        assert_eq!(c.seeds, vec!["10.44.0.11:9256".to_string(), "seed.example.net".to_string()]);
+        assert_eq!(
+            c.seeds,
+            vec![
+                "10.44.0.11:9256".to_string(),
+                "seed.example.net".to_string()
+            ]
+        );
     }
 
     #[test]
@@ -1620,14 +2285,19 @@ network = \"main\"
         let c = ok("[p2p]\nuse_embedded_seeds = false\n");
         assert!(c.seeds.is_empty());
         assert!(
-            c.warnings.iter().any(|w| w.contains("will not dial anybody")),
+            c.warnings
+                .iter()
+                .any(|w| w.contains("will not dial anybody")),
             "silently dialling nobody is the defect: {:?}",
             c.warnings
         );
 
         let both = ok("[p2p]\nuse_embedded_seeds = false\nseeds = [\"10.44.0.11:9256\"]\n");
         assert_eq!(both.seeds, vec!["10.44.0.11:9256".to_string()]);
-        assert!(!both.warnings.iter().any(|w| w.contains("will not dial anybody")));
+        assert!(!both
+            .warnings
+            .iter()
+            .any(|w| w.contains("will not dial anybody")));
     }
 
     #[test]
@@ -1646,25 +2316,34 @@ network = \"main\"
         let cp = plaine_consensus::hex::encode(&embedded::RETIRED_CHECKPOINT_PLACEHOLDER);
         let au = plaine_consensus::hex::encode(&embedded::RETIRED_AUTHOR_PLACEHOLDER);
 
-        let c = ok(&format!("[checkpoints]\nkeys = [\"{cp}\"]\n[author]\npubkey = \"{au}\"\n"));
+        let c = ok(&format!(
+            "[checkpoints]\nkeys = [\"{cp}\"]\n[author]\npubkey = \"{au}\"\n"
+        ));
 
         assert!(matches!(c.checkpoints, CheckpointPolicy::Configured { .. }));
         assert_eq!(c.author_key_source, plaine_rpc::views::KeySource::Config);
 
         assert!(
-            c.warnings.iter().any(|w| w.contains("BUILD PLACEHOLDER") && w.contains("checkpoint")),
+            c.warnings
+                .iter()
+                .any(|w| w.contains("BUILD PLACEHOLDER") && w.contains("checkpoint")),
             "a pasted placeholder checkpoint key bought silence: {:?}",
             c.warnings
         );
         assert!(
-            c.warnings.iter().any(|w| w.contains("BUILD PLACEHOLDER") && w.contains("author")),
+            c.warnings
+                .iter()
+                .any(|w| w.contains("BUILD PLACEHOLDER") && w.contains("author")),
             "a pasted placeholder author key bought silence: {:?}",
             c.warnings
         );
 
         let out = c.print_effective(&Paths::resolve(&c.data_dir, None));
         assert!(out.contains("BUILD PLACEHOLDER"), "{out}");
-        assert!(out.contains("PLACEHOLDER)"), "author line lost its marker:\n{out}");
+        assert!(
+            out.contains("PLACEHOLDER)"),
+            "author line lost its marker:\n{out}"
+        );
 
         let mut other = embedded::RETIRED_CHECKPOINT_PLACEHOLDER;
         other[31] = b'4';
@@ -1673,7 +2352,9 @@ network = \"main\"
             plaine_consensus::hex::encode(&other)
         ));
         assert!(
-            !c.warnings.iter().any(|w| w.contains("checkpoint key in force")),
+            !c.warnings
+                .iter()
+                .any(|w| w.contains("checkpoint key in force")),
             "{:?}",
             c.warnings
         );
@@ -1689,7 +2370,10 @@ network = \"main\"
             assert_eq!(from_file.rpc_listen, from_nothing.rpc_listen);
             assert_eq!(from_file.checkpoints, from_nothing.checkpoints);
             assert_eq!(from_file.author_pubkey, from_nothing.author_pubkey);
-            assert!(from_file.provenance.iter().all(|(_, _, s)| *s == Source::Default));
+            assert!(from_file
+                .provenance
+                .iter()
+                .all(|(_, _, s)| *s == Source::Default));
         }
     }
 
@@ -1698,20 +2382,30 @@ network = \"main\"
         assert!(
             !ok("[node]
 network = \"main\"
-").accept_local_addrs,
+")
+            .accept_local_addrs,
             "the default must stay: a gossiped private address is a claim"
         );
-        assert!(ok("[p2p]
+        assert!(
+            ok("[p2p]
 accept_local_addrs = true
-").accept_local_addrs);
-        assert!(!ok("[p2p]
+")
+            .accept_local_addrs
+        );
+        assert!(
+            !ok("[p2p]
 accept_local_addrs = false
-").accept_local_addrs);
+")
+            .accept_local_addrs
+        );
     }
 
     #[test]
     fn empty_key_list_uses_embedded() {
-        assert!(matches!(ok("").checkpoints, CheckpointPolicy::Embedded { .. }));
+        assert!(matches!(
+            ok("").checkpoints,
+            CheckpointPolicy::Embedded { .. }
+        ));
 
         let c = ok("[checkpoints]\nkeys = []\n");
         assert!(matches!(c.checkpoints, CheckpointPolicy::Embedded { .. }));
@@ -1748,7 +2442,9 @@ accept_local_addrs = false
     #[test]
     fn contradictory_file_refused() {
         let key = plaine_consensus::hex::encode(&embedded::CHECKPOINT_AUTHORITY_KEY.bytes);
-        let e = err(&format!("[checkpoints]\nenabled = false\nkeys = [\"{key}\"]\n"));
+        let e = err(&format!(
+            "[checkpoints]\nenabled = false\nkeys = [\"{key}\"]\n"
+        ));
         assert!(e.message.contains("two opposite things"), "{e}");
     }
 
@@ -1788,7 +2484,10 @@ accept_local_addrs = false
         assert_eq!(c.stratum_auth_deadline_ms, 0);
         assert_eq!(c.stratum_idle_evict_ms, 0);
         assert_eq!(c.stratum_out_buf_cap, 0);
-        assert!(c.stratum_vardiff_enabled, "difficulty adjustment is not a policing knob");
+        assert!(
+            c.stratum_vardiff_enabled,
+            "difficulty adjustment is not a policing knob"
+        );
     }
 
     #[test]
@@ -1804,10 +2503,18 @@ accept_local_addrs = false
 
     #[test]
     fn bad_vardiff_ladder_refused() {
-        assert!(err("[stratum]\nvardiff_ladder = [10, 10]\n").message.contains("increase"));
-        assert!(err("[stratum]\nvardiff_ladder = [5]\n").message.contains("10..=999"));
-        assert!(err("[stratum]\nvardiff_ladder = []\n").message.contains("entries"));
-        assert!(err("[stratum]\nvardiff_ladder = [\"a\"]\n").message.contains("integer"));
+        assert!(err("[stratum]\nvardiff_ladder = [10, 10]\n")
+            .message
+            .contains("increase"));
+        assert!(err("[stratum]\nvardiff_ladder = [5]\n")
+            .message
+            .contains("10..=999"));
+        assert!(err("[stratum]\nvardiff_ladder = []\n")
+            .message
+            .contains("entries"));
+        assert!(err("[stratum]\nvardiff_ladder = [\"a\"]\n")
+            .message
+            .contains("integer"));
     }
 
     #[test]
@@ -1820,9 +2527,15 @@ accept_local_addrs = false
 
     #[test]
     fn mistyped_key_caught_at_startup() {
-        let e = err(&format!("[checkpoints]\nkeys = [\"{}\"]\n", "00".repeat(32)));
+        let e = err(&format!(
+            "[checkpoints]\nkeys = [\"{}\"]\n",
+            "00".repeat(32)
+        ));
         assert!(e.message.contains("not a valid ed25519 public key"), "{e}");
-        assert!(e.note.unwrap().contains("you would believe you were protected"));
+        assert!(e
+            .note
+            .unwrap()
+            .contains("you would believe you were protected"));
 
         let e2 = err("[checkpoints]\nkeys = [\"deadbeef\"]\n");
         assert!(e2.message.contains("64 hex characters"));
@@ -1840,7 +2553,10 @@ accept_local_addrs = false
 
     #[test]
     fn author_key_two_states() {
-        assert_eq!(ok("").author_key_source, plaine_rpc::views::KeySource::Embedded);
+        assert_eq!(
+            ok("").author_key_source,
+            plaine_rpc::views::KeySource::Embedded
+        );
         assert_eq!(
             ok("[author]\npubkey = \"\"\n").author_pubkey,
             embedded::AUTHOR_KEY.bytes
@@ -1858,7 +2574,10 @@ accept_local_addrs = false
     #[test]
     fn announce_log_off_warns() {
         let c = ok("[author]\nshow_in_log = false\n");
-        assert!(c.warnings.iter().any(|w| w.contains("emergency announcements")));
+        assert!(c
+            .warnings
+            .iter()
+            .any(|w| w.contains("emergency announcements")));
     }
 
     #[test]
@@ -1888,7 +2607,10 @@ accept_local_addrs = false
     #[test]
     fn address_without_port_refused() {
         let e = err("[rpc]\nlisten = \"127.0.0.1\"\n");
-        assert!(e.help.as_deref().unwrap().contains("port is missing"), "{e}");
+        assert!(
+            e.help.as_deref().unwrap().contains("port is missing"),
+            "{e}"
+        );
     }
 
     #[test]
@@ -1927,13 +2649,19 @@ accept_local_addrs = false
         ));
         let paths = Paths::resolve(&c.data_dir, None);
         let printed = c.print_effective(&paths);
-        assert!(!printed.contains("secret-token"), "the token must not be echoed:\n{printed}");
+        assert!(
+            !printed.contains("secret-token"),
+            "the token must not be echoed:\n{printed}"
+        );
         assert!(printed.contains("<set, not shown>"));
     }
 
     #[test]
     fn overlong_author_note_refused() {
-        let e = err(&format!("[mining]\nauthor_note = \"{}\"\n", "x".repeat(300)));
+        let e = err(&format!(
+            "[mining]\nauthor_note = \"{}\"\n",
+            "x".repeat(300)
+        ));
         assert!(e.message.contains("300 bytes"), "{e}");
         assert!(e.note.unwrap().contains("bytes, not characters"));
     }
@@ -1971,13 +2699,15 @@ accept_local_addrs = false
 
     #[test]
     fn resolved_author_key_reaches_consensus() {
-
         use plaine_consensus::ed25519_dalek::{Signer, SigningKey};
 
         let sk = SigningKey::from_bytes(&[0x11u8; 32]);
         let pk: [u8; 32] = sk.verifying_key().to_bytes();
 
-        let cfg = ok(&format!("[author]\npubkey = \"{}\"\n", plaine_consensus::hex::encode(&pk)));
+        let cfg = ok(&format!(
+            "[author]\npubkey = \"{}\"\n",
+            plaine_consensus::hex::encode(&pk)
+        ));
         assert_eq!(cfg.author_pubkey, pk);
         assert_eq!(cfg.author_key_source, plaine_rpc::views::KeySource::Config);
 

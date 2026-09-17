@@ -60,8 +60,7 @@ impl ServePool {
                                 stop,
                                 reply,
                             } => {
-                                let hs =
-                                    chain.headers_from(&locator, &stop, MAX_HEADERS_PER_MSG);
+                                let hs = chain.headers_from(&locator, &stop, MAX_HEADERS_PER_MSG);
 
                                 if !hs.is_empty() {
                                     reply(Msg::Headers(hs));
@@ -79,13 +78,11 @@ impl ServePool {
                                         })
                                         .collect();
                                     if !sigs.is_empty() {
-                                        reply(Msg::Checkpoint(
-                                            crate::wire::msg::CheckpointMsg {
-                                                height: cp.height,
-                                                hash: cp.hash,
-                                                sigs,
-                                            },
-                                        ));
+                                        reply(Msg::Checkpoint(crate::wire::msg::CheckpointMsg {
+                                            height: cp.height,
+                                            hash: cp.hash,
+                                            sigs,
+                                        }));
                                     }
                                 }
                             }

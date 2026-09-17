@@ -7,7 +7,10 @@ pub fn load(path: &Path) -> Option<Vec<u8>> {
         Ok(m) => m,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
         Err(e) => {
-            log::warn("p2p", format!("peers.dat cannot be read ({e}); using seeds only"));
+            log::warn(
+                "p2p",
+                format!("peers.dat cannot be read ({e}); using seeds only"),
+            );
             return None;
         }
     };
@@ -26,7 +29,10 @@ pub fn load(path: &Path) -> Option<Vec<u8>> {
     match std::fs::read(path) {
         Ok(b) => Some(b),
         Err(e) => {
-            log::warn("p2p", format!("peers.dat cannot be read ({e}); using seeds only"));
+            log::warn(
+                "p2p",
+                format!("peers.dat cannot be read ({e}); using seeds only"),
+            );
             None
         }
     }

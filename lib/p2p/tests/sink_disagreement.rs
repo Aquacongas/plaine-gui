@@ -83,7 +83,10 @@ fn chain_refusal_no_offence() {
 #[test]
 fn stream_recovers_when_accepting() {
     let mut sim = setup();
-    assert!(sim.chain.tip().height <= AT, "fixture: the chain did move past {AT}");
+    assert!(
+        sim.chain.tip().height <= AT,
+        "fixture: the chain did move past {AT}"
+    );
 
     sim.chain.accept_all_headers();
     sim.run(300_000, 1_000);

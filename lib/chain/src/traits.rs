@@ -1,8 +1,7 @@
 use crate::error::Condition;
 use crate::types::{
-    Account, Address, CommitBlock, DeepReorgCommit, Hash32, HeaderRec, Receipt,
-    ReorgCommit, SideHeaderRec, SideHeaderRec as _SideHeaderRec, SignedCheckpoint, TipRef,
-    UndoRec,
+    Account, Address, CommitBlock, DeepReorgCommit, Hash32, HeaderRec, Receipt, ReorgCommit,
+    SideHeaderRec, SideHeaderRec as _SideHeaderRec, SignedCheckpoint, TipRef, UndoRec,
 };
 use plaine_consensus::constants::HEADER_BYTES;
 

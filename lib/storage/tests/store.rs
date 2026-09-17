@@ -90,7 +90,10 @@ fn reorg_at_max_reorg_depth() {
     assert_eq!(r.header_at(fork + 1).unwrap().unwrap(), alt[0].header);
 
     let mid = (depth / 2) as usize;
-    assert!(r.header_by_hash(&main[fork as usize + 1 + mid].hash).unwrap().is_none());
+    assert!(r
+        .header_by_hash(&main[fork as usize + 1 + mid].hash)
+        .unwrap()
+        .is_none());
     assert_eq!(
         r.header_by_hash(&alt[mid].hash).unwrap().map(|(h, _)| h),
         Some(fork + 1 + mid as u64)
@@ -98,7 +101,8 @@ fn reorg_at_max_reorg_depth() {
     for (a, want) in chain.state.iter() {
         assert_eq!(&r.account(a).unwrap(), want, "account {a:?}");
     }
-    r.verify_state_fingerprint().expect("fingerprint after reorg");
+    r.verify_state_fingerprint()
+        .expect("fingerprint after reorg");
     assert_eq!(r.issued(), chain.issued);
 
     for h in (fork - 40)..=fork {
@@ -292,7 +296,10 @@ fn pruning_keeps_reorg_depth() {
     }
 
     match r.body_at(floor - 1, &mut buf) {
-        Err(StoreError::BodyPruned { height, prune_floor }) => {
+        Err(StoreError::BodyPruned {
+            height,
+            prune_floor,
+        }) => {
             assert_eq!(height, floor - 1);
             assert_eq!(prune_floor, floor);
         }
@@ -492,7 +499,10 @@ fn memory_and_row_caps() {
     let (side_rows, _) = r.row_counts().unwrap();
     assert_eq!(side_rows, 64, "side_headers cap not enforced");
     assert!(r.side_header(&side[0].0).unwrap().is_none(), "lowest kept");
-    assert!(r.side_header(&side[199].0).unwrap().is_some(), "highest evicted");
+    assert!(
+        r.side_header(&side[199].0).unwrap().is_some(),
+        "highest evicted"
+    );
 
     let inv: Vec<_> = (0..100u64)
         .map(|i| {
@@ -523,12 +533,21 @@ fn invalid_reason_survives_round_trip() {
     let mut unheard_of = [0u8; 32];
     unheard_of[0] = 3;
 
-    c.mark_invalid_batch(&[(pow, InvalidReason::BadPow), (cp, InvalidReason::BadCheckpoint)])
-        .unwrap();
+    c.mark_invalid_batch(&[
+        (pow, InvalidReason::BadPow),
+        (cp, InvalidReason::BadCheckpoint),
+    ])
+    .unwrap();
 
     assert_eq!(r.invalid_reason(&pow).unwrap(), Some(InvalidReason::BadPow));
-    assert_eq!(r.invalid_reason(&cp).unwrap(), Some(InvalidReason::BadCheckpoint));
-    assert_ne!(r.invalid_reason(&pow).unwrap(), r.invalid_reason(&cp).unwrap());
+    assert_eq!(
+        r.invalid_reason(&cp).unwrap(),
+        Some(InvalidReason::BadCheckpoint)
+    );
+    assert_ne!(
+        r.invalid_reason(&pow).unwrap(),
+        r.invalid_reason(&cp).unwrap()
+    );
 
     assert_eq!(r.invalid_reason(&unheard_of).unwrap(), None);
     assert!(!r.is_invalid(&unheard_of).unwrap());
@@ -539,7 +558,10 @@ fn invalid_reason_survives_round_trip() {
     let census = r.invalid_census().unwrap();
     assert_eq!(census.len(), 2, "{census:?}");
     assert!(census.contains(&(InvalidReason::BadPow, 1)), "{census:?}");
-    assert!(census.contains(&(InvalidReason::BadCheckpoint, 1)), "{census:?}");
+    assert!(
+        census.contains(&(InvalidReason::BadCheckpoint, 1)),
+        "{census:?}"
+    );
 
     assert_eq!(c.clear_invalid_all().unwrap(), 2);
     assert!(r.invalid_census().unwrap().is_empty());
@@ -799,7 +821,10 @@ fn differential_vs_reference() {
                 drop(c);
                 drop(r);
                 let (c2, r2, rep) = open(base.clone()).expect("reopen");
-                assert!(rep.headers_truncated_to.is_none(), "clean restart truncated");
+                assert!(
+                    rep.headers_truncated_to.is_none(),
+                    "clean restart truncated"
+                );
                 c = c2;
                 r = r2;
                 c.set_mode(DurabilityMode::Ibd).unwrap();
@@ -861,8 +886,14 @@ fn side_headers_from_is_ascending() {
     let capped = r.side_headers_from(0, 7).unwrap();
     assert_eq!(capped.len(), 7);
     assert_eq!(capped[6].height, 6, "the ceiling truncates the top");
-    assert!(r.side_headers_from(0, 0).unwrap().is_empty(), "max 0 reads nothing");
-    assert!(r.side_headers_from(400, 10).unwrap().is_empty(), "nothing above the highest row");
+    assert!(
+        r.side_headers_from(0, 0).unwrap().is_empty(),
+        "max 0 reads nothing"
+    );
+    assert!(
+        r.side_headers_from(400, 10).unwrap().is_empty(),
+        "nothing above the highest row"
+    );
 
     let more: Vec<_> = (400..1_000u64)
         .map(|i| {
@@ -874,7 +905,11 @@ fn side_headers_from_is_ascending() {
         .collect();
     c.put_side_headers(&more).unwrap();
     let all = r.side_headers_from(0, 100_000).unwrap();
-    assert_eq!(all.len(), 512, "bounded by side_headers_cap and nothing else");
+    assert_eq!(
+        all.len(),
+        512,
+        "bounded by side_headers_cap and nothing else"
+    );
     assert_eq!(all[0].height, 488, "lowest-height-first eviction");
     assert_eq!(all[511].height, 999);
 

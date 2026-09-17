@@ -19,7 +19,9 @@ fn arena(chain: &Scenario, len: usize, p: &ChainParams) -> HeaderIndex {
     for (h, b) in chain.blocks.iter().take(len).enumerate() {
         let t = expand_bits(b.rec.bits, &p.pow_limit).expect("legal target");
         let be = target_to_be(&t);
-        cum = cum.checked_add(&work_from_target(&be)).expect("no overflow");
+        cum = cum
+            .checked_add(&work_from_target(&be))
+            .expect("no overflow");
         if h == 0 {
             canon.push(idx.insert_genesis(&b.rec, cum));
         } else {
@@ -62,7 +64,11 @@ fn genesis_only_node_syncs_past_checkpoint() {
         &view,
         start_height,
         &cand,
-        &ReorgParams { anchor: None, checkpoints: &cps, local_time: chain.tip().time },
+        &ReorgParams {
+            anchor: None,
+            checkpoints: &cps,
+            local_time: chain.tip().time,
+        },
     );
     assert_eq!(
         verdict,
@@ -71,7 +77,10 @@ fn genesis_only_node_syncs_past_checkpoint() {
     );
 
     let coarse_would_reject = cps.iter().any(|(h, _)| *h >= start_height);
-    assert!(coarse_would_reject, "the coarse `h >= fork_point` form rejects this sync");
+    assert!(
+        coarse_would_reject,
+        "the coarse `h >= fork_point` form rejects this sync"
+    );
 }
 
 #[test]
@@ -88,9 +97,16 @@ fn shortening_attack_rejected_early() {
         &view,
         4,
         &cand,
-        &ReorgParams { anchor: None, checkpoints: &cps, local_time: ours.tip().time },
+        &ReorgParams {
+            anchor: None,
+            checkpoints: &cps,
+            local_time: ours.tip().time,
+        },
     );
-    assert_eq!(verdict, Err(RuleError::CheckpointShorteningAttack { height: 5 }));
+    assert_eq!(
+        verdict,
+        Err(RuleError::CheckpointShorteningAttack { height: 5 })
+    );
 }
 
 #[test]
@@ -107,7 +123,11 @@ fn fork_at_checkpoint_height_dies_on_rule_a() {
         &view,
         4,
         &cand,
-        &ReorgParams { anchor: None, checkpoints: &cps, local_time: ours.tip().time },
+        &ReorgParams {
+            anchor: None,
+            checkpoints: &cps,
+            local_time: ours.tip().time,
+        },
     );
     assert_eq!(verdict, Err(RuleError::CheckpointMismatch { height: 5 }));
 }
@@ -126,7 +146,11 @@ fn extension_past_checkpoint_untouched() {
             &view,
             12,
             &cand,
-            &ReorgParams { anchor: None, checkpoints: &cps, local_time: longer.tip().time }
+            &ReorgParams {
+                anchor: None,
+                checkpoints: &cps,
+                local_time: longer.tip().time
+            }
         ),
         Ok(ReorgVerdict::StrictlyMoreWork)
     );
@@ -157,11 +181,15 @@ fn contradicting_checkpoint_becomes_anchor_only() {
         r.cm.submit_checkpoint(&cp).expect("no error").outcome,
         CheckpointOutcome::StoredAsAnchor
     );
-    assert!(r.cm.checkpoints().is_empty(), "the enforcement map must stay empty");
+    assert!(
+        r.cm.checkpoints().is_empty(),
+        "the enforcement map must stay empty"
+    );
     assert_eq!(r.cm.anchor().map(|a| a.hash), Some([0xC1; 32]));
-    assert!(r.observed(
-        |c| matches!(c, plaine_chain::error::Condition::AnchorContradiction { height: 5, .. })
-    ));
+    assert!(r.observed(|c| matches!(
+        c,
+        plaine_chain::error::Condition::AnchorContradiction { height: 5, .. }
+    )));
 }
 
 #[test]
@@ -185,16 +213,17 @@ fn an_anchor_is_replaced_only_at_a_strictly_higher_height() {
     let chain = Scenario::genesis(&p, T0).extend(10);
     let mut r = Rig::new(&chain, p);
     r.sync(&chain, 1);
-    r.cm.submit_checkpoint(&signed_checkpoint(&authority_key(), 50, [0xD2; 32])).expect("ok");
+    r.cm.submit_checkpoint(&signed_checkpoint(&authority_key(), 50, [0xD2; 32]))
+        .expect("ok");
     assert_eq!(
-        r.cm
-            .submit_checkpoint(&signed_checkpoint(&authority_key(), 40, [0xD3; 32]))
+        r.cm.submit_checkpoint(&signed_checkpoint(&authority_key(), 40, [0xD3; 32]))
             .expect("ok")
             .outcome,
         CheckpointOutcome::AnchorNotSuperseded
     );
     assert_eq!(r.cm.anchor().map(|a| a.height), Some(50));
-    r.cm.submit_checkpoint(&signed_checkpoint(&authority_key(), 60, [0xD4; 32])).expect("ok");
+    r.cm.submit_checkpoint(&signed_checkpoint(&authority_key(), 60, [0xD4; 32]))
+        .expect("ok");
     assert_eq!(r.cm.anchor().map(|a| a.height), Some(60));
 }
 
@@ -207,7 +236,10 @@ fn non_authority_checkpoint_ignored() {
     let cp = signed_checkpoint(&impostor_key(), 5, chain.blocks[5].rec.hash);
     let rep = r.cm.submit_checkpoint(&cp).expect("no error");
     assert_eq!(rep.outcome, CheckpointOutcome::Unverified);
-    assert!(!rep.anchor_advanced, "an unverified checkpoint never moves the anchor");
+    assert!(
+        !rep.anchor_advanced,
+        "an unverified checkpoint never moves the anchor"
+    );
     assert!(r.cm.checkpoints().is_empty());
     assert!(r.cm.anchor().is_none());
 }
@@ -218,7 +250,11 @@ fn checkpoint_lever_expires_at_sunset() {
     let chain = Scenario::genesis(&p, T0).extend(10);
     let mut r = Rig::new(&chain, p);
     r.sync(&chain, 1);
-    for h in [CHECKPOINT_SUNSET_HEIGHT, CHECKPOINT_SUNSET_HEIGHT + 1, u64::MAX] {
+    for h in [
+        CHECKPOINT_SUNSET_HEIGHT,
+        CHECKPOINT_SUNSET_HEIGHT + 1,
+        u64::MAX,
+    ] {
         let cp = signed_checkpoint(&authority_key(), h, [0xE5; 32]);
         assert_eq!(
             r.cm.submit_checkpoint(&cp).expect("no error").outcome,
@@ -257,7 +293,10 @@ fn persisted_anchor_reverified_on_load() {
 
     let mut forged = signed_checkpoint(&authority_key(), 7, chain.blocks[7].rec.hash);
     forged.sigs[0].sig[0] ^= 0x01;
-    assert!(!r.cm.load_anchor(&forged), "a tampered signature loads nothing");
+    assert!(
+        !r.cm.load_anchor(&forged),
+        "a tampered signature loads nothing"
+    );
     assert!(r.cm.anchor().is_none());
 
     let genuine = signed_checkpoint(&authority_key(), 7, chain.blocks[7].rec.hash);
@@ -273,10 +312,13 @@ fn wrong_hash_at_checkpoint_dies_at_s1b() {
     r.sync(&chain, 1);
 
     assert_eq!(
-        r.cm
-            .submit_checkpoint(&signed_checkpoint(&authority_key(), 11, chain.blocks[11].rec.hash))
-            .expect("ok")
-            .outcome,
+        r.cm.submit_checkpoint(&signed_checkpoint(
+            &authority_key(),
+            11,
+            chain.blocks[11].rec.hash
+        ))
+        .expect("ok")
+        .outcome,
         CheckpointOutcome::Admitted
     );
     r.pow.reset();
@@ -285,6 +327,10 @@ fn wrong_hash_at_checkpoint_dies_at_s1b() {
     let a = r.offer(3, &blocks_above(&rival, 10));
     assert_eq!(a.connected, 0);
     assert_eq!(a.rejected, 1);
-    assert_eq!(r.pow.calls(), 0, "a whitelist test costs nothing and runs first");
+    assert_eq!(
+        r.pow.calls(),
+        0,
+        "a whitelist test costs nothing and runs first"
+    );
     assert_eq!(r.cm.tip().hash, chain.blocks[11].rec.hash);
 }

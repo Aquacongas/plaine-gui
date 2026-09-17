@@ -6,9 +6,7 @@ use plaine_consensus::constants::{FEE_FLOOR_MILE, MAX_TX_BYTES, TX_TYPE_COINBASE
 use plaine_consensus::crypto;
 
 use crate::error::{BudgetClass, Condition, EvictReason, Reject};
-use crate::types::{
-    Account, Address, ChainParams, Hash32, MempoolParams, SourceId, TX_COST_MILLI,
-};
+use crate::types::{Account, Address, ChainParams, Hash32, MempoolParams, SourceId, TX_COST_MILLI};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SigProof(Provenance);
@@ -20,11 +18,7 @@ enum Provenance {
 }
 
 impl SigProof {
-    pub fn verify(
-        network: Network,
-        tx: &Tx,
-        author_pubkey: &[u8; 32],
-    ) -> Result<SigProof, Reject> {
+    pub fn verify(network: Network, tx: &Tx, author_pubkey: &[u8; 32]) -> Result<SigProof, Reject> {
         match tx {
             Tx::Transfer(t) => crypto::verify_transfer_signature(network, t)
                 .map_err(|_| Reject::BadTransferSignature { index: 0 })?,
@@ -118,7 +112,10 @@ pub struct Admitted {
 
 impl Mempool {
     pub fn new(params: MempoolParams) -> Mempool {
-        Mempool { params, ..Default::default() }
+        Mempool {
+            params,
+            ..Default::default()
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -144,7 +141,12 @@ impl Mempool {
     pub fn sender_txs(&self, s: &Address) -> Vec<PoolTx> {
         self.by_sender
             .get(s)
-            .map(|m| m.values().filter_map(|id| self.txs.get(id)).cloned().collect())
+            .map(|m| {
+                m.values()
+                    .filter_map(|id| self.txs.get(id))
+                    .cloned()
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -216,9 +218,13 @@ impl Mempool {
         let tx = decode_tx(&raw).map_err(|_| Reject::TxDecode)?;
         let (sender_pub, nonce, fee, amount, txid) = match &tx {
             Tx::Transfer(t) => (t.from_pub, t.nonce, t.fee, t.amount, t.txid()),
-            Tx::Announcement(a) => {
-                (a.from_pub, a.nonce, a.fee, 0u128, a.txid().map_err(|_| Reject::TxDecode)?)
-            }
+            Tx::Announcement(a) => (
+                a.from_pub,
+                a.nonce,
+                a.fee,
+                0u128,
+                a.txid().map_err(|_| Reject::TxDecode)?,
+            ),
             Tx::Coinbase(_) => return Err(Reject::TxTypeNotRelayable { type_byte }),
         };
         let sender = crypto::address_payload(&sender_pub);
@@ -233,10 +239,16 @@ impl Mempool {
         }
 
         if fee < FEE_FLOOR_MILE {
-            return Err(Reject::BelowRelayFloor { fee, floor: FEE_FLOOR_MILE });
+            return Err(Reject::BelowRelayFloor {
+                fee,
+                floor: FEE_FLOOR_MILE,
+            });
         }
         if fee < self.params.relay_fee_floor {
-            return Err(Reject::BelowRelayFloor { fee, floor: self.params.relay_fee_floor });
+            return Err(Reject::BelowRelayFloor {
+                fee,
+                floor: self.params.relay_fee_floor,
+            });
         }
 
         if self.txs.contains_key(&txid) {
@@ -252,7 +264,10 @@ impl Mempool {
             return Err(Reject::NonceGapTooLarge { next, got: nonce });
         }
 
-        let replaces = self.by_sender.get(&sender).and_then(|m| m.get(&nonce).copied());
+        let replaces = self
+            .by_sender
+            .get(&sender)
+            .and_then(|m| m.get(&nonce).copied());
         let mut displaced_outlay = 0u128;
         if let Some(old_id) = replaces {
             let old = &self.txs[&old_id];
@@ -261,24 +276,47 @@ impl Mempool {
             // Replace-by-fee wants +25%, floored at 1 so a zero-quarter fee can't
             // churn the slot for free.
             let bump = (old.fee / 4).max(1);
-            let need = old.fee.checked_add(bump).ok_or(Reject::ArithmeticOverflow)?;
+            let need = old
+                .fee
+                .checked_add(bump)
+                .ok_or(Reject::ArithmeticOverflow)?;
             if fee < need {
                 return Err(Reject::ReplacementUnderpriced { need, got: fee });
             }
         }
 
         let outlay = amount.checked_add(fee).ok_or(Reject::ArithmeticOverflow)?;
-        let pending = self.pending_outlay(&sender).saturating_sub(displaced_outlay);
-        let total = pending.checked_add(outlay).ok_or(Reject::ArithmeticOverflow)?;
+        let pending = self
+            .pending_outlay(&sender)
+            .saturating_sub(displaced_outlay);
+        let total = pending
+            .checked_add(outlay)
+            .ok_or(Reject::ArithmeticOverflow)?;
         if total > spendable {
-            return Err(Reject::InsufficientBalance { index: 0, need: total, have: spendable });
+            return Err(Reject::InsufficientBalance {
+                index: 0,
+                need: total,
+                have: spendable,
+            });
         }
 
         let held = self.sender_len(&sender) - usize::from(replaces.is_some());
         if held >= self.effective_per_sender() {
-            return Err(Reject::SenderCap { cap: self.effective_per_sender() });
+            return Err(Reject::SenderCap {
+                cap: self.effective_per_sender(),
+            });
         }
-        Ok(Prepared { raw, tx, txid, sender, nonce, fee, amount, next, replaces })
+        Ok(Prepared {
+            raw,
+            tx,
+            txid,
+            sender,
+            nonce,
+            fee,
+            amount,
+            next,
+            replaces,
+        })
     }
 
     fn commit(
@@ -288,7 +326,17 @@ impl Mempool {
         now: u64,
         observe: &mut dyn FnMut(Condition),
     ) -> Result<Admitted, Reject> {
-        let Prepared { raw, tx: _, txid, sender, nonce, fee, amount, next, replaces } = p;
+        let Prepared {
+            raw,
+            tx: _,
+            txid,
+            sender,
+            nonce,
+            fee,
+            amount,
+            next,
+            replaces,
+        } = p;
 
         let expired = self.sweep_expired(now);
         if !expired.is_empty() {
@@ -335,7 +383,10 @@ impl Mempool {
             amount,
             bytes: raw,
             arrived: now,
-            sig_verified: { let _ = proof; true },
+            sig_verified: {
+                let _ = proof;
+                true
+            },
             executable: false,
         };
         self.insert(pt);
@@ -343,7 +394,12 @@ impl Mempool {
 
         promoted.retain(|id| *id != txid);
         let executable = self.txs[&txid].executable;
-        Ok(Admitted { txid, executable, promoted, removed })
+        Ok(Admitted {
+            txid,
+            executable,
+            promoted,
+            removed,
+        })
     }
 
     pub fn tracked_senders(&self) -> usize {
@@ -382,7 +438,11 @@ impl Mempool {
         let mut senders: Vec<Address> = Vec::new();
         let mut n = 0usize;
         for (sender, nonce) in spent {
-            if let Some(id) = self.by_sender.get(sender).and_then(|m| m.get(nonce).copied()) {
+            if let Some(id) = self
+                .by_sender
+                .get(sender)
+                .and_then(|m| m.get(nonce).copied())
+            {
                 self.remove(&id);
                 n += 1;
             }
@@ -476,7 +536,9 @@ impl Mempool {
             c.sort_by_key(|t| t.nonce);
         }
         chains.sort_by(|a, b| {
-            b[0].fee_per_byte().cmp(&a[0].fee_per_byte()).then(a[0].sender.cmp(&b[0].sender))
+            b[0].fee_per_byte()
+                .cmp(&a[0].fee_per_byte())
+                .then(a[0].sender.cmp(&b[0].sender))
         });
         let mut out = Vec::new();
         let mut bytes = 0usize;
@@ -495,7 +557,10 @@ impl Mempool {
     fn insert(&mut self, t: PoolTx) {
         self.total_bytes += t.bytes.len();
         self.arrival.push_back(t.txid);
-        self.by_sender.entry(t.sender).or_default().insert(t.nonce, t.txid);
+        self.by_sender
+            .entry(t.sender)
+            .or_default()
+            .insert(t.nonce, t.txid);
         self.txs.insert(t.txid, t);
     }
 
@@ -582,7 +647,9 @@ impl Mempool {
         }
 
         let head = self.txs.values().filter(|t| t.executable).min_by(|a, b| {
-            a.fee_per_byte().cmp(&b.fee_per_byte()).then(a.sender.cmp(&b.sender))
+            a.fee_per_byte()
+                .cmp(&b.fee_per_byte())
+                .then(a.sender.cmp(&b.sender))
         })?;
         let sender = head.sender;
         let tail = self.by_sender.get(&sender)?.values().next_back().copied()?;
@@ -609,7 +676,12 @@ pub struct Ingress {
 
 impl Ingress {
     pub fn new(_params: &ChainParams) -> Ingress {
-        Ingress { sources: HashMap::new(), shared: 0, shared_last_ms: 0, primed: false }
+        Ingress {
+            sources: HashMap::new(),
+            shared: 0,
+            shared_last_ms: 0,
+            primed: false,
+        }
     }
 
     pub fn source_count(&self) -> usize {
@@ -656,7 +728,12 @@ impl Ingress {
                 Some(id) => {
                     self.sources.remove(&id);
                 }
-                None => return Err(Reject::TooManySources { source, cap: params.max_sources }),
+                None => {
+                    return Err(Reject::TooManySources {
+                        source,
+                        cap: params.max_sources,
+                    })
+                }
             }
         }
         let st = self.sources.entry(source).or_default();
@@ -692,14 +769,15 @@ impl IngressSource {
         let elapsed = mono_ms.saturating_sub(self.own_last_ms);
         let refill = elapsed.saturating_mul(mp.ingress_source_rate_milli()) / 1_000;
         if refill > 0 {
-            self.own =
-                self.own.saturating_add(refill).min(mp.ingress_source_burst_milli());
+            self.own = self
+                .own
+                .saturating_add(refill)
+                .min(mp.ingress_source_burst_milli());
             self.own_last_ms = mono_ms;
         }
         let elapsed = mono_ms.saturating_sub(self.reserve_last_ms);
-        let refill = elapsed
-            .saturating_mul(mp.ingress_reserve_rate_milli(params.max_peers))
-            / 1_000;
+        let refill =
+            elapsed.saturating_mul(mp.ingress_reserve_rate_milli(params.max_peers)) / 1_000;
         if refill > 0 {
             self.reserve = self
                 .reserve
@@ -711,7 +789,10 @@ impl IngressSource {
 }
 
 pub fn tx_ingress_exhausted(source: SourceId) -> Condition {
-    Condition::BudgetExhausted { source, class: BudgetClass::TxIngress }
+    Condition::BudgetExhausted {
+        source,
+        class: BudgetClass::TxIngress,
+    }
 }
 
 #[cfg(test)]
@@ -741,11 +822,17 @@ mod tests {
         }
 
         pub fn rich() -> Account {
-            Account { balance: u128::MAX / 4, nonce: 0 }
+            Account {
+                balance: u128::MAX / 4,
+                nonce: 0,
+            }
         }
 
         pub fn pool() -> Mempool {
-            Mempool::new(MempoolParams { relay_fee_floor: 1_000_000, ..Default::default() })
+            Mempool::new(MempoolParams {
+                relay_fee_floor: 1_000_000,
+                ..Default::default()
+            })
         }
 
         pub fn noop() -> impl FnMut(Condition) {
@@ -765,20 +852,41 @@ mod tests {
         let mut ob = noop();
         let acct = rich();
         for n in [3u64, 2, 1] {
-            let a = p.submit(transfer(1, n, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob)
+            let a = p
+                .submit(
+                    transfer(1, n, FLOOR, 1),
+                    acct,
+                    u128::MAX / 4,
+                    0,
+                    proof(),
+                    &mut ob,
+                )
                 .expect("queued, not dropped");
-            assert!(!a.executable, "nonce {n} must be queued while the gap is open");
+            assert!(
+                !a.executable,
+                "nonce {n} must be queued while the gap is open"
+            );
         }
         assert_eq!(p.len(), 3);
         let a = p
-            .submit(transfer(1, 0, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob)
+            .submit(
+                transfer(1, 0, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
             .expect("the gap filler");
         assert!(a.executable);
         assert_eq!(a.promoted.len(), 3, "whole run promotes at once");
         assert_eq!(p.len(), 4);
         for n in 0..4u64 {
             let id = p.by_sender[&sender_of(1)][&n];
-            assert!(p.get(&id).unwrap().executable, "nonce {n} should be executable");
+            assert!(
+                p.get(&id).unwrap().executable,
+                "nonce {n} should be executable"
+            );
         }
     }
 
@@ -786,17 +894,41 @@ mod tests {
     fn stale_below_next_gap_beyond_window() {
         let mut p = pool();
         let mut ob = noop();
-        let acct = Account { balance: u128::MAX / 4, nonce: 5 };
+        let acct = Account {
+            balance: u128::MAX / 4,
+            nonce: 5,
+        };
         assert_eq!(
-            p.submit(transfer(1, 4, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 4, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::TxStale { next: 5, got: 4 })
         );
 
         assert!(p
-            .submit(transfer(1, 5 + 256, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob)
+            .submit(
+                transfer(1, 5 + 256, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            )
             .is_ok());
         assert_eq!(
-            p.submit(transfer(1, 5 + 257, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 5 + 257, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::NonceGapTooLarge { next: 5, got: 262 })
         );
     }
@@ -808,13 +940,27 @@ mod tests {
         let acct = rich();
         assert_eq!(p.effective_per_sender(), 257);
         for n in 0..257u64 {
-            p.submit(transfer(1, n, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob)
-                .unwrap_or_else(|e| panic!("nonce {n} rejected: {e:?}"));
+            p.submit(
+                transfer(1, n, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap_or_else(|e| panic!("nonce {n} rejected: {e:?}"));
         }
         assert_eq!(p.sender_len(&sender_of(1)), 257);
 
         assert!(matches!(
-            p.submit(transfer(1, 257, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 257, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::NonceGapTooLarge { .. })
         ));
     }
@@ -825,61 +971,149 @@ mod tests {
         let mut ob = noop();
         let acct = rich();
         let old = 1_000_000u128;
-        p.submit(transfer(1, 0, old, 1), acct, u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        p.submit(
+            transfer(1, 0, old, 1),
+            acct,
+            u128::MAX / 4,
+            0,
+            proof(),
+            &mut ob,
+        )
+        .unwrap();
         let bump = old / 4;
         assert_eq!(
-            p.submit(transfer(1, 0, old + bump - 1, 1), acct, u128::MAX / 4, 0, proof(), &mut ob),
-            Err(Reject::ReplacementUnderpriced { need: old + bump, got: old + bump - 1 })
+            p.submit(
+                transfer(1, 0, old + bump - 1, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
+            Err(Reject::ReplacementUnderpriced {
+                need: old + bump,
+                got: old + bump - 1
+            })
         );
         assert!(p
-            .submit(transfer(1, 0, old + bump, 1), acct, u128::MAX / 4, 0, proof(), &mut ob)
+            .submit(
+                transfer(1, 0, old + bump, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            )
             .is_ok());
         assert_eq!(p.len(), 1, "one tx per (sender, nonce)");
     }
 
     #[test]
     fn replacement_floor_stops_free_rotation() {
-        let mut params = MempoolParams { relay_fee_floor: 1, ..Default::default() };
+        let mut params = MempoolParams {
+            relay_fee_floor: 1,
+            ..Default::default()
+        };
         params.max_txs = 100;
         let mut p = Mempool::new(params);
         let mut ob = noop();
         let acct = rich();
-        p.submit(transfer(1, 0, 3, 1), acct, u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        p.submit(
+            transfer(1, 0, 3, 1),
+            acct,
+            u128::MAX / 4,
+            0,
+            proof(),
+            &mut ob,
+        )
+        .unwrap();
         assert_eq!(
-            p.submit(transfer(1, 0, 3, 1), acct, u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 0, 3, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::TxKnown),
             "identical bytes are a duplicate, not a replacement"
         );
         assert_eq!(
-            p.submit(transfer(1, 0, 3, 2), acct, u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 0, 3, 2),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::ReplacementUnderpriced { need: 4, got: 3 })
         );
-        assert!(p.submit(transfer(1, 0, 4, 2), acct, u128::MAX / 4, 0, proof(), &mut ob).is_ok());
+        assert!(p
+            .submit(
+                transfer(1, 0, 4, 2),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            )
+            .is_ok());
     }
 
     #[test]
     fn full_pool_still_admits_floor_priced() {
-        let mut params = MempoolParams { max_txs: 20, relay_fee_floor: FLOOR, ..Default::default() };
+        let mut params = MempoolParams {
+            max_txs: 20,
+            relay_fee_floor: FLOOR,
+            ..Default::default()
+        };
         params.max_bytes = 1 << 20;
         let mut p = Mempool::new(params);
         let mut ob = noop();
         let acct = rich();
 
         for n in 1..=20u64 {
-            p.submit(transfer(1, n, FLOOR, 1), acct, u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(1, n, FLOOR, 1),
+                acct,
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
         assert_eq!(p.len(), 20);
 
         let a = p
-            .submit(transfer(2, 0, FLOOR, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob)
+            .submit(
+                transfer(2, 0, FLOOR, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
             .expect("tie evicts a queued tx");
         assert!(a.executable);
         assert_eq!(a.removed.len(), 1);
         assert_eq!(p.len(), 20);
 
         assert_eq!(
-            p.submit(transfer(3, 0, FLOOR - 1, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob),
-            Err(Reject::BelowRelayFloor { fee: FLOOR - 1, floor: FLOOR })
+            p.submit(
+                transfer(3, 0, FLOOR - 1, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
+            Err(Reject::BelowRelayFloor {
+                fee: FLOOR - 1,
+                floor: FLOOR
+            })
         );
 
         let mut cheap = Mempool::new(MempoolParams {
@@ -888,10 +1122,35 @@ mod tests {
             max_bytes: 1 << 20,
             ..Default::default()
         });
-        cheap.submit(transfer(1, 1, 1_000, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
-        cheap.submit(transfer(1, 2, 1_000, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        cheap
+            .submit(
+                transfer(1, 1, 1_000, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
+        cheap
+            .submit(
+                transfer(1, 2, 1_000, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         assert_eq!(
-            cheap.submit(transfer(2, 0, 10, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob),
+            cheap.submit(
+                transfer(2, 0, 10, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::PoolFull)
         );
     }
@@ -899,32 +1158,87 @@ mod tests {
     #[test]
     fn eviction_never_takes_an_executable_head() {
         const B: u128 = 157;
-        let mut params =
-            MempoolParams { max_txs: 6, relay_fee_floor: 1, max_bytes: 1 << 20, ..Default::default() };
+        let mut params = MempoolParams {
+            max_txs: 6,
+            relay_fee_floor: 1,
+            max_bytes: 1 << 20,
+            ..Default::default()
+        };
         params.max_nonce_gap = 256;
         let mut p = Mempool::new(params);
         let mut ob = noop();
 
         for n in 0..4u64 {
-            p.submit(transfer(1, n, 10 * B, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(1, n, 10 * B, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
 
         for n in 5..7u64 {
-            p.submit(transfer(2, n, B, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(2, n, B, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
         assert_eq!(p.len(), 6);
 
-        let a = p.submit(transfer(3, 0, 100 * B, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        let a = p
+            .submit(
+                transfer(3, 0, 100 * B, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         assert_eq!(a.removed.len(), 1);
         let gone = a.removed[0];
         assert_eq!(p.get(&gone), None);
-        assert_eq!(p.sender_len(&sender_of(1)), 4, "the executable chain is untouched");
+        assert_eq!(
+            p.sender_len(&sender_of(1)),
+            4,
+            "the executable chain is untouched"
+        );
 
-        let b = p.submit(transfer(4, 0, 100 * B, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        let b = p
+            .submit(
+                transfer(4, 0, 100 * B, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         assert_eq!(b.removed.len(), 1);
-        assert_eq!(p.sender_len(&sender_of(2)), 0, "queued go before executable");
+        assert_eq!(
+            p.sender_len(&sender_of(2)),
+            0,
+            "queued go before executable"
+        );
         assert_eq!(p.sender_len(&sender_of(1)), 4);
-        let c = p.submit(transfer(5, 0, 100 * B, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        let c = p
+            .submit(
+                transfer(5, 0, 100 * B, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         assert_eq!(c.removed.len(), 1);
 
         let s1 = &p.by_sender[&sender_of(1)];
@@ -935,11 +1249,23 @@ mod tests {
 
     #[test]
     fn ttl_sweep_is_independent_of_pressure() {
-        let mut params = MempoolParams { ttl_secs: 100, relay_fee_floor: 1, ..Default::default() };
+        let mut params = MempoolParams {
+            ttl_secs: 100,
+            relay_fee_floor: 1,
+            ..Default::default()
+        };
         params.max_txs = 1000;
         let mut p = Mempool::new(params);
         let mut ob = noop();
-        p.submit(transfer(1, 0, 10, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        p.submit(
+            transfer(1, 0, 10, 1),
+            rich(),
+            u128::MAX / 4,
+            0,
+            proof(),
+            &mut ob,
+        )
+        .unwrap();
         assert_eq!(p.sweep_expired(100), Vec::<Hash32>::new());
         assert_eq!(p.sweep_expired(101).len(), 1);
         assert!(p.is_empty());
@@ -950,10 +1276,21 @@ mod tests {
         let mut p = pool();
         let mut ob = noop();
         for n in 0..4u64 {
-            p.submit(transfer(1, n, FLOOR, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(1, n, FLOOR, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
         let s = sender_of(1);
-        let mut acct = |_: &Address| Account { balance: u128::MAX / 4, nonce: 2 };
+        let mut acct = |_: &Address| Account {
+            balance: u128::MAX / 4,
+            nonce: 2,
+        };
         let n = p.on_block_connected(&[(s, 0), (s, 1)], &mut acct);
         assert_eq!(n, 2);
         assert_eq!(p.len(), 2);
@@ -970,7 +1307,10 @@ mod tests {
         for n in 5..9u64 {
             p.submit(
                 transfer(1, n, FLOOR, 1),
-                Account { balance: u128::MAX / 4, nonce: 5 },
+                Account {
+                    balance: u128::MAX / 4,
+                    nonce: 5,
+                },
                 u128::MAX / 4,
                 0,
                 proof(),
@@ -980,13 +1320,19 @@ mod tests {
         }
         assert_eq!(p.txs.values().filter(|t| t.executable).count(), 4);
 
-        let mut acct = |_: &Address| Account { balance: u128::MAX / 4, nonce: 3 };
+        let mut acct = |_: &Address| Account {
+            balance: u128::MAX / 4,
+            nonce: 3,
+        };
         p.resplit_all(&mut acct);
         assert_eq!(p.len(), 4);
         assert_eq!(p.txs.values().filter(|t| t.executable).count(), 0);
         assert_eq!(p.sender_len(&s), 4);
 
-        let mut acct5 = |_: &Address| Account { balance: u128::MAX / 4, nonce: 5 };
+        let mut acct5 = |_: &Address| Account {
+            balance: u128::MAX / 4,
+            nonce: 5,
+        };
         p.resplit_all(&mut acct5);
         assert_eq!(p.txs.values().filter(|t| t.executable).count(), 4);
     }
@@ -1005,12 +1351,24 @@ mod tests {
 
         let low = (10u64, vec![transfer(1, 0, 10, 1), transfer(1, 1, 10, 1)]);
         let high = (11u64, vec![transfer(2, 0, 10, 1), transfer(2, 1, 10, 1)]);
-        let mut lookup = |_: &Address| (Account { balance: u128::MAX / 4, nonce: 0 }, u128::MAX / 4);
+        let mut lookup = |_: &Address| {
+            (
+                Account {
+                    balance: u128::MAX / 4,
+                    nonce: 0,
+                },
+                u128::MAX / 4,
+            )
+        };
         let (taken, dropped) = p.on_reorg_reinject(&[low, high], 0, &mut lookup, &mut ob);
         assert_eq!(taken, 3, "the cap binds");
         assert_eq!(dropped, 1);
 
-        assert_eq!(p.sender_len(&sender_of(2)), 2, "the newest block is re-injected whole");
+        assert_eq!(
+            p.sender_len(&sender_of(2)),
+            2,
+            "the newest block is re-injected whole"
+        );
         assert_eq!(p.sender_len(&sender_of(1)), 1);
 
         for t in p.txs.values() {
@@ -1020,13 +1378,24 @@ mod tests {
 
     #[test]
     fn reinject_runs_balance_check() {
-        let mut params =
-            MempoolParams { reorg_reinject_cap: 10, relay_fee_floor: 1, ..Default::default() };
+        let mut params = MempoolParams {
+            reorg_reinject_cap: 10,
+            relay_fee_floor: 1,
+            ..Default::default()
+        };
         params.max_txs = 100;
         let mut p = Mempool::new(params);
         let mut ob = noop();
 
-        let mut lookup = |_: &Address| (Account { balance: 0, nonce: 0 }, 0u128);
+        let mut lookup = |_: &Address| {
+            (
+                Account {
+                    balance: 0,
+                    nonce: 0,
+                },
+                0u128,
+            )
+        };
         let (taken, dropped) = p.on_reorg_reinject(
             &[(9u64, vec![transfer(1, 0, 10, 1_000)])],
             0,
@@ -1056,39 +1425,81 @@ mod tests {
         let mut p = pool();
         let mut ob = noop();
         assert!(matches!(
-            p.submit(transfer(1, 0, 0, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob),
+            p.submit(
+                transfer(1, 0, 0, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
             Err(Reject::BelowRelayFloor { fee: 0, floor: 1 })
         ));
         assert!(matches!(
-            p.submit(transfer(1, 0, 999_999, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob),
-            Err(Reject::BelowRelayFloor { fee: 999_999, floor: 1_000_000 })
+            p.submit(
+                transfer(1, 0, 999_999, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob
+            ),
+            Err(Reject::BelowRelayFloor {
+                fee: 999_999,
+                floor: 1_000_000
+            })
         ));
     }
 
     #[test]
     fn pending_outlay_bounds_sender() {
-        let mut params = MempoolParams { relay_fee_floor: 1, ..Default::default() };
+        let mut params = MempoolParams {
+            relay_fee_floor: 1,
+            ..Default::default()
+        };
         params.max_txs = 100;
         let mut p = Mempool::new(params);
         let mut ob = noop();
-        let acct = Account { balance: 100, nonce: 0 };
-        p.submit(transfer(1, 0, 1, 60), acct, 100, 0, proof(), &mut ob).unwrap();
+        let acct = Account {
+            balance: 100,
+            nonce: 0,
+        };
+        p.submit(transfer(1, 0, 1, 60), acct, 100, 0, proof(), &mut ob)
+            .unwrap();
 
         assert!(matches!(
             p.submit(transfer(1, 1, 1, 39), acct, 100, 0, proof(), &mut ob),
-            Err(Reject::InsufficientBalance { index: 0, need: 101, have: 100 })
+            Err(Reject::InsufficientBalance {
+                index: 0,
+                need: 101,
+                have: 100
+            })
         ));
-        assert!(p.submit(transfer(1, 1, 1, 38), acct, 100, 0, proof(), &mut ob).is_ok());
+        assert!(p
+            .submit(transfer(1, 1, 1, 38), acct, 100, 0, proof(), &mut ob)
+            .is_ok());
     }
 
     #[test]
     fn byte_cap_cannot_bind_via_admission() {
         let params = MempoolParams::default();
         let worst = 257 * 1_148 + (params.max_txs - 257) * 157;
-        assert!(worst < params.max_bytes, "reachable worst case {worst} vs cap {}", params.max_bytes);
+        assert!(
+            worst < params.max_bytes,
+            "reachable worst case {worst} vs cap {}",
+            params.max_bytes
+        );
         let mut p = Mempool::new(params);
         let mut ob = noop();
-        p.submit(transfer(1, 0, FLOOR, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+        p.submit(
+            transfer(1, 0, FLOOR, 1),
+            rich(),
+            u128::MAX / 4,
+            0,
+            proof(),
+            &mut ob,
+        )
+        .unwrap();
         assert_eq!(p.bytes(), 157);
         p.sweep_expired(u64::MAX);
         assert_eq!(p.bytes(), 0, "byte accounting returns to zero");
@@ -1096,15 +1507,34 @@ mod tests {
 
     #[test]
     fn template_greedy_fpb_respects_nonce() {
-        let mut params = MempoolParams { relay_fee_floor: 1, ..Default::default() };
+        let mut params = MempoolParams {
+            relay_fee_floor: 1,
+            ..Default::default()
+        };
         params.max_txs = 100;
         let mut p = Mempool::new(params);
         let mut ob = noop();
         for n in 0..3u64 {
-            p.submit(transfer(1, n, 10, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(1, n, 10, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
         for n in 0..2u64 {
-            p.submit(transfer(2, n, 1_000, 1), rich(), u128::MAX / 4, 0, proof(), &mut ob).unwrap();
+            p.submit(
+                transfer(2, n, 1_000, 1),
+                rich(),
+                u128::MAX / 4,
+                0,
+                proof(),
+                &mut ob,
+            )
+            .unwrap();
         }
         let t = p.template(4_096, 1 << 20);
         assert_eq!(t.len(), 5);

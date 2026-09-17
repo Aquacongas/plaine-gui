@@ -27,15 +27,21 @@ fn wedged_rig(honest: &Scenario) -> (Rig, Scenario) {
     let mut r = rig_on(honest);
 
     let cp = signed_checkpoint(&authority_key(), HONEST_TIP + 50, [0xAB; 32]);
-    r.cm.submit_checkpoint(&cp).expect("the authority signature verifies");
+    r.cm.submit_checkpoint(&cp)
+        .expect("the authority signature verifies");
     assert!(r.cm.anchor().is_some(), "premise: an anchor is held");
 
     let depth = CAP + 1;
     let attacker = branch_at_depth(honest, depth);
     let a = r.offer(7, &blocks_above(&attacker, HONEST_TIP - depth));
-    assert_eq!(a.connected, depth, "premise: the relaxed gate admits the branch");
+    assert_eq!(
+        a.connected, depth,
+        "premise: the relaxed gate admits the branch"
+    );
 
-    let err = r.cm.advance().expect_err("premise: the strict predicate refuses it");
+    let err =
+        r.cm.advance()
+            .expect_err("premise: the strict predicate refuses it");
     assert!(
         matches!(err, plaine_chain::Reject::Rule(_)),
         "premise: the refusal is a rule verdict, not BranchInvalid: {err:?}"
@@ -63,7 +69,11 @@ fn extension_commits_while_refused_branch_waits() {
     assert_eq!(a.connected, 1, "our own next block must reach the arena");
 
     match r.cm.advance() {
-        Ok(Progress::Advanced { tip, rolled_back, applied }) => {
+        Ok(Progress::Advanced {
+            tip,
+            rolled_back,
+            applied,
+        }) => {
             assert_eq!(rolled_back, 0, "a pure extension discards nothing");
             assert_eq!(applied, 1);
             assert_eq!(tip.hash, next.rec.hash);
@@ -104,13 +114,19 @@ fn keeps_committing_through_refusal() {
 fn no_anchor_refuses_deep_branch() {
     let honest = honest_chain();
     let mut r = rig_on(&honest);
-    assert!(r.cm.anchor().is_none(), "no anchor: S5's depth filter is live");
+    assert!(
+        r.cm.anchor().is_none(),
+        "no anchor: S5's depth filter is live"
+    );
 
     let depth = CAP + 1;
     let attacker = branch_at_depth(&honest, depth);
     let a = r.offer(7, &blocks_above(&attacker, HONEST_TIP - depth));
     assert_eq!(a.connected, 0, "S5 refuses it at ingest");
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
 
     let extended = honest.fork_at(HONEST_TIP).extend(1);
     let next = extended.blocks[(HONEST_TIP + 1) as usize].clone();

@@ -52,7 +52,10 @@ pub enum TxLocation {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum StoreError {
-    BodyPruned { height: u64, prune_floor: u64 },
+    BodyPruned {
+        height: u64,
+        prune_floor: u64,
+    },
 
     ForkBelowPruneFloor {
         fork_height: u64,
@@ -65,7 +68,9 @@ pub enum StoreError {
         undo_floor: u64,
         replay_floor: u64,
     },
-    NotIndexed { indexed_from: u64 },
+    NotIndexed {
+        indexed_from: u64,
+    },
 
     StateBehindHeaders {
         headers: u64,
@@ -155,8 +160,13 @@ pub enum StoreError {
         body_segments: u32,
         bytes: u64,
     },
-    Poisoned { cause: String },
-    SegmentOverflow { segment: u32, offset: u64 },
+    Poisoned {
+        cause: String,
+    },
+    SegmentOverflow {
+        segment: u32,
+        offset: u64,
+    },
     AlreadyOpen,
     BadPlan(&'static str),
     Io(std::io::Error),

@@ -109,7 +109,8 @@ fn restart_uses_chain_missing_list() {
     assert!(sim.engine.verified_height() > TIP, "headers first");
 
     let below = below_our_tip(&branch);
-    sim.chain.set_wanted_bodies(below.iter().map(|h| h.hash).collect());
+    sim.chain
+        .set_wanted_bodies(below.iter().map(|h| h.hash).collect());
     sim.run(30_000, 1_000);
 
     for h in &below {
@@ -161,8 +162,13 @@ fn branch_past_cap_no_list() {
     let p = sim.add_peer(Behaviour::HeadersOnly, branch.clone());
     sim.connect(p);
 
-    sim.chain
-        .set_wanted_bodies(branch.iter().filter(|h| h.height <= TIP).map(|h| h.hash).collect());
+    sim.chain.set_wanted_bodies(
+        branch
+            .iter()
+            .filter(|h| h.height <= TIP)
+            .map(|h| h.hash)
+            .collect(),
+    );
     sim.run(60_000, 1_000);
 
     assert_eq!(
@@ -179,7 +185,10 @@ fn branch_past_cap_no_list() {
         );
     }
 
-    assert!(sim.connected(p), "the peer went away, so nothing was refused");
+    assert!(
+        sim.connected(p),
+        "the peer went away, so nothing was refused"
+    );
     assert!(
         plaine_p2p::metrics::Metrics::get(&sim.engine.metrics.gate2_reject) > 0,
         "the branch was never actually offered to the context gate"
@@ -233,7 +242,8 @@ fn restart_only_from_chain_list() {
         "the walk found a branch it cannot have had a starting point for"
     );
 
-    sim.chain.set_wanted_bodies(below.iter().map(|h| h.hash).collect());
+    sim.chain
+        .set_wanted_bodies(below.iter().map(|h| h.hash).collect());
     sim.run(40_000, 1_000);
     for h in &below {
         assert!(

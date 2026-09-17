@@ -8,7 +8,10 @@ pub const SCRATCH_MASK: u64 = (SCRATCH_BYTES - 8) as u64;
 
 pub const LINE_MASK: u64 = (SCRATCH_BYTES - 16) as u64;
 
-const _: () = assert!(SCRATCH_BYTES.is_power_of_two(), "SCRATCH_BYTES must be a power of two");
+const _: () = assert!(
+    SCRATCH_BYTES.is_power_of_two(),
+    "SCRATCH_BYTES must be a power of two"
+);
 
 pub const LOOPS: u32 = 1024;
 
@@ -44,12 +47,7 @@ pub const RNG_DOM_SINGLE: u64 = 7;
 
 // per-opcode slot counts, the same for every seed - build_program's round-robin pins them.
 pub const HIST: [u32; 21] = [
-    32, 32, 32, 32, 32, 32,
-    8, 8, 8, 8,
-    16, 16,
-    27, 27, 27, 27, 26, 26,
-    16, 16,
-    64,
+    32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 16, 16, 27, 27, 27, 27, 26, 26, 16, 16, 64,
 ];
 
 const fn sum_u32(xs: &[u32]) -> u32 {

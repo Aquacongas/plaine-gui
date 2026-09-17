@@ -31,7 +31,10 @@ pub struct RequestHead {
 
 impl RequestHead {
     pub fn header(&self, name: &str) -> Option<&str> {
-        self.headers.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())
+        self.headers
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.as_str())
     }
 
     pub fn header_count(&self, name: &str) -> usize {
@@ -63,7 +66,11 @@ pub struct HttpFail {
 
 impl HttpFail {
     fn new(status: u16, detail: impl Into<String>) -> Self {
-        HttpFail { status, detail: detail.into(), extra_headers: Vec::new() }
+        HttpFail {
+            status,
+            detail: detail.into(),
+            extra_headers: Vec::new(),
+        }
     }
 }
 
@@ -72,7 +79,10 @@ pub fn read_head(buf: &[u8], limits: HttpLimits) -> HeadProgress {
         if buf.len() > limits.max_head_bytes {
             return HeadProgress::Fail(HttpFail::new(
                 431,
-                format!("request head exceeds {} bytes with no terminator", limits.max_head_bytes),
+                format!(
+                    "request head exceeds {} bytes with no terminator",
+                    limits.max_head_bytes
+                ),
             ));
         }
         return HeadProgress::NeedMore;
@@ -80,7 +90,10 @@ pub fn read_head(buf: &[u8], limits: HttpLimits) -> HeadProgress {
     if end > limits.max_head_bytes {
         return HeadProgress::Fail(HttpFail::new(
             431,
-            format!("request head is {end} bytes, limit is {}", limits.max_head_bytes),
+            format!(
+                "request head is {end} bytes, limit is {}",
+                limits.max_head_bytes
+            ),
         ));
     }
     let head = &buf[..end];
@@ -232,7 +245,10 @@ pub fn validate_head(head: &RequestHead, ctx: &HttpContext) -> HeadVerdict {
     if head.target != "/" {
         return HeadVerdict::Refuse(HttpFail::new(
             404,
-            format!("no such endpoint {:?}; the only endpoint is POST /", head.target),
+            format!(
+                "no such endpoint {:?}; the only endpoint is POST /",
+                head.target
+            ),
         ));
     }
 
@@ -243,10 +259,7 @@ pub fn validate_head(head: &RequestHead, ctx: &HttpContext) -> HeadVerdict {
         ));
     }
     if head.header_count("authorization") > 1 {
-        return HeadVerdict::Refuse(HttpFail::new(
-            400,
-            "more than one Authorization header",
-        ));
+        return HeadVerdict::Refuse(HttpFail::new(400, "more than one Authorization header"));
     }
 
     // on loopback the Host pin is the only guard against a DNS-rebinding page, so pin it exactly.
@@ -340,7 +353,9 @@ pub fn validate_head(head: &RequestHead, ctx: &HttpContext) -> HeadVerdict {
 
     if let AuthPolicy::BearerToken(expected) = &ctx.auth {
         let supplied = head.header("authorization").unwrap_or("");
-        let Some(token) = supplied.strip_prefix("Bearer ").or_else(|| supplied.strip_prefix("bearer "))
+        let Some(token) = supplied
+            .strip_prefix("Bearer ")
+            .or_else(|| supplied.strip_prefix("bearer "))
         else {
             return HeadVerdict::Refuse(HttpFail::new(
                 401,
@@ -352,7 +367,10 @@ pub fn validate_head(head: &RequestHead, ctx: &HttpContext) -> HeadVerdict {
         }
     }
 
-    HeadVerdict::Accept { content_length, keep_alive: head.wants_keep_alive() }
+    HeadVerdict::Accept {
+        content_length,
+        keep_alive: head.wants_keep_alive(),
+    }
 }
 
 fn host_is_loopback(host: &str, port: u16) -> bool {
@@ -412,11 +430,21 @@ pub struct HttpResponse {
 
 impl HttpResponse {
     pub fn ok_json(body: Vec<u8>, keep_alive: bool) -> Self {
-        HttpResponse { status: 200, body, keep_alive, extra_headers: Vec::new() }
+        HttpResponse {
+            status: 200,
+            body,
+            keep_alive,
+            extra_headers: Vec::new(),
+        }
     }
 
     pub fn no_content(keep_alive: bool) -> Self {
-        HttpResponse { status: 204, body: Vec::new(), keep_alive, extra_headers: Vec::new() }
+        HttpResponse {
+            status: 204,
+            body: Vec::new(),
+            keep_alive,
+            extra_headers: Vec::new(),
+        }
     }
 
     pub fn from_fail(fail: &HttpFail) -> Self {
@@ -436,7 +464,11 @@ impl HttpResponse {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut out = format!("HTTP/1.1 {} {}\r\n", self.status, reason_phrase(self.status));
+        let mut out = format!(
+            "HTTP/1.1 {} {}\r\n",
+            self.status,
+            reason_phrase(self.status)
+        );
         out.push_str("Content-Type: application/json\r\n");
         out.push_str(&format!("Content-Length: {}\r\n", self.body.len()));
 
@@ -506,7 +538,10 @@ mod tests {
     #[test]
     fn normal_request_is_accepted() {
         match validate_head(&head(GOOD), &ctx()) {
-            HeadVerdict::Accept { content_length, keep_alive } => {
+            HeadVerdict::Accept {
+                content_length,
+                keep_alive,
+            } => {
                 assert_eq!(content_length, 2);
                 assert!(keep_alive);
             }
@@ -541,22 +576,36 @@ mod tests {
         );
         match read_head(huge.as_bytes(), limits) {
             HeadProgress::Fail(f) => assert_eq!(f.status, 431, "{}", f.detail),
-            other => panic!("a terminated {}-byte head was accepted: {other:?}", huge.len()),
+            other => panic!(
+                "a terminated {}-byte head was accepted: {other:?}",
+                huge.len()
+            ),
         }
 
         let many = format!(
             "POST / HTTP/1.1\r\n{}\r\n",
             "X: y\r\n".repeat(limits.max_headers + 1)
         );
-        assert!(many.len() < limits.max_head_bytes, "fixture must not trip the byte cap");
+        assert!(
+            many.len() < limits.max_head_bytes,
+            "fixture must not trip the byte cap"
+        );
         match read_head(many.as_bytes(), limits) {
             HeadProgress::Fail(f) => assert_eq!(f.status, 431, "{}", f.detail),
-            other => panic!("{} header lines were accepted: {other:?}", limits.max_headers + 1),
+            other => panic!(
+                "{} header lines were accepted: {other:?}",
+                limits.max_headers + 1
+            ),
         }
 
-        let at_limit =
-            format!("POST / HTTP/1.1\r\n{}\r\n", "X: y\r\n".repeat(limits.max_headers - 1));
-        assert!(matches!(read_head(at_limit.as_bytes(), limits), HeadProgress::Done(_)));
+        let at_limit = format!(
+            "POST / HTTP/1.1\r\n{}\r\n",
+            "X: y\r\n".repeat(limits.max_headers - 1)
+        );
+        assert!(matches!(
+            read_head(at_limit.as_bytes(), limits),
+            HeadProgress::Done(_)
+        ));
     }
 
     #[test]
@@ -565,7 +614,10 @@ mod tests {
         match validate_head(&h, &ctx()) {
             HeadVerdict::Refuse(f) => {
                 assert_eq!(f.status, 405);
-                assert!(f.extra_headers.iter().any(|(k, v)| k == "Allow" && v == "POST"));
+                assert!(f
+                    .extra_headers
+                    .iter()
+                    .any(|(k, v)| k == "Allow" && v == "POST"));
                 assert!(f.detail.contains("getblocktemplate"));
             }
             other => panic!("{other:?}"),
@@ -583,16 +635,28 @@ mod tests {
             other => panic!("{other:?}"),
         }
 
-        for host in ["127.0.0.1:9257", "localhost:9257", "[::1]:9257", "localhost", "LOCALHOST:9257"] {
+        for host in [
+            "127.0.0.1:9257",
+            "localhost:9257",
+            "[::1]:9257",
+            "localhost",
+            "LOCALHOST:9257",
+        ] {
             let raw = format!("POST / HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/json\r\nContent-Length: 0\r\n\r\n");
             assert!(
-                matches!(validate_head(&head(&raw), &ctx()), HeadVerdict::Accept { .. }),
+                matches!(
+                    validate_head(&head(&raw), &ctx()),
+                    HeadVerdict::Accept { .. }
+                ),
                 "rejected legitimate host {host}"
             );
         }
 
         let wrong = "POST / HTTP/1.1\r\nHost: 127.0.0.1:80\r\nContent-Type: application/json\r\nContent-Length: 0\r\n\r\n".to_string();
-        assert!(matches!(validate_head(&head(&wrong), &ctx()), HeadVerdict::Refuse(_)));
+        assert!(matches!(
+            validate_head(&head(&wrong), &ctx()),
+            HeadVerdict::Refuse(_)
+        ));
     }
 
     #[test]
@@ -613,7 +677,11 @@ mod tests {
 
     #[test]
     fn browser_form_content_type_refused() {
-        for ct in ["application/x-www-form-urlencoded", "text/plain", "multipart/form-data"] {
+        for ct in [
+            "application/x-www-form-urlencoded",
+            "text/plain",
+            "multipart/form-data",
+        ] {
             let raw = format!("POST / HTTP/1.1\r\nHost: localhost:9257\r\nContent-Type: {ct}\r\nContent-Length: 2\r\n\r\n");
             match validate_head(&head(&raw), &ctx()) {
                 HeadVerdict::Refuse(f) => assert_eq!(f.status, 415, "{ct}"),
@@ -622,13 +690,19 @@ mod tests {
         }
 
         let raw = "POST / HTTP/1.1\r\nHost: localhost:9257\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 2\r\n\r\n";
-        assert!(matches!(validate_head(&head(raw), &ctx()), HeadVerdict::Accept { .. }));
+        assert!(matches!(
+            validate_head(&head(raw), &ctx()),
+            HeadVerdict::Accept { .. }
+        ));
     }
 
     #[test]
     fn smuggling_shapes_refused() {
         let dup = "POST / HTTP/1.1\r\nHost: localhost:9257\r\nContent-Type: application/json\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\n";
-        assert!(matches!(validate_head(&head(dup), &ctx()), HeadVerdict::Refuse(_)));
+        assert!(matches!(
+            validate_head(&head(dup), &ctx()),
+            HeadVerdict::Refuse(_)
+        ));
 
         let te = "POST / HTTP/1.1\r\nHost: localhost:9257\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n";
         match validate_head(&head(te), &ctx()) {
@@ -640,7 +714,10 @@ mod tests {
             "POST / HTTP/1.1\r\nContent-Length : 2\r\n\r\n",
             "POST / HTTP/1.1\r\nX-A: b\r\n  continued\r\n\r\n",
         ] {
-            assert!(matches!(read_head(raw.as_bytes(), HttpLimits::default()), HeadProgress::Fail(_)));
+            assert!(matches!(
+                read_head(raw.as_bytes(), HttpLimits::default()),
+                HeadProgress::Fail(_)
+            ));
         }
     }
 
@@ -668,7 +745,10 @@ mod tests {
         }
 
         let bad = format!("{base}Authorization: Bearer wrong\r\n\r\n");
-        assert!(matches!(validate_head(&head(&bad), &c), HeadVerdict::Refuse(_)));
+        assert!(matches!(
+            validate_head(&head(&bad), &c),
+            HeadVerdict::Refuse(_)
+        ));
 
         let same_len = "S3CRET-TOKEN-OF-KNOWN-LENGTH-0000";
         assert_eq!(same_len.len(), "s3cret-token-of-known-length-0000".len());
@@ -682,10 +762,16 @@ mod tests {
         last.pop();
         last.push('1');
         let bad = format!("{base}Authorization: Bearer {last}\r\n\r\n");
-        assert!(matches!(validate_head(&head(&bad), &c), HeadVerdict::Refuse(_)));
+        assert!(matches!(
+            validate_head(&head(&bad), &c),
+            HeadVerdict::Refuse(_)
+        ));
 
         let good = format!("{base}Authorization: Bearer s3cret-token-of-known-length-0000\r\n\r\n");
-        assert!(matches!(validate_head(&head(&good), &c), HeadVerdict::Accept { .. }));
+        assert!(matches!(
+            validate_head(&head(&good), &c),
+            HeadVerdict::Accept { .. }
+        ));
     }
 
     #[test]

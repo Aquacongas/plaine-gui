@@ -21,4 +21,4 @@ pub mod mock;
 pub mod server;
 
 pub use limits::{Caps, Mode};
-pub use session::{Session, ServerConfig, SessionCard, Shared};
+pub use session::{ServerConfig, Session, SessionCard, Shared};

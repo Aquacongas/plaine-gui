@@ -47,7 +47,11 @@ fn bare_lf_cannot_hide_a_header() {
     match try_head(raw) {
         HeadProgress::Fail(f) => {
             assert_eq!(f.status, 400);
-            assert!(f.detail.contains("LF"), "the refusal does not name the reason: {}", f.detail);
+            assert!(
+                f.detail.contains("LF"),
+                "the refusal does not name the reason: {}",
+                f.detail
+            );
         }
         HeadProgress::NeedMore => panic!("a terminated head asked for more bytes"),
         HeadProgress::Done(h) => {
@@ -64,11 +68,26 @@ fn bare_lf_cannot_hide_a_header() {
 #[test]
 fn raw_control_bytes_refused_in_head() {
     for (name, raw) in [
-        ("ESC", "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{1b}[2Jcleared\r\n\r\n"),
-        ("NUL", "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{0}x\r\n\r\n"),
-        ("DEL", "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{7f}x\r\n\r\n"),
-        ("bare CR", "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\rx\r\n\r\n"),
-        ("vertical tab", "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{b}x\r\n\r\n"),
+        (
+            "ESC",
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{1b}[2Jcleared\r\n\r\n",
+        ),
+        (
+            "NUL",
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{0}x\r\n\r\n",
+        ),
+        (
+            "DEL",
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{7f}x\r\n\r\n",
+        ),
+        (
+            "bare CR",
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\rx\r\n\r\n",
+        ),
+        (
+            "vertical tab",
+            "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nX-Ua: v1\u{b}x\r\n\r\n",
+        ),
     ] {
         match try_head(raw) {
             HeadProgress::Fail(f) => assert_eq!(f.status, 400, "{name}"),
@@ -87,9 +106,9 @@ fn content_length_must_be_digits() {
     let raw = "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nContent-Type: application/json\r\n\
                Content-Length: +5\r\n\r\n";
     match validate_head(&head(raw), &ctx_loopback()) {
-        HeadVerdict::Accept { content_length, .. } => panic!(
-            "`Content-Length: +5` accepted as {content_length}; RFC 7230 is 1*DIGIT"
-        ),
+        HeadVerdict::Accept { content_length, .. } => {
+            panic!("`Content-Length: +5` accepted as {content_length}; RFC 7230 is 1*DIGIT")
+        }
         HeadVerdict::Refuse(f) => assert_eq!(f.status, 400),
     }
 }
@@ -138,7 +157,10 @@ fn off_loopback_auth_is_mandatory() {
         format!("{base}Authorization: Bearer\r\n\r\n"),
         format!("{base}Authorization: Bearer \r\n\r\n"),
         format!("{base}Authorization: Bearer {tok}x\r\n\r\n"),
-        format!("{base}Authorization: Bearer {}\r\n\r\n", &tok[..tok.len() - 1]),
+        format!(
+            "{base}Authorization: Bearer {}\r\n\r\n",
+            &tok[..tok.len() - 1]
+        ),
         format!("{base}Authorization: Bearer {}\r\n\r\n", tok.to_uppercase()),
         format!("{base}Authorization: Basic {tok}\r\n\r\n"),
         format!("{base}Authorization: Bearer  {tok}\r\n\r\n"),
@@ -158,10 +180,15 @@ fn off_loopback_auth_is_mandatory() {
             HeadVerdict::Refuse(f) => {
                 assert_eq!(f.status, 401, "{raw:?}");
 
-                assert!(!f.detail.contains(tok), "the refusal echoed the token: {}", f.detail);
+                assert!(
+                    !f.detail.contains(tok),
+                    "the refusal echoed the token: {}",
+                    f.detail
+                );
                 assert!(
                     !f.detail.contains(&tok.len().to_string()),
-                    "the refusal disclosed the token length: {}", f.detail
+                    "the refusal disclosed the token length: {}",
+                    f.detail
                 );
             }
             HeadVerdict::Accept { .. } => panic!("AUTH BYPASS with head {raw:?}"),
@@ -169,12 +196,17 @@ fn off_loopback_auth_is_mandatory() {
     }
 
     let ok = format!("{base}Authorization: bearer {tok}\r\n\r\n");
-    assert!(matches!(validate_head(&head(&ok), &c), HeadVerdict::Accept { .. }));
+    assert!(matches!(
+        validate_head(&head(&ok), &c),
+        HeadVerdict::Accept { .. }
+    ));
 }
 
 #[test]
 fn only_post_reaches_a_handler() {
-    for m in ["GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE", "PATCH", "CONNECT", "post"] {
+    for m in [
+        "GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE", "PATCH", "CONNECT", "post",
+    ] {
         let raw = format!(
             "{m} / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nContent-Type: application/json\r\n\
              Content-Length: 0\r\n\r\n"
@@ -258,7 +290,6 @@ fn target_must_be_exactly_slash() {
 #[test]
 fn head_parser_refuses_smuggling_shapes() {
     for raw in [
-
         "POST / HTTP/1.1\r\nX-A: b\r\n\tcont\r\n\r\n",
         "POST / HTTP/1.1\r\nContent-Length : 2\r\n\r\n",
         "POST / HTTP/1.1\r\nCon(tent)-Length: 2\r\n\r\n",
@@ -276,7 +307,10 @@ fn head_parser_refuses_smuggling_shapes() {
 
     let dup = "POST / HTTP/1.1\r\nHost: 127.0.0.1:9257\r\nContent-Type: application/json\r\n\
                Content-Length: 2\r\nContent-Length: 3\r\n\r\n";
-    assert!(matches!(validate_head(&head(dup), &ctx_loopback()), HeadVerdict::Refuse(_)));
+    assert!(matches!(
+        validate_head(&head(dup), &ctx_loopback()),
+        HeadVerdict::Refuse(_)
+    ));
 }
 
 #[test]
@@ -291,12 +325,21 @@ fn refusal_body_leaks_nothing() {
     ];
     for (raw, c) in heads {
         if let HeadVerdict::Refuse(f) = validate_head(&head(raw), &c) {
-            let body = String::from_utf8(
-                plaine_rpc::http::HttpResponse::from_fail(&f).to_bytes(),
-            )
-            .expect("utf8");
-            for forbidden in [&tok[..], "C:\\", "/home/", "src\\", "HttpFail", "Bech32Error", "\\u{"] {
-                assert!(!body.contains(forbidden), "{forbidden:?} leaked into: {body}");
+            let body = String::from_utf8(plaine_rpc::http::HttpResponse::from_fail(&f).to_bytes())
+                .expect("utf8");
+            for forbidden in [
+                &tok[..],
+                "C:\\",
+                "/home/",
+                "src\\",
+                "HttpFail",
+                "Bech32Error",
+                "\\u{",
+            ] {
+                assert!(
+                    !body.contains(forbidden),
+                    "{forbidden:?} leaked into: {body}"
+                );
             }
         }
     }

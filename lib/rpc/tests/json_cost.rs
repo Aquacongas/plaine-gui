@@ -42,7 +42,11 @@ fn time_parse(body: &[u8]) -> std::time::Duration {
 fn no_body_costs_wildly_more() {
     let evil = quadratic_body();
     let good = benign_body();
-    assert!(evil.len() <= 1024 * 1024, "fixture exceeds the body cap: {}", evil.len());
+    assert!(
+        evil.len() <= 1024 * 1024,
+        "fixture exceeds the body cap: {}",
+        evil.len()
+    );
     assert!(good.len() <= 1024 * 1024);
 
     let _ = time_parse(&good);
@@ -122,7 +126,11 @@ fn full_batch_is_bounded() {
     let batch = format!("[{}]", vec![one; 32].join(","));
     let start = Instant::now();
     let out = handle_body(&node, batch.as_bytes(), JsonLimits::request()).expect("response");
-    println!("MAX_BATCH of getBlockByHeight v2: {:?}, {} bytes out", start.elapsed(), out.len());
+    println!(
+        "MAX_BATCH of getBlockByHeight v2: {:?}, {} bytes out",
+        start.elapsed(),
+        out.len()
+    );
 
     let over = format!("[{}]", vec![one; 33].join(","));
     let out = handle_body(&node, over.as_bytes(), JsonLimits::request()).expect("response");
@@ -151,7 +159,11 @@ fn giant_method_name_is_bounded() {
          parameter ({ratio:.1}x), {} bytes out",
         out.len()
     );
-    assert!(out.len() < 2_000, "the name was echoed: {} bytes", out.len());
+    assert!(
+        out.len() < 2_000,
+        "the name was echoed: {} bytes",
+        out.len()
+    );
     assert!(
         ratio < 5.0,
         "a 900 KiB method name cost {ratio:.0}x the same string as a parameter ({elapsed:?} vs \
@@ -163,7 +175,8 @@ fn giant_method_name_is_bounded() {
 fn notifications_and_null_ids_answer_nothing() {
     let node = MockNode::synced().into_node();
 
-    let all_notes = r#"[{"jsonrpc":"2.0","method":"fee_suggest"},{"jsonrpc":"2.0","method":"fee_suggest"}]"#;
+    let all_notes =
+        r#"[{"jsonrpc":"2.0","method":"fee_suggest"},{"jsonrpc":"2.0","method":"fee_suggest"}]"#;
     assert!(handle_body(&node, all_notes.as_bytes(), JsonLimits::request()).is_none());
 
     let null_id = r#"{"jsonrpc":"2.0","method":"fee_suggest","id":null}"#;
@@ -188,7 +201,11 @@ fn boundary_numbers_do_not_wrap_or_panic() {
         "-1",
         "0",
     ] {
-        for method in ["chain_getHeaderByHeight", "chain_getBlockByHeight", "emission_audit"] {
+        for method in [
+            "chain_getHeaderByHeight",
+            "chain_getBlockByHeight",
+            "emission_audit",
+        ] {
             let body = format!(r#"{{"jsonrpc":"2.0","method":"{method}","params":[{n}],"id":1}}"#);
             let out = handle_body(&node, body.as_bytes(), JsonLimits::request())
                 .expect("a response, not a panic");
@@ -205,14 +222,14 @@ fn boundary_numbers_do_not_wrap_or_panic() {
             }
         }
 
-        let body =
-            format!(r#"{{"jsonrpc":"2.0","method":"author_getNotes","params":[null,null,{n}],"id":1}}"#);
+        let body = format!(
+            r#"{{"jsonrpc":"2.0","method":"author_getNotes","params":[null,null,{n}],"id":1}}"#
+        );
         assert!(handle_body(&node, body.as_bytes(), JsonLimits::request()).is_some());
     }
 
     let addr = MockNode::sample_address();
-    let body =
-        format!(r#"{{"jsonrpc":"2.0","method":"account_get","params":["{addr}"],"id":1}}"#);
+    let body = format!(r#"{{"jsonrpc":"2.0","method":"account_get","params":["{addr}"],"id":1}}"#);
     let out = String::from_utf8(
         handle_body(&node, body.as_bytes(), JsonLimits::request()).expect("response"),
     )

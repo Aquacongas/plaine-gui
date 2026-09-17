@@ -30,7 +30,15 @@ fn flat_subsidy_constant_no_panic() {
     use plaine_consensus::constants::BLOCK_SUBSIDY;
     use plaine_consensus::emission::{block_reward, subsidy};
 
-    for h in [0u64, 1, 43_200, 5_000_000, u64::MAX / 2, u64::MAX - 1, u64::MAX] {
+    for h in [
+        0u64,
+        1,
+        43_200,
+        5_000_000,
+        u64::MAX / 2,
+        u64::MAX - 1,
+        u64::MAX,
+    ] {
         if h == 0 {
             assert_eq!(subsidy(h), 0, "genesis pays nothing");
             assert_eq!(block_reward(h), 0);

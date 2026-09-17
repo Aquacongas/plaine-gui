@@ -31,7 +31,11 @@ fn parked_header_is_named() {
     let hash = plaine_consensus::crypto::header_hash(&park);
     let a = r.cm.submit_headers(7, &[park]).expect("not halted");
 
-    assert_eq!((a.connected, a.rejected, a.staged), (0, 0, 1), "fixture: {a:?}");
+    assert_eq!(
+        (a.connected, a.rejected, a.staged),
+        (0, 0, 1),
+        "fixture: {a:?}"
+    );
     let h = a.first_held.unwrap_or_else(|| {
         panic!("staged: 1 but first_held: None; the transport needs the parked hash")
     });
@@ -63,7 +67,9 @@ fn refused_header_not_held() {
     r.sync(&honest, 1);
     r.pow.reset();
 
-    let orphan = Scenario::genesis(&params(), T0 + 999).extend(3).raw_headers_from(3)[0];
+    let orphan = Scenario::genesis(&params(), T0 + 999)
+        .extend(3)
+        .raw_headers_from(3)[0];
     let a = r.cm.submit_headers(7, &[orphan]).expect("not halted");
     assert_eq!(a.rejected, 1, "fixture: {a:?}");
     assert!(a.first_rejection.is_some());
@@ -77,7 +83,10 @@ fn reparked_header_named_again() {
     let first = r.cm.submit_headers(7, &[park]).expect("not halted");
     assert_eq!(first.first_held.map(|h| h.hash), Some(hash));
     let again = r.cm.submit_headers(7, &[park]).expect("not halted");
-    assert_eq!(again.duplicates, 1, "fixture: the second copy must dedup, not stage");
+    assert_eq!(
+        again.duplicates, 1,
+        "fixture: the second copy must dedup, not stage"
+    );
     assert_eq!(
         again.first_held.map(|h| h.hash),
         Some(hash),
@@ -162,8 +171,16 @@ fn earlier_parked_branch_named_next_call() {
     let run = parked_run(&honest);
     assert_eq!(run.len(), 3, "fixture: three headers");
     let first = r.cm.submit_headers(7, &run[..2]).expect("not halted");
-    assert_eq!((first.connected, first.staged), (0, 2), "fixture: {first:?}");
-    assert_eq!(first.first_held.map(|h| h.height), Some(17), "fixture: {first:?}");
+    assert_eq!(
+        (first.connected, first.staged),
+        (0, 2),
+        "fixture: {first:?}"
+    );
+    assert_eq!(
+        first.first_held.map(|h| h.height),
+        Some(17),
+        "fixture: {first:?}"
+    );
     let next = r.cm.submit_headers(7, &run[2..]).expect("not halted");
     assert_eq!((next.connected, next.staged), (0, 3), "fixture: {next:?}");
     assert_eq!(
@@ -184,7 +201,10 @@ fn a_source_holding_nothing_reports_no_hold() {
     let blk = honest.push_block(&[]);
     let a = r.cm.submit_headers(7, &[blk.rec.raw]).expect("not halted");
     assert_eq!((a.connected, a.staged), (1, 0), "fixture: {a:?}");
-    assert_eq!(a.first_held, None, "a source holding nothing was reported as holding");
+    assert_eq!(
+        a.first_held, None,
+        "a source holding nothing was reported as holding"
+    );
 }
 
 #[test]
@@ -205,8 +225,14 @@ fn branch_clearing_s6_not_held() {
     }
     let run = fork.raw_headers_from(17);
     let a = r.cm.submit_headers(7, &run).expect("not halted");
-    assert!(a.connected > 0, "fixture: a heavier branch must connect: {a:?}");
-    assert_eq!(a.first_held, None, "a branch that cleared S6 was reported as parked");
+    assert!(
+        a.connected > 0,
+        "fixture: a heavier branch must connect: {a:?}"
+    );
+    assert_eq!(
+        a.first_held, None,
+        "a branch that cleared S6 was reported as parked"
+    );
 }
 
 #[test]

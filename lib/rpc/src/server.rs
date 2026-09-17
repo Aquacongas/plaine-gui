@@ -39,13 +39,8 @@ impl RpcConfig {
 
 #[derive(Debug)]
 pub enum BindError {
-    PublicWithoutToken {
-        addr: SocketAddr,
-    },
-    TokenTooShort {
-        len: usize,
-        min: usize,
-    },
+    PublicWithoutToken { addr: SocketAddr },
+    TokenTooShort { len: usize, min: usize },
     Io(std::io::Error),
 }
 
@@ -106,9 +101,10 @@ pub fn is_loopback(addr: &SocketAddr) -> bool {
 pub fn check_bind_policy(cfg: &RpcConfig) -> Result<(), BindError> {
     match (&cfg.token, is_loopback(&cfg.bind)) {
         (None, false) => Err(BindError::PublicWithoutToken { addr: cfg.bind }),
-        (Some(t), false) if t.chars().count() < MIN_TOKEN_LEN => {
-            Err(BindError::TokenTooShort { len: t.chars().count(), min: MIN_TOKEN_LEN })
-        }
+        (Some(t), false) if t.chars().count() < MIN_TOKEN_LEN => Err(BindError::TokenTooShort {
+            len: t.chars().count(),
+            min: MIN_TOKEN_LEN,
+        }),
         _ => Ok(()),
     }
 }
@@ -124,13 +120,17 @@ pub fn handle_body(node: &Node, body: &[u8], limits: JsonLimits) -> Option<Vec<u
     match &value {
         Json::Arr(items) => {
             if items.is_empty() {
-                let err = RpcError::detail(ErrorCode::InvalidRequest, "an empty batch is not a request");
+                let err =
+                    RpcError::detail(ErrorCode::InvalidRequest, "an empty batch is not a request");
                 return Some(jsonrpc::failure(Json::Null, &err).to_string().into_bytes());
             }
             if items.len() > MAX_BATCH {
                 let err = RpcError::detail(
                     ErrorCode::LimitExceeded,
-                    format!("batch of {} requests, the limit is {MAX_BATCH}", items.len()),
+                    format!(
+                        "batch of {} requests, the limit is {MAX_BATCH}",
+                        items.len()
+                    ),
                 );
                 return Some(jsonrpc::failure(Json::Null, &err).to_string().into_bytes());
             }
@@ -228,7 +228,10 @@ impl RpcServer {
                 None => AuthPolicy::LoopbackNoToken,
             },
             loopback: is_loopback(&self.cfg.bind),
-            port: self.local_addr().map(|a| a.port()).unwrap_or(self.cfg.bind.port()),
+            port: self
+                .local_addr()
+                .map(|a| a.port())
+                .unwrap_or(self.cfg.bind.port()),
         };
         while !self.shutdown.is_triggered() {
             match self.listener.accept() {
@@ -337,9 +340,7 @@ fn arm_read(stream: &TcpStream, deadline: Option<Instant>, cfg: &RpcConfig) -> b
 fn refuse_busy(mut stream: TcpStream, cap: usize) {
     let fail = HttpFail {
         status: 503,
-        detail: format!(
-            "the RPC concurrency budget of {cap} requests is full; retry"
-        ),
+        detail: format!("the RPC concurrency budget of {cap} requests is full; retry"),
         extra_headers: vec![("Retry-After".into(), "1".into())],
     };
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
@@ -379,7 +380,10 @@ fn serve_connection(
         };
 
         let (content_length, keep_alive) = match http::validate_head(&head, ctx) {
-            HeadVerdict::Accept { content_length, keep_alive } => (content_length, keep_alive),
+            HeadVerdict::Accept {
+                content_length,
+                keep_alive,
+            } => (content_length, keep_alive),
             HeadVerdict::Refuse(fail) => {
                 let _ = stream.write_all(&HttpResponse::from_fail(&fail).to_bytes());
                 return;
@@ -549,7 +553,10 @@ mod tests {
         assert!(msg.contains("token"));
 
         cfg.token = Some("short".into());
-        assert!(matches!(check_bind_policy(&cfg), Err(BindError::TokenTooShort { .. })));
+        assert!(matches!(
+            check_bind_policy(&cfg),
+            Err(BindError::TokenTooShort { .. })
+        ));
         cfg.token = Some("x".repeat(MIN_TOKEN_LEN));
         assert!(check_bind_policy(&cfg).is_ok());
     }
@@ -567,8 +574,12 @@ mod tests {
         let mut cfg = RpcConfig::loopback(0);
         cfg.bind = "127.0.0.1:0".parse().expect("addr");
         let shutdown = Shutdown::new();
-        let server = RpcServer::bind(cfg, MockNode::synced().with_notes().into_node(), shutdown.clone())
-            .expect("bind");
+        let server = RpcServer::bind(
+            cfg,
+            MockNode::synced().with_notes().into_node(),
+            shutdown.clone(),
+        )
+        .expect("bind");
         let addr = server.local_addr().expect("addr");
         let handle = std::thread::spawn(move || {
             server.serve();
@@ -584,7 +595,8 @@ mod tests {
         );
 
         let mut sock = TcpStream::connect(addr).expect("connect");
-        sock.set_read_timeout(Some(Duration::from_secs(5))).expect("timeout");
+        sock.set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("timeout");
         sock.write_all(request.as_bytes()).expect("write");
         let mut response = String::new();
         sock.read_to_string(&mut response).expect("read");
@@ -593,7 +605,10 @@ mod tests {
         assert!(response.contains("Content-Type: application/json"));
         assert!(response.contains("X-Content-Type-Options: nosniff"));
         assert!(!response.to_ascii_lowercase().contains("access-control"));
-        assert!(response.contains("Isochron v2"), "notes must be served: {response}");
+        assert!(
+            response.contains("Isochron v2"),
+            "notes must be served: {response}"
+        );
 
         shutdown.trigger();
         let server = handle.join().expect("join");
@@ -606,7 +621,9 @@ mod tests {
         cfg.bind = "127.0.0.1:0".parse().expect("addr");
         let shutdown = Shutdown::new();
 
-        let node = MockNode::synced().with_checkpoint_ingest_severed().into_node();
+        let node = MockNode::synced()
+            .with_checkpoint_ingest_severed()
+            .into_node();
         let server = RpcServer::bind(cfg, node, shutdown.clone()).expect("bind");
         let addr = server.local_addr().expect("addr");
         let handle = std::thread::spawn(move || server.serve());
@@ -619,7 +636,8 @@ mod tests {
             payload.len(),
         );
         let mut sock = TcpStream::connect(addr).expect("connect");
-        sock.set_read_timeout(Some(Duration::from_secs(5))).expect("timeout");
+        sock.set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("timeout");
         sock.write_all(request.as_bytes()).expect("write");
         let mut response = String::new();
         sock.read_to_string(&mut response).expect("read");
@@ -651,9 +669,12 @@ mod tests {
         let handle = std::thread::spawn(move || server.serve());
 
         let mut sock = TcpStream::connect(addr).expect("connect");
-        sock.set_read_timeout(Some(Duration::from_secs(5))).expect("timeout");
-        sock.write_all(format!("GET / HTTP/1.1\r\nHost: 127.0.0.1:{}\r\n\r\n", addr.port()).as_bytes())
-            .expect("write");
+        sock.set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("timeout");
+        sock.write_all(
+            format!("GET / HTTP/1.1\r\nHost: 127.0.0.1:{}\r\n\r\n", addr.port()).as_bytes(),
+        )
+        .expect("write");
         let mut response = String::new();
         sock.read_to_string(&mut response).expect("read");
         assert!(response.starts_with("HTTP/1.1 405"), "{response}");

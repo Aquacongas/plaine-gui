@@ -322,8 +322,7 @@ const _: () = assert!(
     "SPEC 10: the largest coinbase must fit MAX_TX_BYTES"
 );
 const _: () = assert!(
-    HEADER_BYTES + BODY_COUNT_BYTES + MAX_TXS_PER_BLOCK * BODY_MIN_RECORD_BYTES
-        <= MAX_BLOCK_BYTES,
+    HEADER_BYTES + BODY_COUNT_BYTES + MAX_TXS_PER_BLOCK * BODY_MIN_RECORD_BYTES <= MAX_BLOCK_BYTES,
     "SPEC 10/4.3: a maximally-populated body envelope must fit MAX_BLOCK_BYTES"
 );
 const _: () = assert!(

@@ -19,14 +19,21 @@ pub fn build_chain_repeating_a_second(
 ) -> Vec<HeaderRec> {
     let mut out = build_chain(start_height, n, prev, base_time, salt);
     let idx = (repeat_at.saturating_sub(start_height)) as usize;
-    assert!(idx > 0 && idx < out.len(), "repeat_at must be inside the range and not first");
+    assert!(
+        idx > 0 && idx < out.len(),
+        "repeat_at must be inside the range and not first"
+    );
 
     out[idx].time = out[idx - 1].time;
 
     for i in idx..out.len() {
         let mut h = Header::decode(&out[i].raw).expect("mock header decodes");
         h.time = out[i].time;
-        h.prev_hash = if i == idx { out[i].prev_hash } else { out[i - 1].hash };
+        h.prev_hash = if i == idx {
+            out[i].prev_hash
+        } else {
+            out[i - 1].hash
+        };
         out[i].prev_hash = h.prev_hash;
         out[i].raw = h.encode();
         out[i].hash = header_hash(&out[i].raw);
@@ -451,12 +458,7 @@ impl ChainView for MockChain {
     }
 
     fn body_bytes(&self, h: &Hash32) -> Option<Vec<u8>> {
-        self.inner
-            .lock()
-            .expect("mock lock")
-            .bodies
-            .get(h)
-            .cloned()
+        self.inner.lock().expect("mock lock").bodies.get(h).cloned()
     }
 
     fn anchor(&self) -> Option<Anchor> {
@@ -514,7 +516,10 @@ impl BlockSink for MockChain {
             if park.is_some_and(|floor| h.height >= floor) {
                 let lower = match g.pending_held {
                     Some(x) if x.height <= h.height => x,
-                    _ => crate::traits::Held { hash: h.hash, height: h.height },
+                    _ => crate::traits::Held {
+                        hash: h.hash,
+                        height: h.height,
+                    },
                 };
                 g.pending_held = Some(lower);
                 continue;
@@ -523,7 +528,11 @@ impl BlockSink for MockChain {
             if swallow.is_some_and(|floor| h.height >= floor) {
                 if defer {
                     let holds_parent = g.headers.iter().any(|x| x.hash == h.prev_hash);
-                    let br = if holds_parent { h.height } else { h.height.saturating_sub(1) };
+                    let br = if holds_parent {
+                        h.height
+                    } else {
+                        h.height.saturating_sub(1)
+                    };
                     let lower = match g.pending_refusal {
                         Some((x, _)) if x <= br => x,
                         _ => br,
@@ -558,7 +567,9 @@ impl BlockSink for MockChain {
                 || !g.headers.iter().any(|x| x.hash == hash) && floor > 0
         }) && !g.headers.iter().any(|x| x.hash == hash)
         {
-            return Err(SinkError::Invalid("mock: no connected header for this body"));
+            return Err(SinkError::Invalid(
+                "mock: no connected header for this body",
+            ));
         }
         g.accepted_blocks += 1;
         g.bodies.insert(hash, bytes);

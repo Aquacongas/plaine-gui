@@ -150,7 +150,12 @@ impl Default for JsonLimits {
 
 impl JsonLimits {
     pub fn request() -> Self {
-        JsonLimits { max_bytes: 1024 * 1024, max_depth: 16, max_values: 65_536, max_members: 4_096 }
+        JsonLimits {
+            max_bytes: 1024 * 1024,
+            max_depth: 16,
+            max_values: 65_536,
+            max_members: 4_096,
+        }
     }
 }
 
@@ -162,30 +167,17 @@ pub struct JsonError {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JsonErrorKind {
-    TooLarge {
-        len: usize,
-        max: usize,
-    },
-    TooDeep {
-        max: usize,
-    },
-    TooManyValues {
-        max: usize,
-    },
-    TooManyMembers {
-        max: usize,
-    },
+    TooLarge { len: usize, max: usize },
+    TooDeep { max: usize },
+    TooManyValues { max: usize },
+    TooManyMembers { max: usize },
     UnexpectedEnd,
-    Unexpected {
-        found: char,
-    },
+    Unexpected { found: char },
     FloatRejected,
     IntegerOutOfRange,
     BadEscape,
     BadString,
-    DuplicateKey {
-        key: String,
-    },
+    DuplicateKey { key: String },
     TrailingBytes,
 }
 
@@ -196,15 +188,25 @@ impl fmt::Display for JsonError {
                 write!(f, "request body is {len} bytes, limit is {max}")
             }
             JsonErrorKind::TooDeep { max } => {
-                write!(f, "JSON nested deeper than {max} levels at byte {}", self.offset)
+                write!(
+                    f,
+                    "JSON nested deeper than {max} levels at byte {}",
+                    self.offset
+                )
             }
             JsonErrorKind::TooManyValues { max } => {
                 write!(f, "JSON holds more than {max} values")
             }
             JsonErrorKind::TooManyMembers { max } => {
-                write!(f, "a JSON array or object holds more than {max} entries at byte {}", self.offset)
+                write!(
+                    f,
+                    "a JSON array or object holds more than {max} entries at byte {}",
+                    self.offset
+                )
             }
-            JsonErrorKind::UnexpectedEnd => write!(f, "JSON ended unexpectedly at byte {}", self.offset),
+            JsonErrorKind::UnexpectedEnd => {
+                write!(f, "JSON ended unexpectedly at byte {}", self.offset)
+            }
             JsonErrorKind::Unexpected { found } => {
                 write!(f, "unexpected character {found:?} at byte {}", self.offset)
             }
@@ -227,7 +229,11 @@ impl fmt::Display for JsonError {
                 self.offset
             ),
             JsonErrorKind::TrailingBytes => {
-                write!(f, "trailing bytes after the JSON value at byte {}", self.offset)
+                write!(
+                    f,
+                    "trailing bytes after the JSON value at byte {}",
+                    self.offset
+                )
             }
         }
     }
@@ -238,11 +244,20 @@ impl std::error::Error for JsonError {}
 pub fn parse(input: &[u8], limits: JsonLimits) -> Result<Json, JsonError> {
     if input.len() > limits.max_bytes {
         return Err(JsonError {
-            kind: JsonErrorKind::TooLarge { len: input.len(), max: limits.max_bytes },
+            kind: JsonErrorKind::TooLarge {
+                len: input.len(),
+                max: limits.max_bytes,
+            },
             offset: 0,
         });
     }
-    let mut p = Parser { input, pos: 0, limits, values: 0, keys: RandomState::new() };
+    let mut p = Parser {
+        input,
+        pos: 0,
+        limits,
+        values: 0,
+        keys: RandomState::new(),
+    };
     p.skip_ws();
     let v = p.value(0)?;
     p.skip_ws();
@@ -270,7 +285,10 @@ fn hash_key(state: &RandomState, key: &str) -> u64 {
 
 impl<'a> Parser<'a> {
     fn err(&self, kind: JsonErrorKind) -> JsonError {
-        JsonError { kind, offset: self.pos }
+        JsonError {
+            kind,
+            offset: self.pos,
+        }
     }
 
     fn peek(&self) -> Option<u8> {
@@ -289,17 +307,23 @@ impl<'a> Parser<'a> {
     fn count_value(&mut self) -> Result<(), JsonError> {
         self.values += 1;
         if self.values > self.limits.max_values {
-            return Err(self.err(JsonErrorKind::TooManyValues { max: self.limits.max_values }));
+            return Err(self.err(JsonErrorKind::TooManyValues {
+                max: self.limits.max_values,
+            }));
         }
         Ok(())
     }
 
     fn value(&mut self, depth: usize) -> Result<Json, JsonError> {
         if depth > self.limits.max_depth {
-            return Err(self.err(JsonErrorKind::TooDeep { max: self.limits.max_depth }));
+            return Err(self.err(JsonErrorKind::TooDeep {
+                max: self.limits.max_depth,
+            }));
         }
         self.count_value()?;
-        let b = self.peek().ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
+        let b = self
+            .peek()
+            .ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
         match b {
             b'{' => self.object(depth),
             b'[' => self.array(depth),
@@ -308,7 +332,9 @@ impl<'a> Parser<'a> {
             b'f' => self.literal(b"false", Json::Bool(false)),
             b'n' => self.literal(b"null", Json::Null),
             b'-' | b'0'..=b'9' => self.number(),
-            other => Err(self.err(JsonErrorKind::Unexpected { found: other as char })),
+            other => Err(self.err(JsonErrorKind::Unexpected {
+                found: other as char,
+            })),
         }
     }
 
@@ -316,7 +342,9 @@ impl<'a> Parser<'a> {
         if self.input.len() < self.pos + want.len()
             || &self.input[self.pos..self.pos + want.len()] != want
         {
-            return Err(self.err(JsonErrorKind::Unexpected { found: self.peek().unwrap_or(b'?') as char }));
+            return Err(self.err(JsonErrorKind::Unexpected {
+                found: self.peek().unwrap_or(b'?') as char,
+            }));
         }
         self.pos += want.len();
         Ok(v)
@@ -350,7 +378,9 @@ impl<'a> Parser<'a> {
                 return Err(self.err(JsonErrorKind::DuplicateKey { key }));
             }
             if members.len() + 1 > self.limits.max_members {
-                return Err(self.err(JsonErrorKind::TooManyMembers { max: self.limits.max_members }));
+                return Err(self.err(JsonErrorKind::TooManyMembers {
+                    max: self.limits.max_members,
+                }));
             }
             self.skip_ws();
             if self.peek() != Some(b':') {
@@ -365,7 +395,12 @@ impl<'a> Parser<'a> {
             if let Some(set) = &mut seen {
                 set.insert(key_hash);
             } else if members.len() >= DUP_KEY_LINEAR_SCAN_MAX {
-                seen = Some(members.iter().map(|(k, _)| hash_key(&self.keys, k)).collect());
+                seen = Some(
+                    members
+                        .iter()
+                        .map(|(k, _)| hash_key(&self.keys, k))
+                        .collect(),
+                );
             }
             self.skip_ws();
             match self.peek() {
@@ -376,7 +411,11 @@ impl<'a> Parser<'a> {
                     self.pos += 1;
                     return Ok(Json::Obj(members));
                 }
-                Some(other) => return Err(self.err(JsonErrorKind::Unexpected { found: other as char })),
+                Some(other) => {
+                    return Err(self.err(JsonErrorKind::Unexpected {
+                        found: other as char,
+                    }))
+                }
                 None => return Err(self.err(JsonErrorKind::UnexpectedEnd)),
             }
         }
@@ -393,7 +432,9 @@ impl<'a> Parser<'a> {
         loop {
             self.skip_ws();
             if items.len() + 1 > self.limits.max_members {
-                return Err(self.err(JsonErrorKind::TooManyMembers { max: self.limits.max_members }));
+                return Err(self.err(JsonErrorKind::TooManyMembers {
+                    max: self.limits.max_members,
+                }));
             }
             let v = self.value(depth + 1)?;
             items.push(v);
@@ -406,7 +447,11 @@ impl<'a> Parser<'a> {
                     self.pos += 1;
                     return Ok(Json::Arr(items));
                 }
-                Some(other) => return Err(self.err(JsonErrorKind::Unexpected { found: other as char })),
+                Some(other) => {
+                    return Err(self.err(JsonErrorKind::Unexpected {
+                        found: other as char,
+                    }))
+                }
                 None => return Err(self.err(JsonErrorKind::UnexpectedEnd)),
             }
         }
@@ -422,7 +467,9 @@ impl<'a> Parser<'a> {
             self.pos += 1;
         }
         if self.pos == digits_start {
-            return Err(self.err(JsonErrorKind::Unexpected { found: self.peek().unwrap_or(b'?') as char }));
+            return Err(self.err(JsonErrorKind::Unexpected {
+                found: self.peek().unwrap_or(b'?') as char,
+            }));
         }
 
         // no leading zeroes; reject "012" rather than read it as 12
@@ -446,7 +493,9 @@ impl<'a> Parser<'a> {
         self.pos += 1;
         let mut out = String::new();
         loop {
-            let b = self.peek().ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
+            let b = self
+                .peek()
+                .ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
             match b {
                 b'"' => {
                     self.pos += 1;
@@ -454,7 +503,9 @@ impl<'a> Parser<'a> {
                 }
                 b'\\' => {
                     self.pos += 1;
-                    let e = self.peek().ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
+                    let e = self
+                        .peek()
+                        .ok_or_else(|| self.err(JsonErrorKind::UnexpectedEnd))?;
                     self.pos += 1;
                     match e {
                         b'"' => out.push('"'),
@@ -583,14 +634,23 @@ mod tests {
     #[test]
     fn width_bomb_refused() {
         let wide = format!("[{}]", vec!["0"; 5000].join(","));
-        let e = parse(wide.as_bytes(), JsonLimits { max_members: 4096, ..Default::default() })
-            .unwrap_err();
+        let e = parse(
+            wide.as_bytes(),
+            JsonLimits {
+                max_members: 4096,
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
         assert!(matches!(e.kind, JsonErrorKind::TooManyMembers { .. }));
     }
 
     #[test]
     fn oversize_body_refused_before_scan() {
-        let limits = JsonLimits { max_bytes: 16, ..Default::default() };
+        let limits = JsonLimits {
+            max_bytes: 16,
+            ..Default::default()
+        };
         let e = parse(b"[0,0,0,0,0,0,0,0,0,0,0,0]", limits).unwrap_err();
         assert!(matches!(e.kind, JsonErrorKind::TooLarge { .. }));
         assert_eq!(e.offset, 0);
@@ -598,31 +658,50 @@ mod tests {
 
     #[test]
     fn value_member_and_surrogate_caps_bite() {
-        let limits = JsonLimits { max_values: 8, ..Default::default() };
+        let limits = JsonLimits {
+            max_values: 8,
+            ..Default::default()
+        };
         let e = parse(b"[0,0,0,0,0,0,0,0,0,0,0,0]", limits).unwrap_err();
-        assert!(matches!(e.kind, JsonErrorKind::TooManyValues { .. }), "{e:?}");
+        assert!(
+            matches!(e.kind, JsonErrorKind::TooManyValues { .. }),
+            "{e:?}"
+        );
 
-        let limits = JsonLimits { max_members: 4, ..Default::default() };
+        let limits = JsonLimits {
+            max_members: 4,
+            ..Default::default()
+        };
         let obj = r#"{"a":1,"b":2,"c":3,"d":4,"e":5}"#;
         let e = parse(obj.as_bytes(), limits).unwrap_err();
-        assert!(matches!(e.kind, JsonErrorKind::TooManyMembers { .. }), "{e:?}");
+        assert!(
+            matches!(e.kind, JsonErrorKind::TooManyMembers { .. }),
+            "{e:?}"
+        );
 
         assert!(parse(br#"{"a":1,"b":2,"c":3,"d":4}"#, limits).is_ok());
 
-        for bad in [
-            r#""\ud800""#,
-            r#""\udc00""#,
-            r#""\ud800x""#,
-            r#""\ud800A""#,
-        ] {
+        for bad in [r#""\ud800""#, r#""\udc00""#, r#""\ud800x""#, r#""\ud800A""#] {
             let e = p(bad).unwrap_err();
-            assert!(matches!(e.kind, JsonErrorKind::BadEscape), "{bad} was accepted: {e:?}");
+            assert!(
+                matches!(e.kind, JsonErrorKind::BadEscape),
+                "{bad} was accepted: {e:?}"
+            );
         }
 
-        assert_eq!(p("\"\\ud83d\\ude00\"").expect("pair"), Json::Str("\u{1f600}".into()));
-        assert_eq!(p("\"a\\ud83d\\ude00b\"").expect("pair"), Json::Str("a\u{1f600}b".into()));
+        assert_eq!(
+            p("\"\\ud83d\\ude00\"").expect("pair"),
+            Json::Str("\u{1f600}".into())
+        );
+        assert_eq!(
+            p("\"a\\ud83d\\ude00b\"").expect("pair"),
+            Json::Str("a\u{1f600}b".into())
+        );
 
-        assert_eq!(p("\"\u{1f600}\"").expect("raw"), Json::Str("\u{1f600}".into()));
+        assert_eq!(
+            p("\"\u{1f600}\"").expect("raw"),
+            Json::Str("\u{1f600}".into())
+        );
         assert_eq!(p("\"\\u00e9\"").expect("bmp"), Json::Str("\u{e9}".into()));
     }
 
@@ -655,9 +734,16 @@ mod tests {
         let mut adjacent = distinct.clone();
         adjacent.push(format!(r#""k{}":0"#, n - 1));
         let e = p(&format!("{{{}}}", adjacent.join(","))).unwrap_err();
-        assert!(matches!(e.kind, JsonErrorKind::DuplicateKey { .. }), "{e:?}");
+        assert!(
+            matches!(e.kind, JsonErrorKind::DuplicateKey { .. }),
+            "{e:?}"
+        );
 
-        for count in [DUP_KEY_LINEAR_SCAN_MAX - 1, DUP_KEY_LINEAR_SCAN_MAX, DUP_KEY_LINEAR_SCAN_MAX + 1] {
+        for count in [
+            DUP_KEY_LINEAR_SCAN_MAX - 1,
+            DUP_KEY_LINEAR_SCAN_MAX,
+            DUP_KEY_LINEAR_SCAN_MAX + 1,
+        ] {
             let mut keys: Vec<String> = (0..count).map(|i| format!(r#""k{i}":{i}"#)).collect();
             keys.push(r#""k0":1"#.to_string());
             let e = p(&format!("{{{}}}", keys.join(","))).unwrap_err();
@@ -723,7 +809,10 @@ mod tests {
 
     #[test]
     fn control_bytes_and_bad_escapes_refused() {
-        assert_eq!(p("\"a\u{1b}b\"").unwrap_err().kind, JsonErrorKind::BadString);
+        assert_eq!(
+            p("\"a\u{1b}b\"").unwrap_err().kind,
+            JsonErrorKind::BadString
+        );
         assert_eq!(p(r#""\x""#).unwrap_err().kind, JsonErrorKind::BadEscape);
         assert_eq!(p(r#""\ud800""#).unwrap_err().kind, JsonErrorKind::BadEscape);
         assert_eq!(p("\"\u{1f600}\"").unwrap(), Json::Str("\u{1f600}".into()));
@@ -738,7 +827,10 @@ mod tests {
     fn escaping_is_terminal_safe() {
         let s = Json::Str("line\nbreak \u{1b}[31m red \u{2028} sep \"q\" \\ b".into());
         let out = s.to_string();
-        assert!(!out.contains('\u{1b}'), "raw ESC must never reach output: {out}");
+        assert!(
+            !out.contains('\u{1b}'),
+            "raw ESC must never reach output: {out}"
+        );
         assert!(out.contains("\\u001b"));
         assert!(out.contains("\\u2028"));
 
@@ -748,7 +840,10 @@ mod tests {
     #[test]
     fn amounts_survive_full_u128() {
         let max = Json::mile(u128::MAX);
-        assert_eq!(max, Json::Str("340282366920938463463374607431768211455".into()));
+        assert_eq!(
+            max,
+            Json::Str("340282366920938463463374607431768211455".into())
+        );
         assert_eq!(p(&max.to_string()).unwrap(), max);
     }
 

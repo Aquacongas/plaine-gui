@@ -273,12 +273,7 @@ pub(crate) fn scan(
     rep
 }
 
-fn scan_headers(
-    root: &Path,
-    w: u64,
-    hdrs: &BTreeMap<u32, u64>,
-    rep: &mut IntegrityReport,
-) {
+fn scan_headers(root: &Path, w: u64, hdrs: &BTreeMap<u32, u64>, rep: &mut IntegrityReport) {
     if w == 0 {
         return;
     }
@@ -286,7 +281,11 @@ fn scan_headers(
     for s in 0..=last {
         rep.segments_checked += 1;
         let first = layout::seg_first_height(s);
-        let seg_top = if s == last { w - 1 } else { first + SEG_BLOCKS - 1 };
+        let seg_top = if s == last {
+            w - 1
+        } else {
+            first + SEG_BLOCKS - 1
+        };
         let want = hdr_expected_len(s, w);
         match hdrs.get(&s).copied() {
             None => rep.header_damage.push(DamagedRange {
@@ -329,7 +328,11 @@ fn scan_headers(
     let mut prev_file: Option<(u32, File)> = None;
     for s in 0..last {
         let boundary = layout::seg_first_height(s + 1);
-        if rep.header_damage.iter().any(|d| d.segment == s || d.segment == s + 1) {
+        if rep
+            .header_damage
+            .iter()
+            .any(|d| d.segment == s || d.segment == s + 1)
+        {
             continue;
         }
         let lower = match prev_file.take() {
@@ -340,7 +343,9 @@ fn scan_headers(
         else {
             continue;
         };
-        let a = crate::segment::read_header(&lo_f, boundary - 1).ok().flatten();
+        let a = crate::segment::read_header(&lo_f, boundary - 1)
+            .ok()
+            .flatten();
         let b = crate::segment::read_header(&hi_f, boundary).ok().flatten();
         if let (Some(a), Some(b)) = (a, b) {
             if b[12..44] != header_hash(&a)[..] {
@@ -413,11 +418,21 @@ fn scan_bodies(
             continue;
         };
         let Some((last_off, last_len)) = bidx_entry(&idx_f, SEG_BLOCKS - 1) else {
-            damaged(DamageKind::SidecarShort, BIDX_SEG_BYTES, Some(idx_len), first);
+            damaged(
+                DamageKind::SidecarShort,
+                BIDX_SEG_BYTES,
+                Some(idx_len),
+                first,
+            );
             continue;
         };
         if last_len == 0 {
-            damaged(DamageKind::SidecarZeroed, BIDX_SEG_BYTES, Some(idx_len), first);
+            damaged(
+                DamageKind::SidecarZeroed,
+                BIDX_SEG_BYTES,
+                Some(idx_len),
+                first,
+            );
             continue;
         }
 
@@ -458,7 +473,12 @@ fn scan_bodies(
             bad = true;
         }
         if bad {
-            damaged(DamageKind::FrameMismatch, want, bsegs.get(&s).copied(), first);
+            damaged(
+                DamageKind::FrameMismatch,
+                want,
+                bsegs.get(&s).copied(),
+                first,
+            );
         }
     }
 }

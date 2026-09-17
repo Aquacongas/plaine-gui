@@ -13,8 +13,9 @@ fn rig_on(chain: &Scenario) -> Rig {
     r
 }
 
-fn from_scratch(chain: &Scenario) -> std::collections::BTreeMap<[u8; 20], plaine_chain::types::Account>
-{
+fn from_scratch(
+    chain: &Scenario,
+) -> std::collections::BTreeMap<[u8; 20], plaine_chain::types::Account> {
     let r = rig_on(chain);
     r.store.account_table()
 }
@@ -42,9 +43,15 @@ fn reorg_at_cap_depth_adopted() {
     let a = r.offer(7, &blocks_above(&attacker, HONEST_TIP - CAP));
     assert_eq!(a.connected, CAP);
 
-    let p2 = r.cm.advance().expect("a depth of exactly the cap is inside it");
+    let p2 =
+        r.cm.advance()
+            .expect("a depth of exactly the cap is inside it");
     match p2 {
-        Progress::Advanced { tip, rolled_back, applied } => {
+        Progress::Advanced {
+            tip,
+            rolled_back,
+            applied,
+        } => {
             assert_eq!(rolled_back, CAP);
             assert_eq!(applied, CAP);
             assert_eq!(tip.height, HONEST_TIP);
@@ -72,9 +79,16 @@ fn reorg_past_cap_refused() {
     let a = r.offer(7, &blocks_above(&attacker, HONEST_TIP - CAP - 1));
     assert_eq!(a.connected, 0);
     assert!(a.rejected > 0);
-    assert_eq!(r.pow.calls(), 0, "layer 1 is a cheap gate and must stay one");
+    assert_eq!(
+        r.pow.calls(),
+        0,
+        "layer 1 is a cheap gate and must stay one"
+    );
     assert_eq!(r.tip_hash(), before);
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
 }
 
 #[test]
@@ -101,9 +115,9 @@ fn ingest_gate_not_stricter_than_predicate() {
         "got {err:?}"
     );
     assert_eq!(r.tip_hash(), before, "the tip never moved");
-    assert!(r.observed(
-        |c| matches!(c, Condition::ReorgTooDeepRefused { depth: d, .. } if *d == depth)
-    ));
+    assert!(
+        r.observed(|c| matches!(c, Condition::ReorgTooDeepRefused { depth: d, .. } if *d == depth))
+    );
 }
 
 #[test]
@@ -124,7 +138,10 @@ fn stale_tip_does_not_lift_cap() {
             "tip {lag} s stale still refuses a branch {depth} deep at the cheap gate"
         );
         assert_eq!(r.height(), HONEST_TIP, "the tip must not move");
-        assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+        assert!(matches!(
+            r.cm.advance().expect("not halted"),
+            Progress::NoChange
+        ));
     }
 
     let mut r = rig_on(&honest);
@@ -132,7 +149,10 @@ fn stale_tip_does_not_lift_cap() {
     r.cm.submit_checkpoint(&cp).expect("verified");
     r.clock.set_unix(tip_time + window + 1);
     let a = r.offer(7, &blocks_above(&attacker, base));
-    assert_eq!(a.connected, depth, "premise: the relaxed exemption admits it");
+    assert_eq!(
+        a.connected, depth,
+        "premise: the relaxed exemption admits it"
+    );
     let err = r.cm.advance().expect_err("the strict predicate refuses it");
     assert!(
         matches!(
@@ -152,7 +172,10 @@ fn anchored_deep_branch_adopted() {
     let attacker = branch_at_depth(&honest, depth);
 
     let anchored_block = attacker.blocks[(base + depth / 2) as usize].rec;
-    assert!(anchored_block.height > base, "the anchor must sit inside the branch");
+    assert!(
+        anchored_block.height > base,
+        "the anchor must sit inside the branch"
+    );
 
     let mut r = rig_on(&honest);
     let cp = signed_checkpoint(&authority_key(), anchored_block.height, anchored_block.hash);
@@ -160,7 +183,9 @@ fn anchored_deep_branch_adopted() {
 
     r.offer(7, &blocks_above(&attacker, base));
     match r.cm.advance().expect("the anchor admits it") {
-        Progress::Advanced { tip, rolled_back, .. } => {
+        Progress::Advanced {
+            tip, rolled_back, ..
+        } => {
             assert_eq!(rolled_back, depth);
             assert_eq!(tip.hash, attacker.tip().hash);
         }
@@ -177,7 +202,10 @@ fn unsigned_deep_reorg_refused() {
     let mut r = rig_on(&honest);
     r.offer(7, &blocks_above(&attacker, HONEST_TIP - depth));
     assert_eq!(r.height(), HONEST_TIP);
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
 }
 
 fn branch_bad_at(honest: &Scenario, bad_index: usize) -> Scenario {
@@ -206,7 +234,11 @@ fn assert_rolls_back_to_the_original_tip(bad_index: usize) {
     let validated_before = r.cm.stats().bodies_validated;
 
     r.offer(7, &blocks_above(&attacker, 5));
-    assert_eq!(r.cm.index().len(), 21 + 16, "every branch header is stored: it cost real PoW");
+    assert_eq!(
+        r.cm.index().len(),
+        21 + 16,
+        "every branch header is stored: it cost real PoW"
+    );
     let calls_after_headers = r.pow.calls();
 
     match r.cm.advance() {
@@ -279,7 +311,9 @@ fn fail_at_last_block_rolls_back() {
 fn rollback_restores_touched_addresses() {
     let p = params();
     let user = user_key(0x21);
-    let honest = Scenario::genesis(&p, T0).with_miner(addr_of(&user)).extend(30);
+    let honest = Scenario::genesis(&p, T0)
+        .with_miner(addr_of(&user))
+        .extend(30);
     let mut r = rig_on(&honest);
     let before = r.store.account_table();
 
@@ -322,7 +356,11 @@ fn reorg_below_undo_floor_replays_snapshot() {
 
     let attacker = honest.fork_at(5).spacing(1).extend(16);
     r.offer(7, &blocks_above(&attacker, 5));
-    match r.cm.advance().expect("the deep path exists precisely for this") {
+    match r
+        .cm
+        .advance()
+        .expect("the deep path exists precisely for this")
+    {
         Progress::Advanced { tip, .. } => assert_eq!(tip.hash, attacker.tip().hash),
         other => panic!("expected adoption, got {other:?}"),
     }
@@ -348,9 +386,24 @@ fn fork_below_replay_floor_reports_resync() {
 
     let attacker = honest.fork_at(5).spacing(1).extend(16);
     r.offer(7, &blocks_above(&attacker, 5));
-    let err = r.cm.advance().expect_err("below the replay floor there is no honest answer");
-    assert!(matches!(err, Reject::ResyncRequired { fork_height: 5, replay_floor: 10 }), "{err:?}");
-    assert_eq!(r.tip_hash(), before, "the tip is untouched, not half-applied");
+    let err =
+        r.cm.advance()
+            .expect_err("below the replay floor there is no honest answer");
+    assert!(
+        matches!(
+            err,
+            Reject::ResyncRequired {
+                fork_height: 5,
+                replay_floor: 10
+            }
+        ),
+        "{err:?}"
+    );
+    assert_eq!(
+        r.tip_hash(),
+        before,
+        "the tip is untouched, not half-applied"
+    );
     assert!(r.observed(|c| matches!(c, Condition::ResyncRequired { .. })));
 }
 
@@ -384,15 +437,35 @@ fn fatal_sink_halts_manager() {
     r.offer(7, &blocks_above(&attacker, 10));
 
     r.store.fail_next_commit(SinkError::Fatal("torn write"));
-    assert!(matches!(r.cm.advance(), Err(Reject::Halted { detail: "torn write" })));
+    assert!(matches!(
+        r.cm.advance(),
+        Err(Reject::Halted {
+            detail: "torn write"
+        })
+    ));
     assert_eq!(r.cm.halted(), Some("torn write"));
-    assert!(r.observed(|c| matches!(c, Condition::StorageFatal { detail: "torn write" })));
+    assert!(r.observed(|c| matches!(
+        c,
+        Condition::StorageFatal {
+            detail: "torn write"
+        }
+    )));
 
     let commits = r.store.commit_count();
     assert!(matches!(r.cm.advance(), Err(Reject::Halted { .. })));
-    assert!(matches!(r.cm.submit_headers(1, &[]), Err(Reject::Halted { .. })));
-    assert!(matches!(r.cm.submit_tx(TxOrigin::Local, vec![0x01]), Err(Reject::Halted { .. })));
-    assert_eq!(r.store.commit_count(), commits, "a halted manager touches the sink never again");
+    assert!(matches!(
+        r.cm.submit_headers(1, &[]),
+        Err(Reject::Halted { .. })
+    ));
+    assert!(matches!(
+        r.cm.submit_tx(TxOrigin::Local, vec![0x01]),
+        Err(Reject::Halted { .. })
+    ));
+    assert_eq!(
+        r.store.commit_count(),
+        commits,
+        "a halted manager touches the sink never again"
+    );
 }
 
 #[test]
@@ -403,7 +476,11 @@ fn tip_extension_is_single_commit() {
     let next = chain.clone().extend(1);
     r.offer(2, &blocks_above(&next, 5));
     match r.cm.advance().expect("extension") {
-        Progress::Advanced { rolled_back, applied, tip } => {
+        Progress::Advanced {
+            rolled_back,
+            applied,
+            tip,
+        } => {
             assert_eq!(rolled_back, 0);
             assert_eq!(applied, 1);
             assert_eq!(tip.hash, next.tip().hash);
@@ -432,7 +509,9 @@ fn unsolicited_unknown_body_dropped() {
     let p = params();
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = rig_on(&chain);
-    let err = r.cm.submit_block(&[0x77; 32], vec![0u8; 1024]).expect_err("unknown header");
+    let err =
+        r.cm.submit_block(&[0x77; 32], vec![0u8; 1024])
+            .expect_err("unknown header");
     assert!(matches!(err, Reject::BodyNotAdmissible { .. }), "{err:?}");
 }
 
@@ -460,6 +539,13 @@ fn failed_pow_branch_ignored() {
     let next = chain.clone().extend(3);
     let a = r.offer(2, &blocks_above(&next, 5));
     assert_eq!(a.connected, 0);
-    assert_eq!(r.pow.calls(), 1, "ascending order: the first failure ends the branch");
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert_eq!(
+        r.pow.calls(),
+        1,
+        "ascending order: the first failure ends the branch"
+    );
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
 }

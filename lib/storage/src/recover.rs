@@ -77,7 +77,10 @@ fn guard_engine_asserts<T>(
     // open instead of taking the node down. only redb's own panics are absorbed.
     let prev = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        let loc = info.location().map(|l| l.file().to_string()).unwrap_or_default();
+        let loc = info
+            .location()
+            .map(|l| l.file().to_string())
+            .unwrap_or_default();
 
         // normalize the path separator so the redb-frame test works on Windows too.
         let norm = loc.replace(char::from(92), "/");
@@ -122,7 +125,10 @@ fn open_inner(
         .truncate(false)
         .open(layout::lock_path(&root))?;
 
-    let db = Arc::new(open_db_or_refuse(&layout::db_path(&root), cfg.page_cache_bytes)?);
+    let db = Arc::new(open_db_or_refuse(
+        &layout::db_path(&root),
+        cfg.page_cache_bytes,
+    )?);
 
     let mut report = OpenReport::default();
     let batch = cfg
@@ -412,15 +418,7 @@ fn open_inner(
         Some((seg, frames)) => ContAcc::seeded(seg, &frames),
         None => ContAcc::new(layout::seg_of(m.body_watermark)),
     };
-    let mut committer = Committer::new(
-        inner,
-        cfg,
-        m,
-        replay_floor,
-        damage,
-        anchors_through,
-        cont,
-    );
+    let mut committer = Committer::new(inner, cfg, m, replay_floor, damage, anchors_through, cont);
     committer.meta.body_append_offset = body_append_at(&root, m.body_watermark);
 
     if m.index_state != 0 || m.stale_index_count >= crate::STALE_INDEX_REBUILD_THRESHOLD {
@@ -555,7 +553,8 @@ fn reconcile_headers(root: &Path, m: &mut Meta, discarded: &mut u64) -> Result<u
                         *discarded += have - want;
                         f.set_len(want)?;
                     } else if have < want {
-                        let backed = layout::seg_first_height(keep_seg) + have / HEADER_BYTES as u64;
+                        let backed =
+                            layout::seg_first_height(keep_seg) + have / HEADER_BYTES as u64;
                         if backed < w {
                             w = backed;
                             continue;
@@ -675,14 +674,17 @@ fn rollback_state_to(
                 undo_floor: m.undo_floor,
             });
         };
-        let (recs, issued) =
-            crate::codec::decode_undo(&blob).ok_or(StoreError::BadPlan("undo blob is malformed"))?;
+        let (recs, issued) = crate::codec::decode_undo(&blob)
+            .ok_or(StoreError::BadPlan("undo blob is malformed"))?;
         {
             let mut st = txn.open_table(STATE)?;
             for r in &recs {
                 if let Some(cur) = st.get(&r.addr)? {
                     let cur = crate::codec::decode_account(cur.value());
-                    crate::codec::fp_xor(&mut m.fingerprint, &crate::codec::row_digest(&r.addr, &cur));
+                    crate::codec::fp_xor(
+                        &mut m.fingerprint,
+                        &crate::codec::row_digest(&r.addr, &cur),
+                    );
                 }
                 if r.existed {
                     let prev = crate::types::Account {
@@ -690,7 +692,10 @@ fn rollback_state_to(
                         nonce: r.prev_nonce,
                     };
                     st.insert(&r.addr, &crate::codec::encode_account(&prev))?;
-                    crate::codec::fp_xor(&mut m.fingerprint, &crate::codec::row_digest(&r.addr, &prev));
+                    crate::codec::fp_xor(
+                        &mut m.fingerprint,
+                        &crate::codec::row_digest(&r.addr, &prev),
+                    );
                 } else {
                     st.remove(&r.addr)?;
                 }
@@ -744,7 +749,11 @@ fn rollback_state_to(
         drop(t);
         v
     };
-    m.tip.chainwork = if w == 0 { [0u8; 32] } else { base.unwrap_or([0u8; 32]) };
+    m.tip.chainwork = if w == 0 {
+        [0u8; 32]
+    } else {
+        base.unwrap_or([0u8; 32])
+    };
 
     {
         let mut t = txn.open_table(CHAINWORK_CKPT)?;
@@ -764,7 +773,11 @@ fn rollback_state_to(
 type LiveFrames = Option<(u32, crate::segment::Frames)>;
 type Reconciled = (u32, Vec<u32>, LiveFrames);
 
-fn reconcile_bodies(root: &Path, m: &mut Meta, discarded: &mut u64) -> Result<Reconciled, StoreError> {
+fn reconcile_bodies(
+    root: &Path,
+    m: &mut Meta,
+    discarded: &mut u64,
+) -> Result<Reconciled, StoreError> {
     let mut unlinked = 0u32;
     let bw = m.body_watermark;
     let hi = if bw == 0 { 0 } else { layout::seg_of(bw - 1) };
@@ -896,7 +909,10 @@ fn measure_write_bandwidth(root: &Path) -> u64 {
 
 impl ReaderInner {
     pub(crate) fn header_raw(&self, h: u64) -> Result<Option<[u8; HEADER_BYTES]>, StoreError> {
-        let Some(f) = self.fds.get(crate::segment::SegKind::Header, layout::seg_of(h))? else {
+        let Some(f) = self
+            .fds
+            .get(crate::segment::SegKind::Header, layout::seg_of(h))?
+        else {
             return Ok(None);
         };
         let g = f.lock().expect("segment handle poisoned");

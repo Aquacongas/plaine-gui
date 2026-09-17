@@ -112,7 +112,10 @@ fn identity_key_verifies_under_lax() {
     }
 
     let addr = crypto::address_from_pubkey(&pk);
-    assert!(addr.starts_with("plne1"), "the small-order key has an ordinary address: {addr}");
+    assert!(
+        addr.starts_with("plne1"),
+        "the small-order key has an ordinary address: {addr}"
+    );
 }
 
 #[test]
@@ -138,7 +141,10 @@ fn strict_rejects_s_plus_l() {
     assert_eq!(carry, 0, "s + L fits in 256 bits");
     assert_ne!(mall, good);
 
-    assert_eq!(crypto::verify_signature(&pk, msg, &mall), Err(SigError::InvalidSignature));
+    assert_eq!(
+        crypto::verify_signature(&pk, msg, &mall),
+        Err(SigError::InvalidSignature)
+    );
 
     let vk = VerifyingKey::from_bytes(&pk).expect("real key");
     assert!(
@@ -156,5 +162,8 @@ fn ordinary_sig_verifies() {
     assert_eq!(crypto::verify_signature(&pk, &msg, &sig), Ok(()));
 
     let other = crypto::signing_message(Network::Main, &pk, &[0x22; 20], 6, 1, 0);
-    assert_eq!(crypto::verify_signature(&pk, &other, &sig), Err(SigError::InvalidSignature));
+    assert_eq!(
+        crypto::verify_signature(&pk, &other, &sig),
+        Err(SigError::InvalidSignature)
+    );
 }

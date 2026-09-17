@@ -42,7 +42,8 @@ impl Interp {
         let seed = pow::seed(header);
         let d = self.iso.verify_hash(&mut pad, seed);
         self.give_pad(pad);
-        self.calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.calls
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         pow::pow_hash(header, d)
     }
 
@@ -158,7 +159,9 @@ pub struct Bits {
 
 impl Default for Bits {
     fn default() -> Self {
-        Bits { pow_limit: plaine_consensus::asert::POW_LIMIT }
+        Bits {
+            pow_limit: plaine_consensus::asert::POW_LIMIT,
+        }
     }
 }
 
@@ -206,7 +209,10 @@ mod tests {
         h[116..120].copy_from_slice(&0x0300_0001u32.to_le_bytes());
         let first = i.calls();
         assert!(!i.verify_header(&h));
-        assert!(i.calls() > first, "a legal target must reach the interpreter");
+        assert!(
+            i.calls() > first,
+            "a legal target must reach the interpreter"
+        );
         let calls = i.calls();
         assert!(!i.verify_header(&h));
         assert!(
@@ -220,10 +226,17 @@ mod tests {
     fn frozen_genesis_verifies_then_cached() {
         let g = crate::genesis::mainnet().expect("the embedded genesis must build");
         let i = interp();
-        assert!(i.verify_header(&g.header_bytes), "the frozen genesis nonce must meet its own target");
+        assert!(
+            i.verify_header(&g.header_bytes),
+            "the frozen genesis nonce must meet its own target"
+        );
         let calls = i.calls();
         assert!(i.verify_header(&g.header_bytes));
-        assert_eq!(i.calls(), calls, "the second verification of the same bytes is an LRU hit");
+        assert_eq!(
+            i.calls(),
+            calls,
+            "the second verification of the same bytes is an LRU hit"
+        );
         assert!(i.hits() >= 1);
     }
 
@@ -235,6 +248,10 @@ mod tests {
         h[116..120].copy_from_slice(&0x2100_ffffu32.to_le_bytes());
         let calls = i.calls();
         assert!(!i.verify_header(&h));
-        assert_eq!(i.calls(), calls, "an illegal target must cost zero interpreter time");
+        assert_eq!(
+            i.calls(),
+            calls,
+            "an illegal target must cost zero interpreter time"
+        );
     }
 }

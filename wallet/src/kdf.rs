@@ -123,7 +123,11 @@ mod tests {
         let k4 = derive_key(&pass("correct horsf"), &salt_a, 64);
         assert_eq!(k1.expose(), k2.expose());
         assert_ne!(k1.expose(), k3.expose(), "the salt must enter the key");
-        assert_ne!(k1.expose(), k4.expose(), "the passphrase must enter the key");
+        assert_ne!(
+            k1.expose(),
+            k4.expose(),
+            "the passphrase must enter the key"
+        );
     }
 
     #[test]

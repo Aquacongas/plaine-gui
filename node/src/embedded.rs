@@ -63,7 +63,10 @@ const fn fp_eq(a: [u8; 8], b: &str) -> bool {
 }
 
 const _: () = assert!(
-    fp_eq(const_fingerprint(&CHECKPOINT_AUTHORITY_KEY.bytes), FINGERPRINT_CHECKPOINT),
+    fp_eq(
+        const_fingerprint(&CHECKPOINT_AUTHORITY_KEY.bytes),
+        FINGERPRINT_CHECKPOINT
+    ),
     "the embedded checkpoint authority key does not have the published fingerprint 0741b159. \
      Either the key bytes are wrong or the fingerprint is; do not change one to match the other \
      without knowing which is which."
@@ -320,7 +323,6 @@ const _: () = assert!(
 // The low-order ed25519 points. A signature verifies against any of these for any
 // message, so a pubkey encoding one is refused before it is ever trusted as a key.
 const SMALL_ORDER_KEYS: [[u8; 32]; 12] = [
-
     hexkey(b"0100000000000000000000000000000000000000000000000000000000000000"),
     hexkey(b"ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"),
     hexkey(b"0000000000000000000000000000000000000000000000000000000000000000"),
@@ -373,28 +375,40 @@ mod tests {
     }
 
     #[test]
-
     #[allow(clippy::assertions_on_constants)]
     fn fresh_install_verifies_checkpoints() {
-        assert!(!CHECKPOINT_AUTHORITY_KEY.placeholder, "the checkpoint key is still a placeholder");
-        assert!(!AUTHOR_KEY.placeholder, "the author key is still a placeholder");
+        assert!(
+            !CHECKPOINT_AUTHORITY_KEY.placeholder,
+            "the checkpoint key is still a placeholder"
+        );
+        assert!(
+            !AUTHOR_KEY.placeholder,
+            "the author key is still a placeholder"
+        );
         assert_eq!(placeholder_role(&CHECKPOINT_AUTHORITY_KEY.bytes), None);
         assert_eq!(placeholder_role(&AUTHOR_KEY.bytes), None);
-        assert_eq!(CHECKPOINT_AUTHORITY_KEY.fingerprint(), FINGERPRINT_CHECKPOINT);
+        assert_eq!(
+            CHECKPOINT_AUTHORITY_KEY.fingerprint(),
+            FINGERPRINT_CHECKPOINT
+        );
         assert_eq!(AUTHOR_KEY.fingerprint(), FINGERPRINT_AUTHOR);
     }
 
     #[test]
     fn compile_and_runtime_fingerprint_agree() {
         for k in [CHECKPOINT_AUTHORITY_KEY, AUTHOR_KEY] {
-            let compiled = core::str::from_utf8(&const_fingerprint(&k.bytes)).unwrap().to_string();
+            let compiled = core::str::from_utf8(&const_fingerprint(&k.bytes))
+                .unwrap()
+                .to_string();
             assert_eq!(compiled, k.fingerprint());
         }
 
         assert_eq!(
-            core::str::from_utf8(&const_fingerprint(&[0xda, 0x8c, 0x68, 0xb1, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
-                .unwrap(),
+            core::str::from_utf8(&const_fingerprint(&[
+                0xda, 0x8c, 0x68, 0xb1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+            ]))
+            .unwrap(),
             "da8c68b1"
         );
         assert!(fp_eq(const_fingerprint(&AUTHOR_KEY.bytes), "da8c68b1"));
@@ -410,7 +424,11 @@ mod tests {
     #[test]
     fn small_order_encodings_refused() {
         for k in SMALL_ORDER_KEYS {
-            assert!(!is_valid_pubkey(&k), "accepted small-order key {}", plaine_consensus::hex::encode(&k));
+            assert!(
+                !is_valid_pubkey(&k),
+                "accepted small-order key {}",
+                plaine_consensus::hex::encode(&k)
+            );
         }
 
         assert!(is_valid_pubkey(&CHECKPOINT_AUTHORITY_KEY.bytes));
@@ -432,15 +450,24 @@ mod tests {
         assert_eq!(CHECKPOINT_AUTHORITY_KEY.fingerprint(), "0741b159");
         assert_eq!(AUTHOR_KEY.fingerprint(), "da8c68b1");
         assert_eq!(CHECKPOINT_AUTHORITY_KEY.fingerprint().len(), 8);
-        assert_ne!(CHECKPOINT_AUTHORITY_KEY.fingerprint(), AUTHOR_KEY.fingerprint());
+        assert_ne!(
+            CHECKPOINT_AUTHORITY_KEY.fingerprint(),
+            AUTHOR_KEY.fingerprint()
+        );
     }
 
     #[test]
     fn retired_placeholders_are_plain_text() {
         let cp = core::str::from_utf8(&RETIRED_CHECKPOINT_PLACEHOLDER).unwrap();
         let au = core::str::from_utf8(&RETIRED_AUTHOR_PLACEHOLDER).unwrap();
-        assert!(cp.contains("PLACEHOLDER") && cp.contains("NOT-REAL"), "{cp}");
-        assert!(au.contains("PLACEHOLDER") && au.contains("NOT-REAL"), "{au}");
+        assert!(
+            cp.contains("PLACEHOLDER") && cp.contains("NOT-REAL"),
+            "{cp}"
+        );
+        assert!(
+            au.contains("PLACEHOLDER") && au.contains("NOT-REAL"),
+            "{au}"
+        );
         assert!(cp.contains("CHECKPOINT") && au.contains("AUTHOR"));
 
         assert!(is_valid_pubkey(&RETIRED_CHECKPOINT_PLACEHOLDER));
@@ -471,7 +498,10 @@ mod tests {
             placeholder_role(&RETIRED_CHECKPOINT_PLACEHOLDER),
             Some("checkpoint authority")
         );
-        assert_eq!(placeholder_role(&RETIRED_AUTHOR_PLACEHOLDER), Some("author announcement"));
+        assert_eq!(
+            placeholder_role(&RETIRED_AUTHOR_PLACEHOLDER),
+            Some("author announcement")
+        );
 
         let mut other = RETIRED_CHECKPOINT_PLACEHOLDER;
         other[31] = b'4';
@@ -483,7 +513,10 @@ mod tests {
 
     #[test]
     fn seed_table_not_empty() {
-        assert!(!SEEDS_MAIN.hosts.is_empty(), "SEEDS_MAIN is empty - this is B5 again");
+        assert!(
+            !SEEDS_MAIN.hosts.is_empty(),
+            "SEEDS_MAIN is empty - this is B5 again"
+        );
         let () = SEEDS_ARE_NOT_EMPTY;
     }
 
@@ -493,7 +526,10 @@ mod tests {
             assert!(!h.contains(':'), "{h} carries a port or a scheme");
             assert!(!h.contains('/'), "{h} looks like a URL");
             assert!(!h.contains('@'), "{h} carries userinfo");
-            assert!(h.contains('.'), "{h} is a single label and would go through the search domain");
+            assert!(
+                h.contains('.'),
+                "{h} is a single label and would go through the search domain"
+            );
             assert_eq!(*h, h.to_ascii_lowercase(), "{h} is not lower case");
             assert!(is_valid_seed_host(h), "{h} is not a valid seed hostname");
         }
@@ -516,9 +552,15 @@ mod tests {
 
     #[test]
     fn placeholder_recognised_any_spelling() {
-        assert!(is_placeholder_host("seed1.main.placeholder-not-real.invalid"));
-        assert!(is_placeholder_host("seed1.main.placeholder-not-real.invalid."));
-        assert!(is_placeholder_host("SEED1.MAIN.PLACEHOLDER-NOT-REAL.INVALID"));
+        assert!(is_placeholder_host(
+            "seed1.main.placeholder-not-real.invalid"
+        ));
+        assert!(is_placeholder_host(
+            "seed1.main.placeholder-not-real.invalid."
+        ));
+        assert!(is_placeholder_host(
+            "SEED1.MAIN.PLACEHOLDER-NOT-REAL.INVALID"
+        ));
         assert!(is_placeholder_host("anything.invalid"));
 
         assert!(!is_placeholder_host("seed1.example.net"));
@@ -533,24 +575,48 @@ mod tests {
         assert!(is_valid_seed_host("seed1.example.net"));
         assert!(is_valid_seed_host("a.b"));
         assert!(is_valid_seed_host("seed-1.test.example.net"));
-        assert!(!is_valid_seed_host("seed1.example.net:9256"), "a port must not be accepted");
+        assert!(
+            !is_valid_seed_host("seed1.example.net:9256"),
+            "a port must not be accepted"
+        );
         assert!(!is_valid_seed_host("http://seed1.example.net"));
         assert!(!is_valid_seed_host("user@seed1.example.net"));
-        assert!(!is_valid_seed_host("seed1"), "a single label uses the search domain");
-        assert!(!is_valid_seed_host("seed1.example.net."), "a trailing dot is an empty last label");
-        assert!(!is_valid_seed_host("Seed1.Example.Net"), "upper case defeats byte comparison");
+        assert!(
+            !is_valid_seed_host("seed1"),
+            "a single label uses the search domain"
+        );
+        assert!(
+            !is_valid_seed_host("seed1.example.net."),
+            "a trailing dot is an empty last label"
+        );
+        assert!(
+            !is_valid_seed_host("Seed1.Example.Net"),
+            "upper case defeats byte comparison"
+        );
         assert!(!is_valid_seed_host(""));
         assert!(!is_valid_seed_host("seed1..net"));
         assert!(!is_valid_seed_host("-seed.net"));
         assert!(!is_valid_seed_host("seed-.net"));
         assert!(!is_valid_seed_host("seed.net-"));
 
-        assert!(is_valid_seed_host("1.2.3.4"), "a bare IPv4 literal is a sanctioned seed");
+        assert!(
+            is_valid_seed_host("1.2.3.4"),
+            "a bare IPv4 literal is a sanctioned seed"
+        );
         assert!(is_valid_seed_host("203.0.113.10"));
-        assert!(!is_valid_seed_host("1.2.3.4:9256"), "a port is still not accepted");
-        assert!(!is_valid_seed_host("256.1.1.1"), "an octet over 255 is not an IPv4");
+        assert!(
+            !is_valid_seed_host("1.2.3.4:9256"),
+            "a port is still not accepted"
+        );
+        assert!(
+            !is_valid_seed_host("256.1.1.1"),
+            "an octet over 255 is not an IPv4"
+        );
         assert!(!is_valid_seed_host("1.2.3"), "three octets is not an IPv4");
-        assert!(!is_valid_seed_host("1.2.3.4.5"), "five octets is not an IPv4");
+        assert!(
+            !is_valid_seed_host("1.2.3.4.5"),
+            "five octets is not an IPv4"
+        );
 
         let long = format!("{}.net", "a".repeat(64));
         assert!(!is_valid_seed_host(&long));
@@ -575,21 +641,32 @@ mod tests {
             hosts: &["a.invalid", "b.example"],
             placeholder: true,
         };
-        assert!(!table_is_well_formed(&MIXED), "a mixed table must not be well formed");
+        assert!(
+            !table_is_well_formed(&MIXED),
+            "a mixed table must not be well formed"
+        );
         const LYING: EmbeddedSeeds = EmbeddedSeeds {
             hosts: &["a.invalid"],
             placeholder: false,
         };
-        assert!(!table_is_well_formed(&LYING), "real-flagged .invalid names must be refused");
-        const EMPTY: EmbeddedSeeds = EmbeddedSeeds { hosts: &[], placeholder: false };
-        assert!(!table_is_well_formed(&EMPTY), "B5: an empty table is not well formed");
+        assert!(
+            !table_is_well_formed(&LYING),
+            "real-flagged .invalid names must be refused"
+        );
+        const EMPTY: EmbeddedSeeds = EmbeddedSeeds {
+            hosts: &[],
+            placeholder: false,
+        };
+        assert!(
+            !table_is_well_formed(&EMPTY),
+            "B5: an empty table is not well formed"
+        );
     }
 
     #[test]
     fn seed_gate_matches_names() {
         let gate_would_refuse = SEEDS_MAIN.placeholder;
-        let some_name_can_never_resolve =
-            SEEDS_MAIN.hosts.iter().any(|h| is_placeholder_host(h));
+        let some_name_can_never_resolve = SEEDS_MAIN.hosts.iter().any(|h| is_placeholder_host(h));
         assert_eq!(
             gate_would_refuse, some_name_can_never_resolve,
             "the placeholder flag and the seed names disagree"
@@ -599,10 +676,8 @@ mod tests {
     #[test]
     #[ignore = "operator tool: red until the seed DNS records exist. \
                 Run with --ignored before tagging a release."]
-
     #[allow(clippy::assertions_on_constants)]
     fn seed_tables_ready_for_release() {
-
         assert!(
             !SEEDS_MAIN.placeholder,
             "an optimised build of this source would be REFUSED by the seed release gate in \
@@ -613,10 +688,8 @@ mod tests {
     }
 
     #[test]
-
     #[allow(clippy::assertions_on_constants)]
     fn no_placeholder_in_release() {
-
         assert!(
             !CHECKPOINT_AUTHORITY_KEY.placeholder && !AUTHOR_KEY.placeholder,
             "an optimised build of this source would be REFUSED by the release gate in \

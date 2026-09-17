@@ -40,7 +40,10 @@ pub trait SliceSource: Send + Sync {
 
 impl SliceSource for std::sync::Mutex<E1Allocator> {
     fn acquire(&self) -> Option<(E1, u32)> {
-        self.lock().ok().and_then(|mut a| a.acquire()).map(|e| (e, 0))
+        self.lock()
+            .ok()
+            .and_then(|mut a| a.acquire())
+            .map(|e| (e, 0))
     }
     fn release(&self, e1: E1, _sub: u32, _searched: bool) {
         if let Ok(mut a) = self.lock() {
@@ -261,7 +264,10 @@ mod tests {
         impl SliceSource for OneSocket {
             fn acquire(&self) -> Option<(E1, u32)> {
                 let e1 = (*self.held.lock().unwrap())?;
-                Some((e1, self.next.fetch_add(1, std::sync::atomic::Ordering::SeqCst)))
+                Some((
+                    e1,
+                    self.next.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+                ))
             }
             fn release(&self, _e1: E1, _sub: u32, _searched: bool) {}
             fn sub_bits(&self) -> u32 {

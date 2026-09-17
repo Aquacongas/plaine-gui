@@ -179,7 +179,11 @@ fn token_bucket_no_partial_spend() {
     use plaine_p2p::gate::TokenBucket;
     let mut t = TokenBucket::new(1_000, 1_000, Mono(0));
     assert!(!t.take(1_001, Mono(0)));
-    assert_eq!(t.level(Mono(0)), 1_000, "a refused take spent tokens anyway");
+    assert_eq!(
+        t.level(Mono(0)),
+        1_000,
+        "a refused take spent tokens anyway"
+    );
     assert!(t.take(1_000, Mono(0)));
     assert_eq!(t.level(Mono(0)), 0);
 

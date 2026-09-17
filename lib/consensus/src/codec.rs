@@ -1,12 +1,12 @@
 use crate::constants::{
     ADDRESS_PAYLOAD_BYTES, ANNOUNCEMENT_MAX_PAYLOAD_BYTES, ANNOUNCEMENT_MIN_PAYLOAD_BYTES,
     AUTHOR_NOTE_MAX_BYTES, AUTHOR_NOTE_RECORD_VERSION, BODY_COUNT_BYTES, BODY_MIN_RECORD_BYTES,
-    BODY_TXLEN_BYTES, COINBASE_PREFIX_BYTES, HEADER_BYTES, MAX_BLOCK_BYTES, MAX_TX_BYTES,
-    MAX_TXS_PER_BLOCK, TX_ANNOUNCEMENT_OVERHEAD_BYTES, TX_ANNOUNCEMENT_PREFIX_BYTES,
-    TX_ANN_OFF_ENCODING, TX_ANN_OFF_FEE, TX_ANN_OFF_FROM_PUB, TX_ANN_OFF_LENGTH,
-    TX_ANN_OFF_NONCE, TX_ANN_OFF_PAYLOAD, TX_CB_OFF_FEES, TX_CB_OFF_HEIGHT, TX_CB_OFF_NOTE,
-    TX_CB_OFF_REWARD, TX_CB_OFF_TO, TX_TRANSFER_BYTES, TX_TRANSFER_BYTES_UNSIGNED,
-    TX_TYPE_ANNOUNCEMENT, TX_TYPE_COINBASE, TX_TYPE_TRANSFER,
+    BODY_TXLEN_BYTES, COINBASE_PREFIX_BYTES, HEADER_BYTES, MAX_BLOCK_BYTES, MAX_TXS_PER_BLOCK,
+    MAX_TX_BYTES, TX_ANNOUNCEMENT_OVERHEAD_BYTES, TX_ANNOUNCEMENT_PREFIX_BYTES,
+    TX_ANN_OFF_ENCODING, TX_ANN_OFF_FEE, TX_ANN_OFF_FROM_PUB, TX_ANN_OFF_LENGTH, TX_ANN_OFF_NONCE,
+    TX_ANN_OFF_PAYLOAD, TX_CB_OFF_FEES, TX_CB_OFF_HEIGHT, TX_CB_OFF_NOTE, TX_CB_OFF_REWARD,
+    TX_CB_OFF_TO, TX_TRANSFER_BYTES, TX_TRANSFER_BYTES_UNSIGNED, TX_TYPE_ANNOUNCEMENT,
+    TX_TYPE_COINBASE, TX_TYPE_TRANSFER,
 };
 use crate::crypto;
 
@@ -49,13 +49,22 @@ impl core::fmt::Display for CodecError {
                 write!(f, "announcement payload length {len} outside 1..=1024")
             }
             CodecError::BodyTxCount { got } => {
-                write!(f, "block body declares {got} transactions (allowed 1..=4096)")
+                write!(
+                    f,
+                    "block body declares {got} transactions (allowed 1..=4096)"
+                )
             }
             CodecError::BodyTxLen { got } => {
-                write!(f, "block body record declares {got} bytes (allowed 1..=8192)")
+                write!(
+                    f,
+                    "block body record declares {got} bytes (allowed 1..=8192)"
+                )
             }
             CodecError::BodyTooLarge { got } => {
-                write!(f, "block body of {got} bytes exceeds the block size limit with the header")
+                write!(
+                    f,
+                    "block body of {got} bytes exceeds the block size limit with the header"
+                )
             }
         }
     }
@@ -222,7 +231,10 @@ impl AnnouncementTx {
     pub fn decode(bytes: &[u8]) -> Result<Self, CodecError> {
         let min = TX_ANNOUNCEMENT_OVERHEAD_BYTES + ANNOUNCEMENT_MIN_PAYLOAD_BYTES;
         if bytes.len() < min {
-            return Err(CodecError::Truncated { need: min, got: bytes.len() });
+            return Err(CodecError::Truncated {
+                need: min,
+                got: bytes.len(),
+            });
         }
 
         if bytes[0] != TX_TYPE_ANNOUNCEMENT {
@@ -243,14 +255,20 @@ impl AnnouncementTx {
                 .try_into()
                 .expect("32"),
             fee: u128::from_le_bytes(
-                bytes[TX_ANN_OFF_FEE..TX_ANN_OFF_FEE + 16].try_into().expect("16"),
+                bytes[TX_ANN_OFF_FEE..TX_ANN_OFF_FEE + 16]
+                    .try_into()
+                    .expect("16"),
             ),
             nonce: u64::from_le_bytes(
-                bytes[TX_ANN_OFF_NONCE..TX_ANN_OFF_NONCE + 8].try_into().expect("8"),
+                bytes[TX_ANN_OFF_NONCE..TX_ANN_OFF_NONCE + 8]
+                    .try_into()
+                    .expect("8"),
             ),
             encoding: bytes[TX_ANN_OFF_ENCODING],
             payload: bytes[TX_ANN_OFF_PAYLOAD..payload_end].to_vec(),
-            sig: bytes[payload_end..payload_end + SIG_BYTES].try_into().expect("64"),
+            sig: bytes[payload_end..payload_end + SIG_BYTES]
+                .try_into()
+                .expect("64"),
         })
     }
 
@@ -288,23 +306,32 @@ impl CoinbaseTx {
     pub fn decode(bytes: &[u8]) -> Result<Self, CodecError> {
         let min = COINBASE_PREFIX_BYTES + AUTHOR_NOTE_HEADER_BYTES;
         if bytes.len() < min {
-            return Err(CodecError::Truncated { need: min, got: bytes.len() });
+            return Err(CodecError::Truncated {
+                need: min,
+                got: bytes.len(),
+            });
         }
         if bytes[0] != TX_TYPE_COINBASE {
             return Err(CodecError::WrongTxType { got: bytes[0] });
         }
         Ok(CoinbaseTx {
             height: u64::from_le_bytes(
-                bytes[TX_CB_OFF_HEIGHT..TX_CB_OFF_HEIGHT + 8].try_into().expect("8"),
+                bytes[TX_CB_OFF_HEIGHT..TX_CB_OFF_HEIGHT + 8]
+                    .try_into()
+                    .expect("8"),
             ),
             to: bytes[TX_CB_OFF_TO..TX_CB_OFF_TO + ADDRESS_PAYLOAD_BYTES]
                 .try_into()
                 .expect("20"),
             reward: u128::from_le_bytes(
-                bytes[TX_CB_OFF_REWARD..TX_CB_OFF_REWARD + 16].try_into().expect("16"),
+                bytes[TX_CB_OFF_REWARD..TX_CB_OFF_REWARD + 16]
+                    .try_into()
+                    .expect("16"),
             ),
             fees: u128::from_le_bytes(
-                bytes[TX_CB_OFF_FEES..TX_CB_OFF_FEES + 16].try_into().expect("16"),
+                bytes[TX_CB_OFF_FEES..TX_CB_OFF_FEES + 16]
+                    .try_into()
+                    .expect("16"),
             ),
             note: AuthorNote::decode(&bytes[TX_CB_OFF_NOTE..])?,
         })
@@ -341,7 +368,9 @@ impl Tx {
 }
 
 pub fn decode_tx(bytes: &[u8]) -> Result<Tx, CodecError> {
-    let first = *bytes.first().ok_or(CodecError::Truncated { need: 1, got: 0 })?;
+    let first = *bytes
+        .first()
+        .ok_or(CodecError::Truncated { need: 1, got: 0 })?;
     match first {
         TX_TYPE_COINBASE => Ok(Tx::Coinbase(CoinbaseTx::decode(bytes)?)),
         TX_TYPE_TRANSFER => Ok(Tx::Transfer(TransferTx::decode(bytes)?)),
@@ -361,7 +390,9 @@ pub struct AuthorNote {
 impl AuthorNote {
     pub fn encode(&self) -> Result<Vec<u8>, CodecError> {
         if self.payload.len() > AUTHOR_NOTE_MAX_BYTES {
-            return Err(CodecError::AuthorNoteTooLong { len: self.payload.len() });
+            return Err(CodecError::AuthorNoteTooLong {
+                len: self.payload.len(),
+            });
         }
         let mut v = Vec::with_capacity(AUTHOR_NOTE_HEADER_BYTES + self.payload.len());
         v.push(AUTHOR_NOTE_RECORD_VERSION);
@@ -373,7 +404,10 @@ impl AuthorNote {
 
     pub fn decode(bytes: &[u8]) -> Result<Self, CodecError> {
         if bytes.len() < AUTHOR_NOTE_HEADER_BYTES {
-            return Err(CodecError::Truncated { need: AUTHOR_NOTE_HEADER_BYTES, got: bytes.len() });
+            return Err(CodecError::Truncated {
+                need: AUTHOR_NOTE_HEADER_BYTES,
+                got: bytes.len(),
+            });
         }
         if bytes[0] != AUTHOR_NOTE_RECORD_VERSION {
             return Err(CodecError::AuthorNoteVersion { got: bytes[0] });
@@ -383,7 +417,10 @@ impl AuthorNote {
             return Err(CodecError::AuthorNoteTooLong { len });
         }
         require_exact(bytes.len(), AUTHOR_NOTE_HEADER_BYTES + len)?;
-        Ok(AuthorNote { encoding: bytes[1], payload: bytes[AUTHOR_NOTE_HEADER_BYTES..].to_vec() })
+        Ok(AuthorNote {
+            encoding: bytes[1],
+            payload: bytes[AUTHOR_NOTE_HEADER_BYTES..].to_vec(),
+        })
     }
 }
 
@@ -399,10 +436,12 @@ impl<'a> BlockBody<'a> {
             return Err(CodecError::BodyTooLarge { got: raw.len() });
         }
         if raw.len() < BODY_COUNT_BYTES {
-            return Err(CodecError::Truncated { need: BODY_COUNT_BYTES, got: raw.len() });
+            return Err(CodecError::Truncated {
+                need: BODY_COUNT_BYTES,
+                got: raw.len(),
+            });
         }
-        let count =
-            u32::from_le_bytes(raw[0..BODY_COUNT_BYTES].try_into().expect("4")) as usize;
+        let count = u32::from_le_bytes(raw[0..BODY_COUNT_BYTES].try_into().expect("4")) as usize;
 
         if count == 0 || count > MAX_TXS_PER_BLOCK {
             return Err(CodecError::BodyTxCount { got: count });
@@ -412,34 +451,45 @@ impl<'a> BlockBody<'a> {
         // so a count this large in this few bytes can't be honest.
         let min_total = BODY_COUNT_BYTES + count * BODY_MIN_RECORD_BYTES;
         if min_total > raw.len() {
-            return Err(CodecError::Truncated { need: min_total, got: raw.len() });
+            return Err(CodecError::Truncated {
+                need: min_total,
+                got: raw.len(),
+            });
         }
 
         let mut spans = Vec::with_capacity(count);
         let mut off = BODY_COUNT_BYTES;
         for _ in 0..count {
-            let len_end = off.checked_add(BODY_TXLEN_BYTES).ok_or(CodecError::BodyTooLarge {
-                got: raw.len(),
-            })?;
+            let len_end = off
+                .checked_add(BODY_TXLEN_BYTES)
+                .ok_or(CodecError::BodyTooLarge { got: raw.len() })?;
             if len_end > raw.len() {
-                return Err(CodecError::Truncated { need: len_end, got: raw.len() });
+                return Err(CodecError::Truncated {
+                    need: len_end,
+                    got: raw.len(),
+                });
             }
             let tx_len = u32::from_le_bytes(raw[off..len_end].try_into().expect("4")) as usize;
             if tx_len == 0 || tx_len > MAX_TX_BYTES {
                 return Err(CodecError::BodyTxLen { got: tx_len });
             }
-            let tx_end = len_end.checked_add(tx_len).ok_or(CodecError::BodyTooLarge {
-                got: raw.len(),
-            })?;
+            let tx_end = len_end
+                .checked_add(tx_len)
+                .ok_or(CodecError::BodyTooLarge { got: raw.len() })?;
             if tx_end > raw.len() {
-                return Err(CodecError::Truncated { need: tx_end, got: raw.len() });
+                return Err(CodecError::Truncated {
+                    need: tx_end,
+                    got: raw.len(),
+                });
             }
             spans.push(len_end..tx_end);
             off = tx_end;
         }
 
         if off != raw.len() {
-            return Err(CodecError::TrailingBytes { extra: raw.len() - off });
+            return Err(CodecError::TrailingBytes {
+                extra: raw.len() - off,
+            });
         }
         Ok(BlockBody { raw, spans })
     }
@@ -449,7 +499,11 @@ impl<'a> BlockBody<'a> {
             return Err(CodecError::BodyTxCount { got: txs.len() });
         }
         let mut v = Vec::with_capacity(
-            BODY_COUNT_BYTES + txs.iter().map(|t| BODY_TXLEN_BYTES + t.len()).sum::<usize>(),
+            BODY_COUNT_BYTES
+                + txs
+                    .iter()
+                    .map(|t| BODY_TXLEN_BYTES + t.len())
+                    .sum::<usize>(),
         );
         v.extend_from_slice(&(txs.len() as u32).to_le_bytes());
         for tx in txs {
@@ -547,14 +601,23 @@ mod tests {
         let bytes = [0u8; HEADER_BYTES];
         assert_eq!(
             Header::decode(&bytes[..HEADER_BYTES - 1]),
-            Err(CodecError::Truncated { need: HEADER_BYTES, got: HEADER_BYTES - 1 })
+            Err(CodecError::Truncated {
+                need: HEADER_BYTES,
+                got: HEADER_BYTES - 1
+            })
         );
         let mut longer = bytes.to_vec();
         longer.push(0);
-        assert_eq!(Header::decode(&longer), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            Header::decode(&longer),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
         assert_eq!(
             Header::decode(&[]),
-            Err(CodecError::Truncated { need: HEADER_BYTES, got: 0 })
+            Err(CodecError::Truncated {
+                need: HEADER_BYTES,
+                got: 0
+            })
         );
     }
 
@@ -604,7 +667,10 @@ mod tests {
         assert_eq!(enc.len(), TX_TRANSFER_BYTES);
         assert_eq!(tx.encode_unsigned().len(), TX_TRANSFER_BYTES_UNSIGNED);
 
-        assert_eq!(&enc[..TX_TRANSFER_BYTES_UNSIGNED], tx.encode_unsigned().as_slice());
+        assert_eq!(
+            &enc[..TX_TRANSFER_BYTES_UNSIGNED],
+            tx.encode_unsigned().as_slice()
+        );
         assert_eq!(enc[0], TX_TYPE_TRANSFER);
         assert_eq!(TransferTx::decode(&enc).unwrap(), tx);
     }
@@ -614,14 +680,23 @@ mod tests {
         let enc = sample_tx().encode();
         assert_eq!(
             TransferTx::decode(&enc[..TX_TRANSFER_BYTES - 1]),
-            Err(CodecError::Truncated { need: TX_TRANSFER_BYTES, got: TX_TRANSFER_BYTES - 1 })
+            Err(CodecError::Truncated {
+                need: TX_TRANSFER_BYTES,
+                got: TX_TRANSFER_BYTES - 1
+            })
         );
         let mut longer = enc.to_vec();
         longer.push(0x00);
-        assert_eq!(TransferTx::decode(&longer), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            TransferTx::decode(&longer),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
         assert_eq!(
             TransferTx::decode(&[]),
-            Err(CodecError::Truncated { need: TX_TRANSFER_BYTES, got: 0 })
+            Err(CodecError::Truncated {
+                need: TX_TRANSFER_BYTES,
+                got: 0
+            })
         );
     }
 
@@ -629,9 +704,15 @@ mod tests {
     fn transfer_decode_rejects_wrong_type_byte() {
         let mut enc = sample_tx().encode();
         enc[0] = TX_TYPE_COINBASE;
-        assert_eq!(TransferTx::decode(&enc), Err(CodecError::WrongTxType { got: 0x00 }));
+        assert_eq!(
+            TransferTx::decode(&enc),
+            Err(CodecError::WrongTxType { got: 0x00 })
+        );
         enc[0] = 0x02;
-        assert_eq!(TransferTx::decode(&enc), Err(CodecError::WrongTxType { got: 0x02 }));
+        assert_eq!(
+            TransferTx::decode(&enc),
+            Err(CodecError::WrongTxType { got: 0x02 })
+        );
     }
 
     #[test]
@@ -652,7 +733,10 @@ mod tests {
                 got: 1
             })
         );
-        assert_eq!(decode_tx(&[]), Err(CodecError::Truncated { need: 1, got: 0 }));
+        assert_eq!(
+            decode_tx(&[]),
+            Err(CodecError::Truncated { need: 1, got: 0 })
+        );
     }
 
     proptest! {
@@ -677,13 +761,19 @@ mod tests {
     #[test]
     fn author_note_roundtrip() {
         for payload in [vec![], b"Plaine genesis".to_vec(), vec![0xFF; 256]] {
-            let note = AuthorNote { encoding: 0x01, payload };
+            let note = AuthorNote {
+                encoding: 0x01,
+                payload,
+            };
             let enc = note.encode().unwrap();
             assert_eq!(enc[0], AUTHOR_NOTE_RECORD_VERSION);
             assert_eq!(AuthorNote::decode(&enc).unwrap(), note);
         }
 
-        let odd = AuthorNote { encoding: 0xEE, payload: vec![1, 2, 3] };
+        let odd = AuthorNote {
+            encoding: 0xEE,
+            payload: vec![1, 2, 3],
+        };
         assert_eq!(AuthorNote::decode(&odd.encode().unwrap()).unwrap(), odd);
     }
 
@@ -721,13 +811,20 @@ mod tests {
             tx.fee
         );
         assert_ne!(
-            u64::from_be_bytes(enc[TX_ANN_OFF_NONCE..TX_ANN_OFF_NONCE + 8].try_into().unwrap()),
+            u64::from_be_bytes(
+                enc[TX_ANN_OFF_NONCE..TX_ANN_OFF_NONCE + 8]
+                    .try_into()
+                    .unwrap()
+            ),
             tx.nonce
         );
 
         assert_eq!(AnnouncementTx::decode(&enc).unwrap(), tx);
 
-        assert_eq!(&enc[..TX_ANNOUNCEMENT_PREFIX_BYTES + 3], tx.encode_unsigned().unwrap());
+        assert_eq!(
+            &enc[..TX_ANNOUNCEMENT_PREFIX_BYTES + 3],
+            tx.encode_unsigned().unwrap()
+        );
     }
 
     #[test]
@@ -782,21 +879,33 @@ mod tests {
 
         assert_eq!(
             AnnouncementTx::decode(&enc[..enc.len() - 1]),
-            Err(CodecError::Truncated { need: 132, got: 131 })
+            Err(CodecError::Truncated {
+                need: 132,
+                got: 131
+            })
         );
 
         let mut longer = enc.clone();
         longer.push(0);
-        assert_eq!(AnnouncementTx::decode(&longer), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            AnnouncementTx::decode(&longer),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
 
         assert_eq!(
             AnnouncementTx::decode(&[0x02; 124]),
-            Err(CodecError::Truncated { need: 125, got: 124 })
+            Err(CodecError::Truncated {
+                need: 125,
+                got: 124
+            })
         );
 
         let mut bad = enc.clone();
         bad[0] = TX_TYPE_TRANSFER;
-        assert_eq!(AnnouncementTx::decode(&bad), Err(CodecError::WrongTxType { got: 0x01 }));
+        assert_eq!(
+            AnnouncementTx::decode(&bad),
+            Err(CodecError::WrongTxType { got: 0x01 })
+        );
     }
 
     #[test]
@@ -820,7 +929,10 @@ mod tests {
             to: core::array::from_fn(|i| 0x40 + i as u8),
             reward: 0x0102_0304_0506_0708_090A_0B0C_0D0E_0F10,
             fees: 0x1122_3344_5566_7788_99AA_BBCC_DDEE_FF00,
-            note: AuthorNote { encoding: 0x02, payload: vec![0x33; note_len] },
+            note: AuthorNote {
+                encoding: 0x02,
+                payload: vec![0x33; note_len],
+            },
         }
     }
 
@@ -859,7 +971,10 @@ mod tests {
         );
         let mut wire = sample_coinbase(1).encode().unwrap();
         wire[TX_CB_OFF_NOTE + 2..TX_CB_OFF_NOTE + 4].copy_from_slice(&257u16.to_le_bytes());
-        assert_eq!(CoinbaseTx::decode(&wire), Err(CodecError::AuthorNoteTooLong { len: 257 }));
+        assert_eq!(
+            CoinbaseTx::decode(&wire),
+            Err(CodecError::AuthorNoteTooLong { len: 257 })
+        );
 
         assert_eq!(
             CoinbaseTx::decode(&[0x00; 64]),
@@ -868,21 +983,33 @@ mod tests {
 
         let mut longer = sample_coinbase(1).encode().unwrap();
         longer.push(0xFF);
-        assert_eq!(CoinbaseTx::decode(&longer), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            CoinbaseTx::decode(&longer),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
 
         let mut bad = sample_coinbase(0).encode().unwrap();
         bad[0] = TX_TYPE_TRANSFER;
-        assert_eq!(CoinbaseTx::decode(&bad), Err(CodecError::WrongTxType { got: 0x01 }));
+        assert_eq!(
+            CoinbaseTx::decode(&bad),
+            Err(CodecError::WrongTxType { got: 0x01 })
+        );
 
         let mut bad = sample_coinbase(0).encode().unwrap();
         bad[TX_CB_OFF_NOTE] = 0x02;
-        assert_eq!(CoinbaseTx::decode(&bad), Err(CodecError::AuthorNoteVersion { got: 0x02 }));
+        assert_eq!(
+            CoinbaseTx::decode(&bad),
+            Err(CodecError::AuthorNoteVersion { got: 0x02 })
+        );
     }
 
     #[test]
     fn every_integer_field_is_little_endian() {
         fn check(bytes: &[u8], off: usize, width: usize, field: &str) {
-            assert_eq!(bytes[off], 0x01, "{field}: low byte must sit at offset {off}");
+            assert_eq!(
+                bytes[off], 0x01,
+                "{field}: low byte must sit at offset {off}"
+            );
             for (i, b) in bytes[off + 1..off + width].iter().enumerate() {
                 assert_eq!(*b, 0, "{field}: byte {} must be zero", i + 1);
             }
@@ -938,7 +1065,10 @@ mod tests {
             to: [0; 20],
             reward: 1,
             fees: 1,
-            note: AuthorNote { encoding: 0, payload: vec![0; 1] },
+            note: AuthorNote {
+                encoding: 0,
+                payload: vec![0; 1],
+            },
         };
         let e = c.encode().unwrap();
         check(&e, TX_CB_OFF_HEIGHT, 8, "coinbase.height");
@@ -991,20 +1121,27 @@ mod tests {
         let too_many: Vec<&[u8]> = (0..MAX_TXS_PER_BLOCK + 1).map(|_| one.as_slice()).collect();
         assert_eq!(
             BlockBody::encode(&too_many),
-            Err(CodecError::BodyTxCount { got: MAX_TXS_PER_BLOCK + 1 })
+            Err(CodecError::BodyTxCount {
+                got: MAX_TXS_PER_BLOCK + 1
+            })
         );
     }
 
     #[test]
     fn body_rejects_bad_tx_count() {
         let raw = 0u32.to_le_bytes().to_vec();
-        assert_eq!(BlockBody::parse(&raw), Err(CodecError::BodyTxCount { got: 0 }));
+        assert_eq!(
+            BlockBody::parse(&raw),
+            Err(CodecError::BodyTxCount { got: 0 })
+        );
 
         let mut raw = (MAX_TXS_PER_BLOCK as u32 + 1).to_le_bytes().to_vec();
         raw.resize(100_000, 0);
         assert_eq!(
             BlockBody::parse(&raw),
-            Err(CodecError::BodyTxCount { got: MAX_TXS_PER_BLOCK + 1 })
+            Err(CodecError::BodyTxCount {
+                got: MAX_TXS_PER_BLOCK + 1
+            })
         );
 
         assert_eq!(
@@ -1019,7 +1156,10 @@ mod tests {
         raw.resize(10, 0);
         assert_eq!(
             BlockBody::parse(&raw),
-            Err(CodecError::Truncated { need: 4 + 5 * MAX_TXS_PER_BLOCK, got: 10 })
+            Err(CodecError::Truncated {
+                need: 4 + 5 * MAX_TXS_PER_BLOCK,
+                got: 10
+            })
         );
     }
 
@@ -1028,22 +1168,36 @@ mod tests {
         let mut raw = 1u32.to_le_bytes().to_vec();
         raw.extend_from_slice(&0u32.to_le_bytes());
         raw.push(0xAA);
-        assert_eq!(BlockBody::parse(&raw), Err(CodecError::BodyTxLen { got: 0 }));
+        assert_eq!(
+            BlockBody::parse(&raw),
+            Err(CodecError::BodyTxLen { got: 0 })
+        );
 
         let mut raw = 1u32.to_le_bytes().to_vec();
         raw.extend_from_slice(&((MAX_TX_BYTES + 1) as u32).to_le_bytes());
         raw.resize(4 + 4 + MAX_TX_BYTES + 1, 0x11);
-        assert_eq!(BlockBody::parse(&raw), Err(CodecError::BodyTxLen { got: MAX_TX_BYTES + 1 }));
+        assert_eq!(
+            BlockBody::parse(&raw),
+            Err(CodecError::BodyTxLen {
+                got: MAX_TX_BYTES + 1
+            })
+        );
 
         let mut raw = 1u32.to_le_bytes().to_vec();
         raw.extend_from_slice(&100u32.to_le_bytes());
         raw.extend_from_slice(&[0x11; 50]);
-        assert_eq!(BlockBody::parse(&raw), Err(CodecError::Truncated { need: 108, got: 58 }));
+        assert_eq!(
+            BlockBody::parse(&raw),
+            Err(CodecError::Truncated { need: 108, got: 58 })
+        );
 
         let a = record(0x01, 4);
         let mut raw = BlockBody::encode(&[&a]).unwrap();
         raw.push(0x00);
-        assert_eq!(BlockBody::parse(&raw), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            BlockBody::parse(&raw),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
     }
 
     #[test]
@@ -1062,12 +1216,18 @@ mod tests {
 
         let mut over = raw.clone();
         over.push(0x00);
-        assert_eq!(BlockBody::parse(&over), Err(CodecError::BodyTooLarge { got: max_body + 1 }));
+        assert_eq!(
+            BlockBody::parse(&over),
+            Err(CodecError::BodyTooLarge { got: max_body + 1 })
+        );
 
         let mut refs2 = refs.clone();
         let extra = record(0x03, MAX_TX_BYTES);
         refs2.push(&extra);
-        assert!(matches!(BlockBody::encode(&refs2), Err(CodecError::BodyTooLarge { .. })));
+        assert!(matches!(
+            BlockBody::encode(&refs2),
+            Err(CodecError::BodyTooLarge { .. })
+        ));
     }
 
     #[test]
@@ -1083,7 +1243,10 @@ mod tests {
         assert_ne!(body.tx_root(), [0u8; 32]);
         assert_eq!(body.leaves().len(), 3);
 
-        assert_eq!(body.decode_tx(0).unwrap().unwrap(), Tx::Transfer(sample_tx()));
+        assert_eq!(
+            body.decode_tx(0).unwrap().unwrap(),
+            Tx::Transfer(sample_tx())
+        );
         assert_eq!(
             body.decode_tx(1).unwrap(),
             Err(CodecError::ReservedTxType { got: 0x7F })
@@ -1092,7 +1255,10 @@ mod tests {
             body.decode_tx(2).unwrap(),
             Err(CodecError::ReservedTxType { got: 0xFF })
         );
-        assert_eq!(body.decode_all(), Err(CodecError::ReservedTxType { got: 0x7F }));
+        assert_eq!(
+            body.decode_all(),
+            Err(CodecError::ReservedTxType { got: 0x7F })
+        );
     }
 
     #[test]
@@ -1102,7 +1268,10 @@ mod tests {
         let raw = BlockBody::encode(&[&padded]).unwrap();
         let body = BlockBody::parse(&raw).unwrap();
         assert_eq!(body.len(), 1, "the envelope parses: length is explicit");
-        assert_eq!(body.decode_all(), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            body.decode_all(),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
 
         let canonical = sample_tx().encode().to_vec();
         assert_ne!(body.tx_root(), crate::merkle::tx_root(&[&canonical]));
@@ -1110,23 +1279,41 @@ mod tests {
 
     #[test]
     fn author_note_rejects_malformed() {
-        let too_long = AuthorNote { encoding: 0, payload: vec![0; 257] };
-        assert_eq!(too_long.encode(), Err(CodecError::AuthorNoteTooLong { len: 257 }));
+        let too_long = AuthorNote {
+            encoding: 0,
+            payload: vec![0; 257],
+        };
+        assert_eq!(
+            too_long.encode(),
+            Err(CodecError::AuthorNoteTooLong { len: 257 })
+        );
         let mut wire = vec![0x01, 0x00];
         wire.extend_from_slice(&257u16.to_le_bytes());
         wire.extend_from_slice(&[0; 257]);
-        assert_eq!(AuthorNote::decode(&wire), Err(CodecError::AuthorNoteTooLong { len: 257 }));
+        assert_eq!(
+            AuthorNote::decode(&wire),
+            Err(CodecError::AuthorNoteTooLong { len: 257 })
+        );
 
         assert_eq!(
             AuthorNote::decode(&[0x02, 0x00, 0x00, 0x00]),
             Err(CodecError::AuthorNoteVersion { got: 0x02 })
         );
 
-        assert_eq!(AuthorNote::decode(&[0x01, 0x00]), Err(CodecError::Truncated { need: 4, got: 2 }));
+        assert_eq!(
+            AuthorNote::decode(&[0x01, 0x00]),
+            Err(CodecError::Truncated { need: 4, got: 2 })
+        );
         let short = [0x01, 0x00, 0x05, 0x00, 0xAA, 0xBB];
-        assert_eq!(AuthorNote::decode(&short), Err(CodecError::Truncated { need: 9, got: 6 }));
+        assert_eq!(
+            AuthorNote::decode(&short),
+            Err(CodecError::Truncated { need: 9, got: 6 })
+        );
 
         let trailing = [0x01, 0x00, 0x01, 0x00, 0xAA, 0xBB];
-        assert_eq!(AuthorNote::decode(&trailing), Err(CodecError::TrailingBytes { extra: 1 }));
+        assert_eq!(
+            AuthorNote::decode(&trailing),
+            Err(CodecError::TrailingBytes { extra: 1 })
+        );
     }
 }

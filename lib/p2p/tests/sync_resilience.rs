@@ -26,7 +26,11 @@ fn silent_sync_peer_no_stall() {
         Some(silent),
         "test precondition: the silent peer must be designated first"
     );
-    assert_eq!(sim.engine.verified_height(), 0, "the silent peer served nothing");
+    assert_eq!(
+        sim.engine.verified_height(),
+        0,
+        "the silent peer served nothing"
+    );
 
     sim.run(60_000, 1_000);
     assert_eq!(
@@ -34,7 +38,11 @@ fn silent_sync_peer_no_stall() {
         500,
         "sync did not recover from a silent designated peer within 60 s"
     );
-    assert_ne!(sim.sync_peer(), Some(silent), "the silent peer was not rotated out");
+    assert_ne!(
+        sim.sync_peer(),
+        Some(silent),
+        "the silent peer was not rotated out"
+    );
 }
 
 #[test]
@@ -213,7 +221,8 @@ fn stale_tip_no_reorg_lift() {
     let p = sim.add_peer(Behaviour::Honest, branch);
     sim.connect(p);
 
-    sim.chain.set_tip_time(Some(sim.now_unix_for_test() - 7_200));
+    sim.chain
+        .set_tip_time(Some(sim.now_unix_for_test() - 7_200));
     sim.run(300_000, 1_000);
 
     assert_eq!(
@@ -299,7 +308,10 @@ fn all_bad_recovers_empty_addrman() {
 
     am.clear();
     assert!(am.is_empty());
-    assert!(am.seeds_still_privileged(), "an empty book must re-read its seeds");
+    assert!(
+        am.seeds_still_privileged(),
+        "an empty book must re-read its seeds"
+    );
 
     let mut sim = Sim::new(10, T0);
     sim.run(600_000, 10_000);
@@ -486,7 +498,12 @@ fn fd_budget_adds_up() {
 
     #[allow(clippy::assertions_on_constants)]
     {
-        assert!(FD_TOTAL < FD_CEILING, "FD budget {} exceeds {}", FD_TOTAL, FD_CEILING);
+        assert!(
+            FD_TOTAL < FD_CEILING,
+            "FD budget {} exceeds {}",
+            FD_TOTAL,
+            FD_CEILING
+        );
     }
     assert_eq!(FD_TOTAL, 690);
 
@@ -708,7 +725,11 @@ fn suspended_clock_has_ceiling() {
     let v = c.verdict(Mono(SYNC_SUSPEND_MAX_MS), true);
     assert!(matches!(v, Some(StallKind::LocalSuspendExceeded { .. })));
     let k = v.expect("a verdict");
-    assert_eq!(k.peer_points(), 0, "our own disk must cost the peer nothing");
+    assert_eq!(
+        k.peer_points(),
+        0,
+        "our own disk must cost the peer nothing"
+    );
     assert!(
         !k.charges_budget(),
         "a rotation caused by our own suspension must not spend the budget \
@@ -745,7 +766,10 @@ fn requested_blocks_kept_under_pressure() {
     sim.chain.freeze_sink(true);
     sim.run(40_000, 1_000);
     let buffered = sim.engine.body.ready_len();
-    assert!(buffered > 0, "nothing was buffered while the sink was frozen");
+    assert!(
+        buffered > 0,
+        "nothing was buffered while the sink was frozen"
+    );
     sim.chain.freeze_sink(false);
     sim.run(400_000, 1_000);
     assert_eq!(
@@ -759,28 +783,128 @@ fn requested_blocks_kept_under_pressure() {
 fn every_queue_bounded() {
     let registry: &[(&str, u64, u64, Policy)] = &[
         ("peer inbox", 1, INBOX_BYTES, Policy::PauseReads),
-        ("inbox pool", MAX_PEERS as u64, INBOX_POOL_BYTES, Policy::PauseReads),
-        ("validate queue", VALIDATE_Q_ITEMS, VALIDATE_Q_BYTES, Policy::PauseReads),
+        (
+            "inbox pool",
+            MAX_PEERS as u64,
+            INBOX_POOL_BYTES,
+            Policy::PauseReads,
+        ),
+        (
+            "validate queue",
+            VALIDATE_Q_ITEMS,
+            VALIDATE_Q_BYTES,
+            Policy::PauseReads,
+        ),
         ("tx queue", TX_Q_ITEMS, TX_Q_BYTES, Policy::DropNewest),
         ("peer outbox", 1, OUTBOX_BYTES, Policy::Disconnect),
-        ("outbox pool", MAX_PEERS as u64, OUTBOX_POOL_BYTES, Policy::DropLargestOutbox),
-        ("anons outbox", ANONS_OUTBOX_ITEMS, ANONS_OUTBOX_ITEMS * 36, Policy::EvictOldest),
-        ("reorg prefetch", 1, REORG_PREFETCH_BYTES, Policy::StreamApply),
-        ("orphan bodies", ORPHAN_BODIES_ITEMS, ORPHAN_BODIES_BYTES, Policy::EvictOldest),
-        ("ready-ahead", READY_AHEAD_BLOCKS as u64, READY_AHEAD_BYTES, Policy::ThrottleRequests),
-        ("body window", BODY_WINDOW_HASHES as u64, BODY_WINDOW_BYTES, Policy::ThrottleRequests),
-        ("staging", PRESYNC_LEAD_HEADERS, PRESYNC_LEAD_BYTES, Policy::ThrottleRequests),
-        ("fork tree", FORK_HEADERS_MAX as u64, FORK_HEADERS_MAX as u64 * 132, Policy::EvictOldest),
-        ("known headers", KNOWN_HEADERS_MAX as u64, KNOWN_HEADERS_BYTES, Policy::EvictOldest),
-        ("wanted bodies", WANTED_MAX as u64, WANTED_BYTES, Policy::ThrottleRequests),
-        ("fork bodies", FORK_BODY_MAX as u64, FORK_BODY_BYTES, Policy::ThrottleRequests),
-        ("reject cache", REJECT_CACHE_MAX as u64, REJECT_CACHE_MAX as u64 * 40, Policy::EvictOldest),
-        ("ban list", BANLIST_MAX as u64, BANLIST_MAX as u64 * 24, Policy::EvictOldest),
-        ("quarantine", QUARANTINE_MAX as u64, QUARANTINE_MAX as u64 * 64, Policy::EvictOldest),
-        ("time park", TIME_PARK_MAX as u64, TIME_PARK_MAX as u64 * 132, Policy::DropNewest),
-        ("addrman new", ADDR_NEW_MAX as u64, ADDR_NEW_MAX as u64 * 30, Policy::EvictOldest),
-        ("addrman tried", ADDR_TRIED_MAX as u64, ADDR_TRIED_MAX as u64 * 30, Policy::EvictOldest),
-        ("serve egress", 1, SERVE_RATE_GLOBAL_BYTES_PER_SEC, Policy::RefuseServe),
+        (
+            "outbox pool",
+            MAX_PEERS as u64,
+            OUTBOX_POOL_BYTES,
+            Policy::DropLargestOutbox,
+        ),
+        (
+            "anons outbox",
+            ANONS_OUTBOX_ITEMS,
+            ANONS_OUTBOX_ITEMS * 36,
+            Policy::EvictOldest,
+        ),
+        (
+            "reorg prefetch",
+            1,
+            REORG_PREFETCH_BYTES,
+            Policy::StreamApply,
+        ),
+        (
+            "orphan bodies",
+            ORPHAN_BODIES_ITEMS,
+            ORPHAN_BODIES_BYTES,
+            Policy::EvictOldest,
+        ),
+        (
+            "ready-ahead",
+            READY_AHEAD_BLOCKS as u64,
+            READY_AHEAD_BYTES,
+            Policy::ThrottleRequests,
+        ),
+        (
+            "body window",
+            BODY_WINDOW_HASHES as u64,
+            BODY_WINDOW_BYTES,
+            Policy::ThrottleRequests,
+        ),
+        (
+            "staging",
+            PRESYNC_LEAD_HEADERS,
+            PRESYNC_LEAD_BYTES,
+            Policy::ThrottleRequests,
+        ),
+        (
+            "fork tree",
+            FORK_HEADERS_MAX as u64,
+            FORK_HEADERS_MAX as u64 * 132,
+            Policy::EvictOldest,
+        ),
+        (
+            "known headers",
+            KNOWN_HEADERS_MAX as u64,
+            KNOWN_HEADERS_BYTES,
+            Policy::EvictOldest,
+        ),
+        (
+            "wanted bodies",
+            WANTED_MAX as u64,
+            WANTED_BYTES,
+            Policy::ThrottleRequests,
+        ),
+        (
+            "fork bodies",
+            FORK_BODY_MAX as u64,
+            FORK_BODY_BYTES,
+            Policy::ThrottleRequests,
+        ),
+        (
+            "reject cache",
+            REJECT_CACHE_MAX as u64,
+            REJECT_CACHE_MAX as u64 * 40,
+            Policy::EvictOldest,
+        ),
+        (
+            "ban list",
+            BANLIST_MAX as u64,
+            BANLIST_MAX as u64 * 24,
+            Policy::EvictOldest,
+        ),
+        (
+            "quarantine",
+            QUARANTINE_MAX as u64,
+            QUARANTINE_MAX as u64 * 64,
+            Policy::EvictOldest,
+        ),
+        (
+            "time park",
+            TIME_PARK_MAX as u64,
+            TIME_PARK_MAX as u64 * 132,
+            Policy::DropNewest,
+        ),
+        (
+            "addrman new",
+            ADDR_NEW_MAX as u64,
+            ADDR_NEW_MAX as u64 * 30,
+            Policy::EvictOldest,
+        ),
+        (
+            "addrman tried",
+            ADDR_TRIED_MAX as u64,
+            ADDR_TRIED_MAX as u64 * 30,
+            Policy::EvictOldest,
+        ),
+        (
+            "serve egress",
+            1,
+            SERVE_RATE_GLOBAL_BYTES_PER_SEC,
+            Policy::RefuseServe,
+        ),
     ];
     let mut total_bytes = 0u64;
     for (name, items, bytes, policy) in registry {
@@ -960,9 +1084,16 @@ fn equal_timestamp_no_ban() {
     let chain = sim.extension_with_a_repeated_second(60, 30);
 
     let pair = chain.windows(2).find(|w| w[0].time == w[1].time);
-    assert!(pair.is_some(), "test precondition: the generated chain must repeat a second");
+    assert!(
+        pair.is_some(),
+        "test precondition: the generated chain must repeat a second"
+    );
     let pair = pair.unwrap();
-    assert_eq!(pair[1].height, pair[0].height + 1, "the pair must be consecutive");
+    assert_eq!(
+        pair[1].height,
+        pair[0].height + 1,
+        "the pair must be consecutive"
+    );
     assert_eq!(pair[1].prev_hash, pair[0].hash, "the pair must still link");
 
     let honest = sim.add_peer(Behaviour::Honest, chain);

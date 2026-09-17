@@ -75,7 +75,10 @@ fn floor_stamped_chain(honest_prefix: usize, floor_blocks: usize, tag: u8) -> (C
             Ok(()),
             "the floor timestamp must itself be legal, or this is not an attack"
         );
-        assert!(t < wall, "a floor-stamped block sits in the past; that is why it is legal");
+        assert!(
+            t < wall,
+            "a floor-stamped block sits in the past; that is why it is legal"
+        );
         times.push(t);
     }
     let headers = times
@@ -105,11 +108,17 @@ fn lag_crosses_sync_window_in_eight_blocks() {
     }
     let (blocks, lag) =
         first_crossing.expect("floor-stamped blocks must eventually push the tip past the window");
-    assert_eq!(blocks, 8, "expected 8 blocks to cross the sync window, got {blocks} (lag {lag} s)");
+    assert_eq!(
+        blocks, 8,
+        "expected 8 blocks to cross the sync window, got {blocks} (lag {lag} s)"
+    );
 
     let (long, wall) = floor_stamped_chain(prefix, 200, 0xAA);
     let lag = wall - long.tip().time;
-    assert!(lag > 10 * SYNC_WINDOW_SECS, "the lag must grow without bound, got {lag} s");
+    assert!(
+        lag > 10 * SYNC_WINDOW_SECS,
+        "the lag must grow without bound, got {lag} s"
+    );
 }
 
 #[test]
@@ -118,7 +127,10 @@ fn unsigned_reorg_past_cap_refused_floor_stamped() {
 
     let (chain, wall) = floor_stamped_chain(prefix, 64, 0xAA);
     let tip = chain.tip();
-    assert!(wall - tip.time > SYNC_WINDOW_SECS, "premise: the tip must look stale");
+    assert!(
+        wall - tip.time > SYNC_WINDOW_SECS,
+        "premise: the tip must look stale"
+    );
 
     let depth = MAX_REORG_DEPTH + 1;
     let fork_height = chain.len() - depth;
@@ -156,7 +168,10 @@ fn honest_stamp_reorg_refused() {
     let prefix = MEDIAN_TIME_SPAN * 2 + 64;
     let (chain, wall) = floor_stamped_chain(prefix, 0, 0xAA);
     let tip = chain.tip();
-    assert!(wall - tip.time <= SYNC_WINDOW_SECS, "premise: an honest tip is fresh");
+    assert!(
+        wall - tip.time <= SYNC_WINDOW_SECS,
+        "premise: an honest tip is fresh"
+    );
 
     let depth = MAX_REORG_DEPTH + 1;
     let start_height = chain.len() - depth;
@@ -173,9 +188,16 @@ fn honest_stamp_reorg_refused() {
         &chain,
         start_height,
         &candidate,
-        &ReorgParams { anchor: None, checkpoints: &[], local_time: wall },
+        &ReorgParams {
+            anchor: None,
+            checkpoints: &[],
+            local_time: wall,
+        },
     );
-    assert!(verdict.is_err(), "the honest-stamp control must refuse the same depth");
+    assert!(
+        verdict.is_err(),
+        "the honest-stamp control must refuse the same depth"
+    );
 }
 
 #[ignore = "refuted: the depth cap is unconditional, so a timestamp floor is the wrong remedy and breaks initial sync - see the doc comment"]
@@ -185,7 +207,10 @@ fn block_timestamp_floor_vs_wall_clock() {
 
     let ancient_mtp = now - 100 * SYNC_WINDOW_SECS;
 
-    assert_eq!(check_block_time(ancient_mtp, now + MAX_FUTURE_DRIFT_SECS, now), Ok(()));
+    assert_eq!(
+        check_block_time(ancient_mtp, now + MAX_FUTURE_DRIFT_SECS, now),
+        Ok(())
+    );
     assert!(check_block_time(ancient_mtp, now + MAX_FUTURE_DRIFT_SECS + 1, now).is_err());
 
     let far_past = ancient_mtp + 1;

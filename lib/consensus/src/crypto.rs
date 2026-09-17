@@ -1,8 +1,8 @@
 use crate::codec::{AnnouncementTx, CodecError, TransferTx, HASH_BYTES, PUBKEY_BYTES, SIG_BYTES};
 use crate::constants::{
-    ADDRESS_HRP, ADDRESS_PAYLOAD_BYTES, ANNOUNCEMENT_MAX_PAYLOAD_BYTES,
+    Network, ADDRESS_HRP, ADDRESS_PAYLOAD_BYTES, ANNOUNCEMENT_MAX_PAYLOAD_BYTES,
     ANNOUNCEMENT_MIN_PAYLOAD_BYTES, DOMAIN_MERKLE_LEAF, DOMAIN_MERKLE_NODE, DOMAIN_NOTE_SIGN,
-    DOMAIN_TXID, DOMAIN_TX_SIGN, HEADER_BYTES, MERKLE_FLAG_DUP, MERKLE_FLAG_PAIR, Network,
+    DOMAIN_TXID, DOMAIN_TX_SIGN, HEADER_BYTES, MERKLE_FLAG_DUP, MERKLE_FLAG_PAIR,
 };
 use ed25519_dalek::{Signature, VerifyingKey};
 
@@ -19,7 +19,10 @@ impl core::fmt::Display for AddressError {
             AddressError::NotBech32m => write!(f, "not a valid bech32m string"),
             AddressError::WrongHrp => write!(f, "wrong HRP, expected \"{ADDRESS_HRP}\""),
             AddressError::WrongPayloadLength { got } => {
-                write!(f, "address payload is {got} bytes, expected {ADDRESS_PAYLOAD_BYTES}")
+                write!(
+                    f,
+                    "address payload is {got} bytes, expected {ADDRESS_PAYLOAD_BYTES}"
+                )
             }
         }
     }
@@ -103,7 +106,11 @@ pub fn merkle_node(
 ) -> [u8; HASH_BYTES] {
     let mut h = crate::blake3::Hasher::new();
     h.update(DOMAIN_MERKLE_NODE);
-    h.update(&[if duplicated { MERKLE_FLAG_DUP } else { MERKLE_FLAG_PAIR }]);
+    h.update(&[if duplicated {
+        MERKLE_FLAG_DUP
+    } else {
+        MERKLE_FLAG_PAIR
+    }]);
     h.update(left);
     h.update(right);
     h.finalize()
@@ -172,7 +179,14 @@ pub fn announcement_message_of(
     network: Network,
     tx: &AnnouncementTx,
 ) -> Result<[u8; HASH_BYTES], CodecError> {
-    announcement_signing_message(network, &tx.from_pub, tx.fee, tx.nonce, tx.encoding, &tx.payload)
+    announcement_signing_message(
+        network,
+        &tx.from_pub,
+        tx.fee,
+        tx.nonce,
+        tx.encoding,
+        &tx.payload,
+    )
 }
 
 pub fn verify_announcement_signature(
@@ -201,14 +215,14 @@ pub fn address_from_pubkey(pubkey: &[u8; PUBKEY_BYTES]) -> String {
 }
 
 pub fn decode_address(s: &str) -> Result<[u8; ADDRESS_PAYLOAD_BYTES], AddressError> {
-    let (hrp, bytes) =
-        crate::bech32m::decode_bytes(s).map_err(|_| AddressError::NotBech32m)?;
+    let (hrp, bytes) = crate::bech32m::decode_bytes(s).map_err(|_| AddressError::NotBech32m)?;
     if hrp != ADDRESS_HRP {
         return Err(AddressError::WrongHrp);
     }
     let got = bytes.len();
-    let payload: [u8; ADDRESS_PAYLOAD_BYTES] =
-        bytes.try_into().map_err(|_| AddressError::WrongPayloadLength { got })?;
+    let payload: [u8; ADDRESS_PAYLOAD_BYTES] = bytes
+        .try_into()
+        .map_err(|_| AddressError::WrongPayloadLength { got })?;
     Ok(payload)
 }
 
@@ -221,11 +235,16 @@ pub fn verify_signature(
     let sig = Signature::from_bytes(sig);
     // verify_strict, never verify: rejecting non-canonical S and small-order
     // keys leaves each tx exactly one valid signature, hence one txid.
-    vk.verify_strict(message, &sig).map_err(|_| SigError::InvalidSignature)
+    vk.verify_strict(message, &sig)
+        .map_err(|_| SigError::InvalidSignature)
 }
 
 pub fn verify_transfer_signature(network: Network, tx: &TransferTx) -> Result<(), SigError> {
-    verify_signature(&tx.from_pub, &transfer_signing_message(network, tx), &tx.sig)
+    verify_signature(
+        &tx.from_pub,
+        &transfer_signing_message(network, tx),
+        &tx.sig,
+    )
 }
 
 #[cfg(test)]
@@ -247,7 +266,14 @@ mod tests {
         let (amount, fee, nonce) = (1_000_000_000_000_000_000u128, 1u128, 7u64);
         let msg = signing_message_with_chain_id(chain_id, &from_pub, &to, amount, fee, nonce);
         let sig = sk.sign(&msg).to_bytes();
-        TransferTx { from_pub, to, amount, fee, nonce, sig }
+        TransferTx {
+            from_pub,
+            to,
+            amount,
+            fee,
+            nonce,
+            sig,
+        }
     }
 
     #[test]
@@ -289,7 +315,10 @@ mod tests {
     fn address_rejects_wrong_payload_length() {
         for len in [19usize, 21, 32] {
             let s = crate::bech32m::encode_bytes(ADDRESS_HRP, &vec![0x55u8; len]).unwrap();
-            assert_eq!(decode_address(&s), Err(AddressError::WrongPayloadLength { got: len }));
+            assert_eq!(
+                decode_address(&s),
+                Err(AddressError::WrongPayloadLength { got: len })
+            );
         }
     }
 
@@ -317,8 +346,15 @@ mod tests {
         assert_eq!(CHAIN_ID[..3], FOREIGN_CHAIN_ID[..3]);
         assert_ne!(CHAIN_ID[3], FOREIGN_CHAIN_ID[3]);
         let foreign = signed_transfer(&FOREIGN_CHAIN_ID);
-        assert_eq!(foreign.encode_unsigned(), tx.encode_unsigned(), "same tx body");
-        assert_ne!(foreign.sig, tx.sig, "different chain id, different signature");
+        assert_eq!(
+            foreign.encode_unsigned(),
+            tx.encode_unsigned(),
+            "same tx body"
+        );
+        assert_ne!(
+            foreign.sig, tx.sig,
+            "different chain id, different signature"
+        );
         assert_eq!(
             verify_transfer_signature(Network::Main, &foreign),
             Err(SigError::InvalidSignature),
@@ -326,7 +362,12 @@ mod tests {
         );
 
         let msg_foreign = signing_message_with_chain_id(
-            &FOREIGN_CHAIN_ID, &tx.from_pub, &tx.to, tx.amount, tx.fee, tx.nonce,
+            &FOREIGN_CHAIN_ID,
+            &tx.from_pub,
+            &tx.to,
+            tx.amount,
+            tx.fee,
+            tx.nonce,
         );
         assert_eq!(
             verify_signature(&tx.from_pub, &msg_foreign, &tx.sig),
@@ -334,12 +375,24 @@ mod tests {
         );
 
         for other_chain in [
-            { let mut c = CHAIN_ID; c[0] ^= 0x01; c },
-            { let mut c = CHAIN_ID; c[3] ^= 0x80; c },
+            {
+                let mut c = CHAIN_ID;
+                c[0] ^= 0x01;
+                c
+            },
+            {
+                let mut c = CHAIN_ID;
+                c[3] ^= 0x80;
+                c
+            },
             [0u8; 4],
         ] {
             let foreign = signed_transfer(&other_chain);
-            assert_eq!(foreign.encode_unsigned(), tx.encode_unsigned(), "same tx body");
+            assert_eq!(
+                foreign.encode_unsigned(),
+                tx.encode_unsigned(),
+                "same tx body"
+            );
             assert_eq!(
                 verify_transfer_signature(Network::Main, &foreign),
                 Err(SigError::InvalidSignature),
@@ -354,11 +407,17 @@ mod tests {
         let from_pub = sk.verifying_key().to_bytes();
         let (fee, nonce, enc, payload) = (5u128, 3u64, 0x01u8, b"launch".as_slice());
 
-        let msg_main =
-            announcement_signing_message_with_chain_id(&CHAIN_ID, &from_pub, fee, nonce, enc, payload)
-                .unwrap();
+        let msg_main = announcement_signing_message_with_chain_id(
+            &CHAIN_ID, &from_pub, fee, nonce, enc, payload,
+        )
+        .unwrap();
         let msg_foreign = announcement_signing_message_with_chain_id(
-            &FOREIGN_CHAIN_ID, &from_pub, fee, nonce, enc, payload,
+            &FOREIGN_CHAIN_ID,
+            &from_pub,
+            fee,
+            nonce,
+            enc,
+            payload,
         )
         .unwrap();
         assert_ne!(msg_main, msg_foreign, "chain id must change the message");
@@ -427,7 +486,8 @@ mod tests {
         assert_eq!(&npre[12..16], &CHAIN_ID);
         assert_eq!(
             crate::blake3::hash(&npre),
-            announcement_signing_message(Network::Main, &from_pub, fee, nonce, 0x01, payload).unwrap()
+            announcement_signing_message(Network::Main, &from_pub, fee, nonce, 0x01, payload)
+                .unwrap()
         );
     }
 
@@ -447,28 +507,55 @@ mod tests {
         println!("to                {}", crate::hex::encode(&to));
         let msg = signing_message(Network::Main, &from_pub, &to, amount, fee, nonce);
         println!("transfer msg      {}", crate::hex::encode(&msg));
-        println!("transfer sig      {}", crate::hex::encode(&sk.sign(&msg).to_bytes()));
-        let tx = TransferTx { from_pub, to, amount, fee, nonce, sig: sk.sign(&msg).to_bytes() };
+        println!(
+            "transfer sig      {}",
+            crate::hex::encode(&sk.sign(&msg).to_bytes())
+        );
+        let tx = TransferTx {
+            from_pub,
+            to,
+            amount,
+            fee,
+            nonce,
+            sig: sk.sign(&msg).to_bytes(),
+        };
         println!("transfer txid     {}", crate::hex::encode(&tx.txid()));
 
         let payload = b"Plaine launch announcement, vector 1".as_slice();
-        let nmsg = announcement_signing_message(Network::Main, &from_pub, 7, 3, 0x01, payload).unwrap();
+        let nmsg =
+            announcement_signing_message(Network::Main, &from_pub, 7, 3, 0x01, payload).unwrap();
         println!("note msg          {}", crate::hex::encode(&nmsg));
-        println!("note sig          {}", crate::hex::encode(&sk.sign(&nmsg).to_bytes()));
+        println!(
+            "note sig          {}",
+            crate::hex::encode(&sk.sign(&nmsg).to_bytes())
+        );
         let ann = AnnouncementTx {
-            from_pub, fee: 7, nonce: 3, encoding: 0x01,
-            payload: payload.to_vec(), sig: sk.sign(&nmsg).to_bytes(),
+            from_pub,
+            fee: 7,
+            nonce: 3,
+            encoding: 0x01,
+            payload: payload.to_vec(),
+            sig: sk.sign(&nmsg).to_bytes(),
         };
-        println!("note txid         {}", crate::hex::encode(&ann.txid().unwrap()));
+        println!(
+            "note txid         {}",
+            crate::hex::encode(&ann.txid().unwrap())
+        );
 
         let dsep =
             announcement_signing_message(Network::Main, &[0x42u8; 32], 7, 9, 0x01, &[0x55u8; 31])
                 .unwrap();
         println!("domain-sep note   {}", crate::hex::encode(&dsep));
         for n in [949usize, 950, 1024] {
-            let m =
-                announcement_signing_message(Network::Main, &[0x42u8; 32], 1, 0, 0x01, &vec![0x5Au8; n])
-                    .unwrap();
+            let m = announcement_signing_message(
+                Network::Main,
+                &[0x42u8; 32],
+                1,
+                0,
+                0x01,
+                &vec![0x5Au8; n],
+            )
+            .unwrap();
             println!("chunk n={n:<4}      {}", crate::hex::encode(&m));
         }
     }
@@ -510,7 +597,14 @@ mod tests {
         let sig = sk.sign(&msg).to_bytes();
         assert_eq!(crate::hex::encode(&sig), V1_TX_SIG);
 
-        let tx = TransferTx { from_pub, to, amount, fee, nonce, sig };
+        let tx = TransferTx {
+            from_pub,
+            to,
+            amount,
+            fee,
+            nonce,
+            sig,
+        };
         assert_eq!(crate::hex::encode(&tx.txid()), V1_TXID);
         assert_eq!(verify_transfer_signature(Network::Main, &tx), Ok(()));
 
@@ -531,8 +625,9 @@ mod tests {
         let payload = b"Plaine launch announcement, vector 1".as_slice();
         let (fee, nonce, encoding) = (7u128, 3u64, 0x01u8);
 
-        let msg = announcement_signing_message(Network::Main, &from_pub, fee, nonce, encoding, payload)
-            .unwrap();
+        let msg =
+            announcement_signing_message(Network::Main, &from_pub, fee, nonce, encoding, payload)
+                .unwrap();
         assert_eq!(crate::hex::encode(&msg), V1_NOTE_MSG);
 
         let sig = sk.sign(&msg).to_bytes();
@@ -550,7 +645,12 @@ mod tests {
         assert_eq!(verify_announcement_signature(Network::Main, &ann), Ok(()));
 
         let msg_foreign = announcement_signing_message_with_chain_id(
-            &FOREIGN_CHAIN_ID, &from_pub, fee, nonce, encoding, payload,
+            &FOREIGN_CHAIN_ID,
+            &from_pub,
+            fee,
+            nonce,
+            encoding,
+            payload,
         )
         .unwrap();
         assert_ne!(msg_foreign, msg);
@@ -614,7 +714,10 @@ mod tests {
     fn invalid_pubkey_rejected() {
         let bad_pub = [0x02; 32];
         let sig = [0u8; 64];
-        assert_eq!(verify_signature(&bad_pub, b"msg", &sig), Err(SigError::InvalidPubkey));
+        assert_eq!(
+            verify_signature(&bad_pub, b"msg", &sig),
+            Err(SigError::InvalidPubkey)
+        );
     }
 
     #[test]
@@ -623,8 +726,9 @@ mod tests {
         let (fee, nonce) = (7u128, 9u64);
 
         let payload = vec![0x55u8; 31];
-        let note = announcement_signing_message(Network::Main, &from_pub, fee, nonce, 0x01, &payload)
-            .unwrap();
+        let note =
+            announcement_signing_message(Network::Main, &from_pub, fee, nonce, 0x01, &payload)
+                .unwrap();
         let transfer = signing_message(Network::Main, &from_pub, &[0x55u8; 20], 0, fee, nonce);
         assert_ne!(note, transfer);
 
@@ -639,7 +743,8 @@ mod tests {
     fn announcement_length_is_le_u16() {
         let from_pub = [0x11u8; 32];
         let payload = vec![0xA5u8; 258];
-        let real = announcement_signing_message(Network::Main, &from_pub, 1, 0, 0, &payload).unwrap();
+        let real =
+            announcement_signing_message(Network::Main, &from_pub, 1, 0, 0, &payload).unwrap();
 
         let swapped = announcement_signing_message_explicit_length(
             &CHAIN_ID, &from_pub, 1, 0, 0, 0x0201, &payload,
@@ -669,14 +774,22 @@ mod tests {
         vectors_were_generated_under_plne();
         let from_pub = [0x42u8; 32];
         for (n, want) in [
-
-            (949usize, "bf8a0df46fdf70d33fb23bb492fafcd2386d7ca0b47a34acfb7c5f57626b76f6"),
-            (950, "feab942d73698643e103f65c34e008514540eb95592cb36450ca51b4569db8f2"),
-            (1024, "48da2ad612c464886a85b1ee08a9c1b74072216f88649787146cbdb746e3bfd2"),
+            (
+                949usize,
+                "bf8a0df46fdf70d33fb23bb492fafcd2386d7ca0b47a34acfb7c5f57626b76f6",
+            ),
+            (
+                950,
+                "feab942d73698643e103f65c34e008514540eb95592cb36450ca51b4569db8f2",
+            ),
+            (
+                1024,
+                "48da2ad612c464886a85b1ee08a9c1b74072216f88649787146cbdb746e3bfd2",
+            ),
         ] {
             let payload = vec![0x5Au8; n];
-            let msg =
-                announcement_signing_message(Network::Main, &from_pub, 1, 0, 0x01, &payload).unwrap();
+            let msg = announcement_signing_message(Network::Main, &from_pub, 1, 0, 0x01, &payload)
+                .unwrap();
             assert!(PREFIX + n >= 1024, "n = {n} must reach the chunk boundary");
             assert_eq!(crate::hex::encode(&msg), want, "n = {n}");
         }
@@ -688,7 +801,10 @@ mod tests {
     fn merkle_leaf_max_tx_multi_chunk() {
         let tx = vec![0xC3u8; 8192];
         let leaf = merkle_leaf(&tx);
-        assert_eq!(crate::hex::encode(&leaf), "7fffea447f561728649ed62bb7422c7d7f12ac1330d8bde1c84f2056f93679b1");
+        assert_eq!(
+            crate::hex::encode(&leaf),
+            "7fffea447f561728649ed62bb7422c7d7f12ac1330d8bde1c84f2056f93679b1"
+        );
     }
 
     #[test]
@@ -709,7 +825,11 @@ mod tests {
         let tx = signed_transfer(&CHAIN_ID);
         let mut resigned = tx;
         resigned.sig = [0xAA; 64];
-        assert_eq!(tx.txid(), resigned.txid(), "txid covers the unsigned body only");
+        assert_eq!(
+            tx.txid(),
+            resigned.txid(),
+            "txid covers the unsigned body only"
+        );
         assert_ne!(tx.txid(), [0u8; 32]);
 
         let unsigned = tx.encode_unsigned();

@@ -100,8 +100,7 @@ impl ProgressClock {
     }
 
     pub fn suspended_total(&self, now: Mono) -> u64 {
-        self.suspended_total_ms
-            + self.suspended_since.map(|s| now.since(s)).unwrap_or(0)
+        self.suspended_total_ms + self.suspended_since.map(|s| now.since(s)).unwrap_or(0)
     }
 
     pub fn verdict(&self, now: Mono, ibd: bool) -> Option<StallKind> {

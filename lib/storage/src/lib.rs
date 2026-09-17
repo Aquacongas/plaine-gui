@@ -18,7 +18,9 @@ mod tables;
 mod types;
 
 pub use committer::{Committer, ANCHOR_RECORD_CAP_BYTES};
-pub use config::{autotune_batch, dirty_fraction, DurabilityMode, MemoryBudget, Network, StoreConfig};
+pub use config::{
+    autotune_batch, dirty_fraction, DurabilityMode, MemoryBudget, Network, StoreConfig,
+};
 pub use crc32c::crc32c;
 pub use error::{InvalidReason, StoreError, TxLocation};
 pub use integrity::{
@@ -29,9 +31,7 @@ pub use layout::{
     bidx_offset, hdr_offset, seg_first_height, seg_of, slot_of, BIDX_SEG_BYTES, HDR_SEG_BYTES,
     SECTOR, SEG_BLOCKS, SEG_SHIFT,
 };
-pub use reader::{
-    AcceptUnverified, BodyRead, DbFootprint, Proof, StoreReader, TableFootprint,
-};
+pub use reader::{AcceptUnverified, BodyRead, DbFootprint, Proof, StoreReader, TableFootprint};
 
 pub use posio::barriers_performed;
 pub use recover::open;
@@ -72,4 +72,7 @@ const _: () = assert!(
     "SPEC 9: the undo journal must reach deeper than MAX_REORG_DEPTH"
 );
 
-const _: () = assert!(HEADER_BYTES == 132, "SPEC 3: the header is exactly 132 bytes");
+const _: () = assert!(
+    HEADER_BYTES == 132,
+    "SPEC 3: the header is exactly 132 bytes"
+);

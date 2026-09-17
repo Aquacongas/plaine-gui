@@ -83,7 +83,10 @@ impl<'a, S: Store + ?Sized> Overlay<'a, S> {
 
     pub fn credit(&mut self, addr: &Address, amount: u128) -> Result<(), Reject> {
         let mut a = self.get(addr);
-        a.balance = a.balance.checked_add(amount).ok_or(Reject::ArithmeticOverflow)?;
+        a.balance = a
+            .balance
+            .checked_add(amount)
+            .ok_or(Reject::ArithmeticOverflow)?;
         self.set(addr, a);
         Ok(())
     }
@@ -98,15 +101,24 @@ impl<'a, S: Store + ?Sized> Overlay<'a, S> {
             .iter()
             .map(|a| {
                 let acct = self.get(a);
-                StateDelta { addr: *a, balance: acct.balance, nonce: acct.nonce }
+                StateDelta {
+                    addr: *a,
+                    balance: acct.balance,
+                    nonce: acct.nonce,
+                }
             })
             .collect()
     }
 
     pub fn apply_undo(&mut self, recs: &[UndoRec]) {
         for r in recs {
-            self.accounts
-                .insert(r.addr, Account { balance: r.prev_balance, nonce: r.prev_nonce });
+            self.accounts.insert(
+                r.addr,
+                Account {
+                    balance: r.prev_balance,
+                    nonce: r.prev_nonce,
+                },
+            );
         }
     }
 }

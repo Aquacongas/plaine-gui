@@ -41,7 +41,10 @@ fn submit_one(
 
 fn case(name: &str, want: Reject, height: u64, tweak: impl Fn(Header) -> Header) {
     let (a, hash) = submit_one(tweak);
-    assert_eq!(a.rejected, 1, "{name}: fixture - exactly one rejection expected");
+    assert_eq!(
+        a.rejected, 1,
+        "{name}: fixture - exactly one rejection expected"
+    );
     let rej = a.first_rejection.unwrap_or_else(|| {
         panic!("{name}: rejected: 1 but first_rejection: None; the verdict is lost")
     });
@@ -89,7 +92,10 @@ fn orphan_header_reports_missing_parent() {
 fn wrong_difficulty_reported() {
     case(
         "bits",
-        Reject::BitsNotAsert { got: 0, expected: 0 },
+        Reject::BitsNotAsert {
+            got: 0,
+            expected: 0,
+        },
         21,
         |mut h| {
             h.bits = h.bits.wrapping_sub(1);
@@ -160,8 +166,13 @@ fn only_first_refusal_reported() {
     };
     let first = mk(1, 0);
     let hash = plaine_consensus::crypto::header_hash(&first);
-    let a = r.cm.submit_headers(9, &[first, mk(2, 1), mk(3, 2)]).expect("not halted");
-    assert_eq!(a.rejected, 3, "fixture: all three were expected to be refused");
+    let a =
+        r.cm.submit_headers(9, &[first, mk(2, 1), mk(3, 2)])
+            .expect("not halted");
+    assert_eq!(
+        a.rejected, 3,
+        "fixture: all three were expected to be refused"
+    );
     let rej = a.first_rejection.expect("a reason");
     assert_eq!(
         rej.hash, hash,
@@ -179,8 +190,14 @@ fn every_reject_has_unique_tag() {
         Reject::BadBits { got: 0 },
         Reject::CheckpointMismatch { height: 0 },
         Reject::UnknownParent { prev: [0u8; 32] },
-        Reject::HeightNotParentPlusOne { got: 0, expected: 0 },
-        Reject::BitsNotAsert { got: 0, expected: 0 },
+        Reject::HeightNotParentPlusOne {
+            got: 0,
+            expected: 0,
+        },
+        Reject::BitsNotAsert {
+            got: 0,
+            expected: 0,
+        },
         Reject::AsertAnchorUnavailable { height: 0 },
         Reject::TimestampTooOld { mtp: 0, time: 0 },
         Reject::TimestampTooFarInFuture { time: 0, limit: 0 },
@@ -188,7 +205,10 @@ fn every_reject_has_unique_tag() {
         Reject::InsufficientClaimedWork,
         Reject::PowInvalid { hash: [0u8; 32] },
         Reject::BudgetExhausted { source: 0 },
-        Reject::DuplicateFlood { source: 0, count: 0 },
+        Reject::DuplicateFlood {
+            source: 0,
+            count: 0,
+        },
         Reject::StagingFull { source: 0 },
         Reject::BatchTooLong { got: 0, cap: 0 },
         Reject::TooManySources { source: 0, cap: 0 },
@@ -196,15 +216,33 @@ fn every_reject_has_unique_tag() {
         Reject::BodyAlreadyHeld { hash: [0u8; 32] },
         Reject::BodyStructure { detail: "x" },
         Reject::TxRootMismatch,
-        Reject::Tx { index: 0, err: plaine_consensus::tx::TxError::BadSignature },
+        Reject::Tx {
+            index: 0,
+            err: plaine_consensus::tx::TxError::BadSignature,
+        },
         Reject::BadTransferSignature { index: 0 },
         Reject::FeeBelowFloor { index: 0 },
-        Reject::BadNonce { index: 0, expected: 0, got: 0 },
-        Reject::InsufficientBalance { index: 0, need: 0, have: 0 },
+        Reject::BadNonce {
+            index: 0,
+            expected: 0,
+            got: 0,
+        },
+        Reject::InsufficientBalance {
+            index: 0,
+            need: 0,
+            have: 0,
+        },
         Reject::ArithmeticOverflow,
         Reject::Rule(plaine_consensus::rules::RuleError::EmptyCandidate),
-        Reject::BranchInvalid { height: 0, hash: [0u8; 32], cause: Box::new(Reject::Busy) },
-        Reject::ResyncRequired { fork_height: 0, replay_floor: 0 },
+        Reject::BranchInvalid {
+            height: 0,
+            hash: [0u8; 32],
+            cause: Box::new(Reject::Busy),
+        },
+        Reject::ResyncRequired {
+            fork_height: 0,
+            replay_floor: 0,
+        },
         Reject::Busy,
         Reject::SinkRefused { detail: "x" },
         Reject::Halted { detail: "x" },
@@ -218,7 +256,7 @@ fn every_reject_has_unique_tag() {
         Reject::PoolFull,
         Reject::SenderCap { cap: 0 },
         Reject::TxDecode,
-        Reject::TxTooLarge { got: 0 }
+        Reject::TxTooLarge { got: 0 },
     ];
     let mut seen: Vec<(&'static str, String)> = Vec::new();
     for r in &all {
@@ -264,11 +302,17 @@ fn late_dropped_header_named() {
     let rej = a.first_rejection.expect(
         "two staged headers drained with every counter at zero must still report the break",
     );
-    assert_eq!(rej.hash, first, "the break is the header that failed, not its child");
+    assert_eq!(
+        rej.hash, first,
+        "the break is the header that failed, not its child"
+    );
     assert_eq!(rej.height, 21);
     assert_eq!(
         rej.repair_from, 21,
         "a header whose own proof of work failed is the break; nothing below it is implicated"
     );
-    assert_eq!(rej.why, plaine_chain::error::Reject::PowInvalid { hash: first }.why());
+    assert_eq!(
+        rej.why,
+        plaine_chain::error::Reject::PowInvalid { hash: first }.why()
+    );
 }

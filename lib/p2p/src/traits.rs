@@ -79,10 +79,7 @@ pub enum SinkError {
     Full,
     Invalid(&'static str),
 
-    RefusedAt {
-        height: u64,
-        why: &'static str,
-    },
+    RefusedAt { height: u64, why: &'static str },
     Fatal(&'static str),
 }
 
@@ -176,18 +173,29 @@ pub trait PowVerifier: Send + Sync + 'static {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Condition {
-    ColdStartRetry { attempt: u32, backoff_ms: u64 },
-    NoEligibleSyncPeer { waived: PeerId },
+    ColdStartRetry {
+        attempt: u32,
+        backoff_ms: u64,
+    },
+    NoEligibleSyncPeer {
+        waived: PeerId,
+    },
     RotationBudgetExhausted,
-    LocalStallRotation { suspended_ms: u64 },
+    LocalStallRotation {
+        suspended_ms: u64,
+    },
 
     StrandedBeyondReorgCap {
         our_tip: u64,
         their_tip: u64,
         depth: u64,
     },
-    DeepRecoveryFlapping { branch: Hash32 },
-    BodyUnavailable { height: u64 },
+    DeepRecoveryFlapping {
+        branch: Hash32,
+    },
+    BodyUnavailable {
+        height: u64,
+    },
 
     BodiesUnappliable {
         applied: u64,
@@ -199,11 +207,22 @@ pub enum Condition {
         wanted: usize,
         peers: usize,
     },
-    ClockSkewSuspected { median_delta_secs: i64 },
-    AnchorContradiction { height: u64, hash: Hash32 },
-    AnchorChainUnavailable { height: u64, hash: Hash32 },
+    ClockSkewSuspected {
+        median_delta_secs: i64,
+    },
+    AnchorContradiction {
+        height: u64,
+        hash: Hash32,
+    },
+    AnchorChainUnavailable {
+        height: u64,
+        hash: Hash32,
+    },
     SinkFatal(&'static str),
-    QueueOverflow { queue: &'static str, policy: Policy },
+    QueueOverflow {
+        queue: &'static str,
+        policy: Policy,
+    },
 
     ClaimUnsubstantiated {
         peer: PeerId,

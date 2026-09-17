@@ -80,7 +80,14 @@ impl Rig {
             Some(Box::new(move |c| sink.lock().expect("cond lock").push(c))),
         )
         .expect("boot invariants hold");
-        Rig { store, pow, clock, cm, conds, params: p }
+        Rig {
+            store,
+            pow,
+            clock,
+            cm,
+            conds,
+            params: p,
+        }
     }
 
     pub fn sync(&mut self, chain: &Scenario, from: u64) {
@@ -88,7 +95,9 @@ impl Rig {
         let raws = chain.raw_headers_from(from);
 
         for part in raws.chunks(plaine_consensus::constants::MAX_HEADERS_PER_MSG) {
-            self.cm.submit_headers_solicited(1, part).expect("headers ingest");
+            self.cm
+                .submit_headers_solicited(1, part)
+                .expect("headers ingest");
         }
         for b in chain.blocks.iter().skip(from as usize) {
             let _ = self.cm.submit_block(&b.rec.hash, b.body.clone());
@@ -96,9 +105,16 @@ impl Rig {
         while let Ok(plaine_chain::Progress::Advanced { .. }) = self.cm.advance() {}
     }
 
-    pub fn offer(&mut self, source: u32, blocks: &[plaine_chain::mock::BuiltBlock]) -> plaine_chain::Accepted {
+    pub fn offer(
+        &mut self,
+        source: u32,
+        blocks: &[plaine_chain::mock::BuiltBlock],
+    ) -> plaine_chain::Accepted {
         let raws: Vec<[u8; 132]> = blocks.iter().map(|b| b.rec.raw).collect();
-        let a = self.cm.submit_headers_solicited(source, &raws).expect("not halted");
+        let a = self
+            .cm
+            .submit_headers_solicited(source, &raws)
+            .expect("not halted");
         for b in blocks {
             let _ = self.cm.submit_block(&b.rec.hash, b.body.clone());
         }
@@ -142,7 +158,12 @@ impl Rig {
 }
 
 pub fn blocks_above(chain: &Scenario, from: u64) -> Vec<plaine_chain::mock::BuiltBlock> {
-    chain.blocks.iter().skip(from as usize + 1).cloned().collect()
+    chain
+        .blocks
+        .iter()
+        .skip(from as usize + 1)
+        .cloned()
+        .collect()
 }
 
 pub fn signed_transfer(
@@ -174,8 +195,8 @@ pub fn signed_announcement(sk: &SigningKey, payload: &[u8], fee: u128, nonce: u6
         payload: payload.to_vec(),
         sig: [0u8; 64],
     };
-    let msg =
-        plaine_consensus::crypto::announcement_message_of(TEST_NETWORK, &tx).expect("payload length is legal");
+    let msg = plaine_consensus::crypto::announcement_message_of(TEST_NETWORK, &tx)
+        .expect("payload length is legal");
     tx.sig = sk.sign(&msg).to_bytes();
     tx.encode().expect("payload length is legal")
 }

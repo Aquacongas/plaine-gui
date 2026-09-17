@@ -165,13 +165,7 @@ impl TxRelay {
         });
     }
 
-    pub fn on_tx(
-        &mut self,
-        peer: PeerId,
-        txid: Hash32,
-        now: Mono,
-        out: &mut Vec<Action>,
-    ) -> bool {
+    pub fn on_tx(&mut self, peer: PeerId, txid: Hash32, now: Mono, out: &mut Vec<Action>) -> bool {
         let _ = now;
         self.note_known(peer, txid);
         match self.inflight.get(&txid) {
@@ -238,12 +232,7 @@ impl TxRelay {
         if self.pending.is_empty() || ready.is_empty() {
             return;
         }
-        let batch: Vec<Hash32> = self
-            .pending
-            .iter()
-            .take(INV_TX_PER_MSG)
-            .copied()
-            .collect();
+        let batch: Vec<Hash32> = self.pending.iter().take(INV_TX_PER_MSG).copied().collect();
         let mut delivered_to_someone = false;
         for peer in ready {
             let items: Vec<InvItem> = batch

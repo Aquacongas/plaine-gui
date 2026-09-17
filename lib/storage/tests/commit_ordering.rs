@@ -94,17 +94,44 @@ fn spent_to_zero_keeps_nonce() {
     let sink = addr(2);
 
     let mut b0 = ch.build_one(1);
-    b0.deltas = vec![StateDelta { addr: spender, balance: 5_000, nonce: 1 }];
-    b0.undo = vec![UndoRec { addr: spender, prev_balance: 0, prev_nonce: 0, existed: false }];
+    b0.deltas = vec![StateDelta {
+        addr: spender,
+        balance: 5_000,
+        nonce: 1,
+    }];
+    b0.undo = vec![UndoRec {
+        addr: spender,
+        prev_balance: 0,
+        prev_nonce: 0,
+        existed: false,
+    }];
     let mut b1 = ch.build_one(1);
 
     b1.deltas = vec![
-        StateDelta { addr: spender, balance: 0, nonce: 2 },
-        StateDelta { addr: sink, balance: 5_000, nonce: 0 },
+        StateDelta {
+            addr: spender,
+            balance: 0,
+            nonce: 2,
+        },
+        StateDelta {
+            addr: sink,
+            balance: 5_000,
+            nonce: 0,
+        },
     ];
     b1.undo = vec![
-        UndoRec { addr: spender, prev_balance: 5_000, prev_nonce: 1, existed: true },
-        UndoRec { addr: sink, prev_balance: 0, prev_nonce: 0, existed: false },
+        UndoRec {
+            addr: spender,
+            prev_balance: 5_000,
+            prev_nonce: 1,
+            existed: true,
+        },
+        UndoRec {
+            addr: sink,
+            prev_balance: 0,
+            prev_nonce: 0,
+            existed: false,
+        },
     ];
     c.extend(&commits(&[b0, b1])).unwrap();
     c.flush().unwrap();
@@ -113,7 +140,10 @@ fn spent_to_zero_keeps_nonce() {
     println!("  spender after spending everything: {got:?}");
     assert_eq!(
         got,
-        Account { balance: 0, nonce: 2 },
+        Account {
+            balance: 0,
+            nonce: 2
+        },
         "a zero-balance account with nonce > 0 was deleted: its nonce is now replayable"
     );
     r.verify_state_fingerprint()
@@ -122,23 +152,54 @@ fn spent_to_zero_keeps_nonce() {
     drop(c);
     drop(r);
     let (mut c, r, _) = open(cfg_of(&s)).expect("reopen");
-    assert_eq!(r.account(&spender).unwrap(), Account { balance: 0, nonce: 2 });
+    assert_eq!(
+        r.account(&spender).unwrap(),
+        Account {
+            balance: 0,
+            nonce: 2
+        }
+    );
 
     let mut b2 = ch.build_one(1);
-    b2.deltas = vec![StateDelta { addr: spender, balance: 7, nonce: 3 }];
-    b2.undo = vec![UndoRec { addr: spender, prev_balance: 0, prev_nonce: 2, existed: true }];
+    b2.deltas = vec![StateDelta {
+        addr: spender,
+        balance: 7,
+        nonce: 3,
+    }];
+    b2.undo = vec![UndoRec {
+        addr: spender,
+        prev_balance: 0,
+        prev_nonce: 2,
+        existed: true,
+    }];
     c.extend(&[b2.to_commit()]).unwrap();
     c.flush().unwrap();
-    assert_eq!(r.account(&spender).unwrap(), Account { balance: 7, nonce: 3 });
+    assert_eq!(
+        r.account(&spender).unwrap(),
+        Account {
+            balance: 7,
+            nonce: 3
+        }
+    );
 
     let mut b3 = ch.build_one(1);
-    b3.deltas = vec![StateDelta { addr: sink, balance: 0, nonce: 0 }];
-    b3.undo = vec![UndoRec { addr: sink, prev_balance: 5_000, prev_nonce: 0, existed: true }];
+    b3.deltas = vec![StateDelta {
+        addr: sink,
+        balance: 0,
+        nonce: 0,
+    }];
+    b3.undo = vec![UndoRec {
+        addr: sink,
+        prev_balance: 5_000,
+        prev_nonce: 0,
+        existed: true,
+    }];
     c.extend(&[b3.to_commit()]).unwrap();
     c.flush().unwrap();
     assert_eq!(r.account(&sink).unwrap(), Account::default());
 
-    r.verify_state_fingerprint().expect("fingerprint after a real delete");
+    r.verify_state_fingerprint()
+        .expect("fingerprint after a real delete");
     drop(c);
     drop(r);
 }
@@ -167,7 +228,10 @@ fn misordered_rollback_refused() {
         rollback: &ascending,
         apply: &cs,
     });
-    println!("  ascending rollback -> {:?}", e.as_ref().err().map(|x| x.to_string()));
+    println!(
+        "  ascending rollback -> {:?}",
+        e.as_ref().err().map(|x| x.to_string())
+    );
     assert!(matches!(e, Err(StoreError::BadPlan(_))), "{e:?}");
 
     let mut repeated: Vec<u64> = (fork + 1..=199).rev().collect();
@@ -177,7 +241,10 @@ fn misordered_rollback_refused() {
         rollback: &repeated,
         apply: &cs,
     });
-    println!("  repeated height    -> {:?}", e.as_ref().err().map(|x| x.to_string()));
+    println!(
+        "  repeated height    -> {:?}",
+        e.as_ref().err().map(|x| x.to_string())
+    );
     assert!(matches!(e, Err(StoreError::BadPlan(_))), "{e:?}");
 
     let mut shuffled: Vec<u64> = (fork + 1..=199).rev().collect();
@@ -188,7 +255,10 @@ fn misordered_rollback_refused() {
         rollback: &shuffled,
         apply: &cs,
     });
-    println!("  shuffled interior  -> {:?}", e.as_ref().err().map(|x| x.to_string()));
+    println!(
+        "  shuffled interior  -> {:?}",
+        e.as_ref().err().map(|x| x.to_string())
+    );
     assert!(matches!(e, Err(StoreError::BadPlan(_))), "{e:?}");
 
     assert_eq!(r.tip(), before_tip);
@@ -204,7 +274,8 @@ fn misordered_rollback_refused() {
     })
     .expect("the descending form of the same plan");
     assert_eq!(r.tip().hash, alt.last().unwrap().hash);
-    r.verify_state_fingerprint().expect("state after the accepted reorg");
+    r.verify_state_fingerprint()
+        .expect("state after the accepted reorg");
     drop(cs);
     drop(c);
     drop(r);

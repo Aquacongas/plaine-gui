@@ -164,7 +164,11 @@ fn inv_does_not_raise_claim() {
         state_before,
         "an announcement moved the header state machine"
     );
-    assert_eq!(sim.engine.wanted_len(), 0, "an announced hash entered `wanted`");
+    assert_eq!(
+        sim.engine.wanted_len(),
+        0,
+        "an announced hash entered `wanted`"
+    );
 }
 
 #[test]
@@ -236,7 +240,11 @@ fn unknown_hash_costs_announcer() {
         ceiling,
         INV_PROBE_INTERVAL_MS
     );
-    assert_eq!(sim.pow.calls(), calls_before, "a lie reached the interpreter");
+    assert_eq!(
+        sim.pow.calls(),
+        calls_before,
+        "a lie reached the interpreter"
+    );
     assert_eq!(
         sim.engine.header.best_claimed_height(),
         0,
@@ -301,7 +309,13 @@ fn many_announcers_one_probe() {
     assert_eq!(
         sim.actions
             .iter()
-            .filter(|a| matches!(a, Action::Send { msg: Msg::GetHeaders { .. }, .. }))
+            .filter(|a| matches!(
+                a,
+                Action::Send {
+                    msg: Msg::GetHeaders { .. },
+                    ..
+                }
+            ))
             .count(),
         1,
         "the probe count and the frames actually emitted disagree"
@@ -829,7 +843,10 @@ fn known_hash_raises_body_horizon() {
     sim.connect(source);
     sim.run(120_000, 1_000);
     assert_eq!(sim.chain.tip().height, 50, "the fixture did not sync");
-    assert!(sim.engine.known_len() > 0, "the fixture never populated `known`");
+    assert!(
+        sim.engine.known_len() > 0,
+        "the fixture never populated `known`"
+    );
     let held = chain[40];
 
     let via_inv = inbound(&mut sim, 1, 0);
@@ -957,10 +974,7 @@ fn three_notfounds_drop_supplier() {
     let p = sim.add_peer(Behaviour::HeadersOnly, chain.clone());
     sim.connect(p);
 
-    let sup = [Supplier {
-        id: p,
-        horizon: 10,
-    }];
+    let sup = [Supplier { id: p, horizon: 10 }];
     let wanted: Vec<(u64, Hash32)> = chain.iter().take(3).map(|h| (h.height, h.hash)).collect();
     let _ = sim.engine.body.schedule(&wanted, &sup, sim.now());
     for (_, h) in &wanted {
@@ -985,7 +999,6 @@ fn three_notfounds_drop_supplier() {
 
 #[test]
 fn notfound_isolated_per_peer() {
-
     let mut sim = Sim::new(1, T0);
 
     sim.run(30_000, 1_000);

@@ -29,7 +29,8 @@ fn headers_below_undo_floor_refused() {
             "FIXTURE, not a finding: committing the 2,000-block seed failed: {e}. Same reading as above: the refusal this test exists for was never reached."
         )
     });
-    c.flush().unwrap_or_else(|e| panic!("FIXTURE, not a finding: the seed flush failed: {e}"));
+    c.flush()
+        .unwrap_or_else(|e| panic!("FIXTURE, not a finding: the seed flush failed: {e}"));
     let tip = r.tip().height;
     let floor = r.undo_floor();
     drop(c);
@@ -48,7 +49,10 @@ fn headers_below_undo_floor_refused() {
         removed += 1;
     }
 
-    assert!(removed > 0, "no header segment was removed; nothing was injected");
+    assert!(
+        removed > 0,
+        "no header segment was removed; nothing was injected"
+    );
 
     match open(cfg_of(&s)) {
         Ok((_c, r2, _)) => panic!(

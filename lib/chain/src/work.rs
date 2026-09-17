@@ -37,7 +37,11 @@ impl Default for WorkCache {
 
 impl WorkCache {
     pub fn new() -> WorkCache {
-        WorkCache { slots: [None; 64], hits: 0, misses: 0 }
+        WorkCache {
+            slots: [None; 64],
+            hits: 0,
+            misses: 0,
+        }
     }
 
     // Direct-mapped memo on the low 6 bits; a collision recomputes, never lies.
@@ -62,7 +66,11 @@ impl WorkCache {
 }
 
 pub fn anchor_height_for(parent_height: u64, interval: u64) -> u64 {
-    let interval = if interval == 0 { ASERT_ANCHOR_INTERVAL } else { interval };
+    let interval = if interval == 0 {
+        ASERT_ANCHOR_INTERVAL
+    } else {
+        interval
+    };
     (parent_height / interval) * interval
 }
 
@@ -114,7 +122,10 @@ mod tests {
                 checked += 1;
             }
         }
-        assert!(checked > 0, "the random sweep produced no legal targets at all");
+        assert!(
+            checked > 0,
+            "the random sweep produced no legal targets at all"
+        );
     }
 
     #[test]
@@ -133,7 +144,10 @@ mod tests {
     #[test]
     fn zero_and_over_limit_rejected() {
         let limit = ChainParams::default_pow_limit();
-        assert!(expand_bits(0, &limit).is_none(), "zero target must not expand");
+        assert!(
+            expand_bits(0, &limit).is_none(),
+            "zero target must not expand"
+        );
 
         assert!(expand_bits(0x1d00_ffff, &limit).is_some());
 

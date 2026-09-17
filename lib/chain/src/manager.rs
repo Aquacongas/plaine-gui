@@ -73,10 +73,14 @@ where
     ) -> Result<Self, Reject> {
         // Frozen consensus sizes. Fail at boot if a refactor moved them, not later.
         if HEADER_BYTES != 132 {
-            return Err(Reject::BootInvariant { detail: "header is not 132 bytes" });
+            return Err(Reject::BootInvariant {
+                detail: "header is not 132 bytes",
+            });
         }
         if MAX_BLOCK_BYTES != 1_048_576 || MAX_TXS_PER_BLOCK != 4_096 {
-            return Err(Reject::BootInvariant { detail: "block limits moved" });
+            return Err(Reject::BootInvariant {
+                detail: "block limits moved",
+            });
         }
 
         if !params.profile_is_consistent() {
@@ -130,27 +134,32 @@ where
 
     fn load_from_store(&mut self) -> Result<(), Reject> {
         let tip = self.store.tip();
-        let genesis = self
-            .store
-            .header_at(0)
-            .ok_or(Reject::BootInvariant { detail: "store holds no genesis" })?;
+        let genesis = self.store.header_at(0).ok_or(Reject::BootInvariant {
+            detail: "store holds no genesis",
+        })?;
         self.genesis_time = genesis.time;
-        let gw = self
-            .memo
-            .work(genesis.bits, &self.params.pow_limit)
-            .ok_or(Reject::BootInvariant { detail: "genesis bits are not a legal target" })?;
+        let gw =
+            self.memo
+                .work(genesis.bits, &self.params.pow_limit)
+                .ok_or(Reject::BootInvariant {
+                    detail: "genesis bits are not a legal target",
+                })?;
         self.index.insert_genesis(&genesis, gw);
         let mut cum = gw;
         let mut chain = vec![0u32];
         for h in 1..=tip.height {
-            let Some(rec) = self.store.header_at(h) else { break };
-            let w = self
-                .memo
-                .work(rec.bits, &self.params.pow_limit)
-                .ok_or(Reject::BootInvariant { detail: "stored bits are not a legal target" })?;
-            cum = cum
-                .checked_add(&w)
-                .ok_or(Reject::BootInvariant { detail: "chainwork overflow on load" })?;
+            let Some(rec) = self.store.header_at(h) else {
+                break;
+            };
+            let w =
+                self.memo
+                    .work(rec.bits, &self.params.pow_limit)
+                    .ok_or(Reject::BootInvariant {
+                        detail: "stored bits are not a legal target",
+                    })?;
+            cum = cum.checked_add(&w).ok_or(Reject::BootInvariant {
+                detail: "chainwork overflow on load",
+            })?;
             let parent = *chain.last().expect("genesis is in the chain");
             let idx = self.index.insert(&rec, parent, cum, true);
             self.index.set_have_body(idx);
@@ -181,8 +190,12 @@ where
             if p.height + 1 != rec.height {
                 continue;
             }
-            let Some(w) = self.memo.work(rec.bits, &self.params.pow_limit) else { continue };
-            let Some(cum) = p.cum_work.checked_add(&w) else { continue };
+            let Some(w) = self.memo.work(rec.bits, &self.params.pow_limit) else {
+                continue;
+            };
+            let Some(cum) = p.cum_work.checked_add(&w) else {
+                continue;
+            };
             let idx = self.index.insert(&rec, parent, cum, true);
 
             if self.store.is_invalid(&rec.hash) {
@@ -219,11 +232,18 @@ where
 
     pub fn tip(&self) -> TipRef {
         let n = self.index.tip();
-        TipRef { height: n.height, hash: n.hash, time: n.time, chainwork: n.cum_work }
+        TipRef {
+            height: n.height,
+            hash: n.hash,
+            time: n.time,
+            chainwork: n.cum_work,
+        }
     }
 
     pub fn header_at(&self, height: u64) -> Option<HeaderRec> {
-        self.index.canonical_at(height).and_then(|n| self.rec_of(&n.hash))
+        self.index
+            .canonical_at(height)
+            .and_then(|n| self.rec_of(&n.hash))
     }
 
     pub fn header_by_hash(&self, hash: &Hash32) -> Option<HeaderRec> {
@@ -250,7 +270,9 @@ where
 
     pub fn ancestor_at(&self, hash: &Hash32, height: u64) -> Option<Hash32> {
         let idx = self.index.index_of(hash)?;
-        self.index.ancestor_at(idx, height).map(|i| self.index.node(i).hash)
+        self.index
+            .ancestor_at(idx, height)
+            .map(|i| self.index.node(i).hash)
     }
 
     pub fn locator(&self) -> Vec<Hash32> {
@@ -284,7 +306,10 @@ where
     }
 
     pub fn body_bytes(&self, hash: &Hash32) -> Option<Vec<u8>> {
-        self.bodies.get(hash).cloned().or_else(|| self.store.body_by_hash(hash))
+        self.bodies
+            .get(hash)
+            .cloned()
+            .or_else(|| self.store.body_by_hash(hash))
     }
 
     pub fn anchor(&self) -> Option<Anchor> {
@@ -348,9 +373,9 @@ where
             Some(plan) => {
                 let cap = self.params.max_reorg_depth;
                 let anchored = self.cps.anchor().is_some_and(|a| {
-                    plan.apply
-                        .iter()
-                        .any(|&i| self.index.node(i).height == a.height && self.index.node(i).hash == a.hash)
+                    plan.apply.iter().any(|&i| {
+                        self.index.node(i).height == a.height && self.index.node(i).hash == a.hash
+                    })
                 });
                 if cap > 0 && plan.depth > cap && !anchored {
                     BranchVerdict::Stranded { cap }
@@ -422,7 +447,10 @@ where
         }
 
         if raws.len() > MAX_HEADERS_PER_MSG {
-            return Err(Reject::BatchTooLong { got: raws.len(), cap: MAX_HEADERS_PER_MSG });
+            return Err(Reject::BatchTooLong {
+                got: raws.len(),
+                cap: MAX_HEADERS_PER_MSG,
+            });
         }
         let mut conds: Vec<Condition> = Vec::new();
         let mut connected: Vec<HeaderRec> = Vec::new();
@@ -437,7 +465,12 @@ where
                 mono_ms: self.clock.mono_ms(),
                 tip: {
                     let n = self.index.tip();
-                    TipRef { height: n.height, hash: n.hash, time: n.time, chainwork: n.cum_work }
+                    TipRef {
+                        height: n.height,
+                        hash: n.hash,
+                        time: n.time,
+                        chainwork: n.cum_work,
+                    }
                 },
                 genesis_time: self.genesis_time,
                 solicitation,
@@ -472,7 +505,9 @@ where
                 .map(|n| n.cum_work)
                 .unwrap_or_default();
             self.side_raws.insert(rec.hash, rec.raw);
-            let _ = self.sink.store_side_header(&SideHeaderRec { rec, chainwork: cw });
+            let _ = self
+                .sink
+                .store_side_header(&SideHeaderRec { rec, chainwork: cw });
         }
         Ok(accepted)
     }
@@ -496,7 +531,9 @@ where
             return Err(Reject::BodyAlreadyHeld { hash: *hash });
         }
         if body.len() + HEADER_BYTES > MAX_BLOCK_BYTES {
-            return Err(Reject::BodyStructure { detail: "body over MAX_BLOCK_BYTES" });
+            return Err(Reject::BodyStructure {
+                detail: "body over MAX_BLOCK_BYTES",
+            });
         }
         self.bodies.insert(*hash, body);
         self.index.set_have_body(idx);
@@ -558,7 +595,11 @@ where
                     return Ok(p);
                 }
 
-                Err(Reject::BranchInvalid { height, hash, cause }) => {
+                Err(Reject::BranchInvalid {
+                    height,
+                    hash,
+                    cause,
+                }) => {
                     // Poison a failing side branch and keep going. The same failure
                     // on our own canonical chain is corruption, so surface it.
                     let is_side = self
@@ -566,10 +607,17 @@ where
                         .index_of(&hash)
                         .is_some_and(|i| !self.index.is_canonical(i));
                     if !is_side {
-                        return Err(Reject::BranchInvalid { height, hash, cause });
+                        return Err(Reject::BranchInvalid {
+                            height,
+                            hash,
+                            cause,
+                        });
                     }
-                    self.last_branch_failure =
-                        Some(Reject::BranchInvalid { height, hash, cause });
+                    self.last_branch_failure = Some(Reject::BranchInvalid {
+                        height,
+                        hash,
+                        cause,
+                    });
                     self.invalidate(&hash);
                     continue;
                 }
@@ -704,7 +752,12 @@ where
             let mut ledger = CoinbaseLedger::new();
             let mut replayed: Vec<CommitBlock> = Vec::new();
             let mut obs = |c: Condition| conds.push(c);
-            let chainwork_at = |h: u64| arena.canonical_at(h).map(|n| n.cum_work).unwrap_or_default();
+            let chainwork_at = |h: u64| {
+                arena
+                    .canonical_at(h)
+                    .map(|n| n.cum_work)
+                    .unwrap_or_default()
+            };
             reorg::rewind_to_fork(
                 &*self.store,
                 &mut overlay,
@@ -742,9 +795,10 @@ where
         let applied = plan.apply.len() as u64;
         let rolled_back = plan.rollback.len() as u64;
         let result = match base {
-            Base::DeepReplay { rewind_to } => {
-                self.sink.commit_deep_reorg(&DeepReorgCommit { rewind_to, apply: commits })
-            }
+            Base::DeepReplay { rewind_to } => self.sink.commit_deep_reorg(&DeepReorgCommit {
+                rewind_to,
+                apply: commits,
+            }),
             // One block on the current tip: cheap single-block commit, no reorg write.
             Base::UndoWindow if plan.rollback.is_empty() && commits.len() == 1 => {
                 self.sink.commit_block(&commits[0])
@@ -782,7 +836,11 @@ where
         }
         self.tip_ledger = reorg::build_ledger(&*self.store, self.index.tip_height())?;
         self.update_mempool(&spent, &disconnected);
-        Ok(Progress::Advanced { tip: self.tip(), rolled_back, applied })
+        Ok(Progress::Advanced {
+            tip: self.tip(),
+            rolled_back,
+            applied,
+        })
     }
 
     pub fn submit_tx(&mut self, origin: TxOrigin, raw: Vec<u8>) -> Result<Admitted, Reject> {
@@ -811,7 +869,8 @@ where
                 (ac, ledger.spendable(a, ac.balance, height))
             };
             let mut obs = |c: Condition| conds.push(c);
-            self.pool.submit_verified(network, raw, &mut lookup, now, &author, &mut obs)
+            self.pool
+                .submit_verified(network, raw, &mut lookup, now, &author, &mut obs)
         };
         for c in conds {
             self.emit(c);
@@ -819,11 +878,7 @@ where
         out
     }
 
-    fn update_mempool(
-        &mut self,
-        spent: &[(Address, u64)],
-        disconnected: &[(u64, Vec<Vec<u8>>)],
-    ) {
+    fn update_mempool(&mut self, spent: &[(Address, u64)], disconnected: &[(u64, Vec<Vec<u8>>)]) {
         let store = self.store.clone();
         let mut acct = |a: &Address| store.account(a);
         self.pool.on_block_connected(spent, &mut acct);
@@ -839,7 +894,8 @@ where
                     (ac, ledger.spendable(a, ac.balance, height))
                 };
                 let mut obs = |c: Condition| conds.push(c);
-                self.pool.on_reorg_reinject(disconnected, now, &mut lookup, &mut obs);
+                self.pool
+                    .on_reorg_reinject(disconnected, now, &mut lookup, &mut obs);
             }
             for c in conds {
                 self.emit(c);
@@ -851,7 +907,10 @@ where
     }
 
     pub fn block_template(&self) -> Vec<Vec<u8>> {
-        self.pool.template(MAX_TXS_PER_BLOCK - 1, MAX_BLOCK_BYTES - HEADER_BYTES - 4_096)
+        self.pool.template(
+            MAX_TXS_PER_BLOCK - 1,
+            MAX_BLOCK_BYTES - HEADER_BYTES - 4_096,
+        )
     }
 
     pub fn submit_checkpoint(&mut self, cp: &SignedCheckpoint) -> Result<CheckpointReport, Reject> {
@@ -872,7 +931,10 @@ where
                 "anchor_advanced means this record became the anchor"
             );
             if let Err(e) = self.sink.put_anchor(cp) {
-                self.emit(Condition::AnchorNotPersisted { height: cp.height, err: e });
+                self.emit(Condition::AnchorNotPersisted {
+                    height: cp.height,
+                    err: e,
+                });
             }
         }
         Ok(report)
@@ -905,11 +967,15 @@ fn skip_insert(skip: &mut Vec<u32>, i: u32) {
 }
 
 fn non_coinbase_bytes<S: Store + ?Sized>(store: &S, height: u64) -> Vec<Vec<u8>> {
-    let Some(raw) = store.body_at(height) else { return Vec::new() };
+    let Some(raw) = store.body_at(height) else {
+        return Vec::new();
+    };
     let Ok(body) = plaine_consensus::codec::BlockBody::parse(&raw) else {
         return Vec::new();
     };
-    (1..body.len()).filter_map(|i| body.tx_bytes(i).map(|b| b.to_vec())).collect()
+    (1..body.len())
+        .filter_map(|i| body.tx_bytes(i).map(|b| b.to_vec()))
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -926,12 +992,8 @@ pub struct BranchReport {
 pub enum BranchVerdict {
     OnBest,
 
-    NeedBodies {
-        missing: usize,
-    },
+    NeedBodies { missing: usize },
 
-    Stranded {
-        cap: u64,
-    },
+    Stranded { cap: u64 },
     Adoptable,
 }

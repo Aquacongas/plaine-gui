@@ -14,7 +14,10 @@ pub fn default_data_dir() -> PathBuf {
         }
         if let Some(profile) = std::env::var_os("USERPROFILE") {
             if !profile.is_empty() {
-                return PathBuf::from(profile).join("AppData").join("Roaming").join("Plaine");
+                return PathBuf::from(profile)
+                    .join("AppData")
+                    .join("Roaming")
+                    .join("Plaine");
             }
         }
     }
@@ -46,11 +49,15 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 fn home_dir() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        std::env::var_os("USERPROFILE").filter(|v| !v.is_empty()).map(PathBuf::from)
+        std::env::var_os("USERPROFILE")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
     }
     #[cfg(not(windows))]
     {
-        std::env::var_os("HOME").filter(|v| !v.is_empty()).map(PathBuf::from)
+        std::env::var_os("HOME")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
     }
 }
 
@@ -91,9 +98,15 @@ mod tests {
         let d = default_data_dir();
         let s = d.to_string_lossy().to_string();
         #[cfg(windows)]
-        assert!(s.ends_with("Plaine"), "windows default should be ...\\Plaine, got {s}");
+        assert!(
+            s.ends_with("Plaine"),
+            "windows default should be ...\\Plaine, got {s}"
+        );
         #[cfg(not(windows))]
-        assert!(s.ends_with(".plaine"), "unix default should be ~/.plaine, got {s}");
+        assert!(
+            s.ends_with(".plaine"),
+            "unix default should be ~/.plaine, got {s}"
+        );
     }
 
     #[test]
@@ -110,7 +123,10 @@ mod tests {
 
     #[test]
     fn absolute_path_untouched() {
-        assert_eq!(expand_tilde("/var/lib/plaine"), PathBuf::from("/var/lib/plaine"));
+        assert_eq!(
+            expand_tilde("/var/lib/plaine"),
+            PathBuf::from("/var/lib/plaine")
+        );
         assert_eq!(expand_tilde(r"C:\plaine"), PathBuf::from(r"C:\plaine"));
     }
 
@@ -131,6 +147,9 @@ mod tests {
         );
         assert_eq!(p.config_file, PathBuf::from("/etc/plaine/noded.toml"));
 
-        assert_eq!(p.database_file, PathBuf::from("/data/plaine").join("chain.redb"));
+        assert_eq!(
+            p.database_file,
+            PathBuf::from("/data/plaine").join("chain.redb")
+        );
     }
 }

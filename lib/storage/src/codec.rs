@@ -78,7 +78,11 @@ pub fn decode_undo(blob: &[u8]) -> Option<(Vec<UndoRec>, u128)> {
 
 pub const SIDE_VALUE_BYTES: usize = HEADER_BYTES + 9;
 
-pub fn encode_side(h: &[u8; HEADER_BYTES], height: u64, st: HeaderStatus) -> [u8; SIDE_VALUE_BYTES] {
+pub fn encode_side(
+    h: &[u8; HEADER_BYTES],
+    height: u64,
+    st: HeaderStatus,
+) -> [u8; SIDE_VALUE_BYTES] {
     let mut v = [0u8; SIDE_VALUE_BYTES];
     v[0..HEADER_BYTES].copy_from_slice(h);
     v[HEADER_BYTES..HEADER_BYTES + 8].copy_from_slice(&height.to_le_bytes());
@@ -186,8 +190,18 @@ mod tests {
     #[test]
     fn undo_roundtrip_and_bounds() {
         let recs = vec![
-            UndoRec { addr: [1u8; 20], prev_balance: 7, prev_nonce: 3, existed: true },
-            UndoRec { addr: [2u8; 20], prev_balance: 0, prev_nonce: 0, existed: false },
+            UndoRec {
+                addr: [1u8; 20],
+                prev_balance: 7,
+                prev_nonce: 3,
+                existed: true,
+            },
+            UndoRec {
+                addr: [2u8; 20],
+                prev_balance: 0,
+                prev_nonce: 0,
+                existed: false,
+            },
         ];
         let mut blob = Vec::new();
         encode_undo(&recs, 99, &mut blob);
@@ -201,7 +215,10 @@ mod tests {
 
     #[test]
     fn account_roundtrip() {
-        let a = Account { balance: u128::MAX - 5, nonce: 1234 };
+        let a = Account {
+            balance: u128::MAX - 5,
+            nonce: 1234,
+        };
         assert_eq!(decode_account(&encode_account(&a)), a);
     }
 
@@ -210,9 +227,27 @@ mod tests {
         let mut a = [0u8; 32];
         let mut b = [0u8; 32];
         let rows = [
-            ([1u8; 20], Account { balance: 5, nonce: 1 }),
-            ([2u8; 20], Account { balance: 9, nonce: 2 }),
-            ([3u8; 20], Account { balance: 0, nonce: 7 }),
+            (
+                [1u8; 20],
+                Account {
+                    balance: 5,
+                    nonce: 1,
+                },
+            ),
+            (
+                [2u8; 20],
+                Account {
+                    balance: 9,
+                    nonce: 2,
+                },
+            ),
+            (
+                [3u8; 20],
+                Account {
+                    balance: 0,
+                    nonce: 7,
+                },
+            ),
         ];
         for (addr, acct) in rows.iter() {
             fp_xor(&mut a, &row_digest(addr, acct));

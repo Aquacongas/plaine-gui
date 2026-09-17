@@ -204,9 +204,8 @@ fn hard_kill_at_commit_window_survived() {
                 )
             });
 
-            let h2 = wait_for_height_change(node.rpc, h, MINE_BUDGET).unwrap_or_else(|| {
-                panic!("trial {trial}: the chain stopped advancing at {h}")
-            });
+            let h2 = wait_for_height_change(node.rpc, h, MINE_BUDGET)
+                .unwrap_or_else(|| panic!("trial {trial}: the chain stopped advancing at {h}"));
             hard_kill(&mut node);
             drop(miner);
             h2

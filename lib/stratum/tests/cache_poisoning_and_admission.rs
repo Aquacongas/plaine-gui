@@ -25,7 +25,10 @@ fn addr(seed: u8) -> String {
 }
 
 fn harness(mode: Mode, network_diff: u64) -> Harness {
-    let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(network_diff)));
+    let src = Arc::new(MockJobSource::new(
+        184_602,
+        Target::from_difficulty(network_diff),
+    ));
     let results = Arc::new(Mutex::new(Vec::new()));
     let r2 = results.clone();
     let sink: ResultSink = Arc::new(move |r: VerifyResult| r2.lock().unwrap().push(r));
@@ -123,7 +126,12 @@ fn pinned_shares_never_poison_cache() {
     let h = harness(Mode::Pool, u64::MAX / 2);
     let victim = 77u8;
     let mut s = session(&h, 1, 0);
-    feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":["m"]}"#, 0);
+    feed(
+        &mut s,
+        &h,
+        r#"{"id":1,"method":"mining.subscribe","params":["m"]}"#,
+        0,
+    );
     let auth = feed(
         &mut s,
         &h,
@@ -155,7 +163,10 @@ fn pinned_shares_never_poison_cache() {
             ),
             now,
         );
-        assert!(out.contains("\"result\":true"), "share should be accepted: {out}");
+        assert!(
+            out.contains("\"result\":true"),
+            "share should be accepted: {out}"
+        );
         now += 1_000;
 
         if let Some(j) = notify_job_id(&out) {
@@ -174,10 +185,15 @@ fn pinned_shares_never_poison_cache() {
 
 #[test]
 fn interpreter_cost_capped_by_admission() {
-    let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(1_000_000)));
+    let src = Arc::new(MockJobSource::new(
+        184_602,
+        Target::from_difficulty(1_000_000),
+    ));
     let sink: ResultSink = Arc::new(|_r| {});
     let verifier = Arc::new(InlineVerifier::new(Arc::new(MockPow::new()), sink));
-    verifier.refuse.store(false, std::sync::atomic::Ordering::SeqCst);
+    verifier
+        .refuse
+        .store(false, std::sync::atomic::Ordering::SeqCst);
     let sh = Arc::new(Shared {
         bans: Mutex::new(BanTable::new()),
         e1: Arc::new(Mutex::new(E1Allocator::new())),
@@ -189,14 +205,26 @@ fn interpreter_cost_capped_by_admission() {
         caps: Caps::POOL,
         cfg: ServerConfig::for_mode(Mode::Pool),
     });
-    let h = Harness { sh, src, results: Arc::new(Mutex::new(Vec::new())) };
+    let h = Harness {
+        sh,
+        src,
+        results: Arc::new(Mutex::new(Vec::new())),
+    };
 
     let mut s = session(&h, 9, 0);
-    feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":["m"]}"#, 0);
+    feed(
+        &mut s,
+        &h,
+        r#"{"id":1,"method":"mining.subscribe","params":["m"]}"#,
+        0,
+    );
     let auth = feed(
         &mut s,
         &h,
-        &format!(r#"{{"id":2,"method":"mining.authorize","params":["{}.r","x"]}}"#, addr(9)),
+        &format!(
+            r#"{{"id":2,"method":"mining.authorize","params":["{}.r","x"]}}"#,
+            addr(9)
+        ),
         0,
     );
     let jid = notify_job_id(&auth).unwrap();

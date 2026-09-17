@@ -19,7 +19,9 @@ pub fn s1_fixed_fields(raw: &[u8], pow_limit: &Target) -> Result<Header, Reject>
         return Err(Reject::ExtRootNotZero);
     }
     if h.author_note_len as usize > AUTHOR_NOTE_MAX_BYTES {
-        return Err(Reject::AuthorNoteLen { got: h.author_note_len });
+        return Err(Reject::AuthorNoteLen {
+            got: h.author_note_len,
+        });
     }
 
     if h.version & 0xE000_0000 != VERSION_BASE {
@@ -31,7 +33,11 @@ pub fn s1_fixed_fields(raw: &[u8], pow_limit: &Target) -> Result<Header, Reject>
     Ok(h)
 }
 
-pub fn s1b_checkpoint(checkpoints: &[(u64, Hash32)], height: u64, hash: &Hash32) -> Result<(), Reject> {
+pub fn s1b_checkpoint(
+    checkpoints: &[(u64, Hash32)],
+    height: u64,
+    hash: &Hash32,
+) -> Result<(), Reject> {
     rules::check_block_checkpoint(checkpoints, height, hash)
         .map_err(|_| Reject::CheckpointMismatch { height })
 }
@@ -39,7 +45,10 @@ pub fn s1b_checkpoint(checkpoints: &[(u64, Hash32)], height: u64, hash: &Hash32)
 pub fn s2_height(child_height: u64, parent_height: u64) -> Result<(), Reject> {
     let expected = parent_height.saturating_add(1);
     if child_height != expected {
-        return Err(Reject::HeightNotParentPlusOne { got: child_height, expected });
+        return Err(Reject::HeightNotParentPlusOne {
+            got: child_height,
+            expected,
+        });
     }
     Ok(())
 }
@@ -136,7 +145,12 @@ mod tests {
     }
 
     fn tip() -> TipRef {
-        TipRef { height: 1_000, hash: [0x80; 32], time: 1_000_000, chainwork: Work::ONE }
+        TipRef {
+            height: 1_000,
+            hash: [0x80; 32],
+            time: 1_000_000,
+            chainwork: Work::ONE,
+        }
     }
 
     fn tip_at(height: u64) -> TipRef {
@@ -161,7 +175,10 @@ mod tests {
         let p = ChainParams::default();
         let mut h = base_header();
         h.ext_root = [1u8; 32];
-        assert_eq!(s1_fixed_fields(&h.encode(), &p.pow_limit), Err(Reject::ExtRootNotZero));
+        assert_eq!(
+            s1_fixed_fields(&h.encode(), &p.pow_limit),
+            Err(Reject::ExtRootNotZero)
+        );
     }
 
     #[test]
@@ -182,7 +199,10 @@ mod tests {
         let p = ChainParams::default();
         let mut h = base_header();
         h.version = 0x4000_0000;
-        assert!(matches!(s1_fixed_fields(&h.encode(), &p.pow_limit), Err(Reject::BadVersion { .. })));
+        assert!(matches!(
+            s1_fixed_fields(&h.encode(), &p.pow_limit),
+            Err(Reject::BadVersion { .. })
+        ));
 
         h.version = VERSION_BASE | 0x0000_0007;
         assert!(s1_fixed_fields(&h.encode(), &p.pow_limit).is_ok());
@@ -193,9 +213,15 @@ mod tests {
         let p = ChainParams::default();
         let mut h = base_header();
         h.bits = 0x2100_ffff;
-        assert!(matches!(s1_fixed_fields(&h.encode(), &p.pow_limit), Err(Reject::BadBits { .. })));
+        assert!(matches!(
+            s1_fixed_fields(&h.encode(), &p.pow_limit),
+            Err(Reject::BadBits { .. })
+        ));
         h.bits = 0;
-        assert!(matches!(s1_fixed_fields(&h.encode(), &p.pow_limit), Err(Reject::BadBits { .. })));
+        assert!(matches!(
+            s1_fixed_fields(&h.encode(), &p.pow_limit),
+            Err(Reject::BadBits { .. })
+        ));
     }
 
     #[test]
@@ -215,11 +241,17 @@ mod tests {
         assert!(s2_height(11, 10).is_ok());
         assert_eq!(
             s2_height(50, 10),
-            Err(Reject::HeightNotParentPlusOne { got: 50, expected: 11 })
+            Err(Reject::HeightNotParentPlusOne {
+                got: 50,
+                expected: 11
+            })
         );
         assert_eq!(
             s2_height(10, 10),
-            Err(Reject::HeightNotParentPlusOne { got: 10, expected: 11 })
+            Err(Reject::HeightNotParentPlusOne {
+                got: 10,
+                expected: 11
+            })
         );
     }
 
@@ -228,7 +260,10 @@ mod tests {
         assert!(s3_bits(0x1e00_ffff, 0x1e00_ffff).is_ok());
         assert_eq!(
             s3_bits(0x1e00_fffe, 0x1e00_ffff),
-            Err(Reject::BitsNotAsert { got: 0x1e00_fffe, expected: 0x1e00_ffff })
+            Err(Reject::BitsNotAsert {
+                got: 0x1e00_fffe,
+                expected: 0x1e00_ffff
+            })
         );
     }
 
@@ -261,7 +296,10 @@ mod tests {
         let past_cap = tip_at(cap + 1);
         assert_eq!(
             s5_fork_depth(&past_cap, 0, None, AnchorReach::NotReached, &p),
-            Err(Reject::ForkTooDeep { depth: cap + 1, cap })
+            Err(Reject::ForkTooDeep {
+                depth: cap + 1,
+                cap
+            })
         );
     }
 
@@ -273,11 +311,17 @@ mod tests {
 
         assert_eq!(
             s5_fork_depth(&t, 0, None, AnchorReach::NotReached, &p),
-            Err(Reject::ForkTooDeep { depth: p.max_reorg_depth + 1, cap: p.max_reorg_depth }),
+            Err(Reject::ForkTooDeep {
+                depth: p.max_reorg_depth + 1,
+                cap: p.max_reorg_depth
+            }),
             "one block past the cap with no anchor must refuse"
         );
 
-        assert_eq!(p.sync_window_secs, plaine_consensus::constants::SYNC_WINDOW_SECS);
+        assert_eq!(
+            p.sync_window_secs,
+            plaine_consensus::constants::SYNC_WINDOW_SECS
+        );
     }
 
     #[test]
@@ -286,7 +330,10 @@ mod tests {
 
         let depth = p.max_reorg_depth * 2;
         let t = tip_at(depth);
-        let anchor = Anchor { height: depth / 2, hash: [9u8; 32] };
+        let anchor = Anchor {
+            height: depth / 2,
+            hash: [9u8; 32],
+        };
 
         assert!(s5_fork_depth(&t, 0, Some(&anchor), AnchorReach::NotReached, &p).is_ok());
 
@@ -294,7 +341,10 @@ mod tests {
 
         assert_eq!(
             s5_fork_depth(&t, 0, Some(&anchor), AnchorReach::Contradicts, &p),
-            Err(Reject::ForkTooDeep { depth, cap: p.max_reorg_depth })
+            Err(Reject::ForkTooDeep {
+                depth,
+                cap: p.max_reorg_depth
+            })
         );
 
         assert!(s5_fork_depth(&t, 0, None, AnchorReach::NotReached, &p).is_err());

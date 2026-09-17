@@ -31,7 +31,11 @@ fn saturated_ring_yields_new_entries() {
     for i in 0..100u64 {
         r.push(1_000 + i, CAP);
         let (fresh, next, missed) = r.since(cursor);
-        assert_eq!(fresh, vec![1_000 + i], "one push must yield exactly one entry");
+        assert_eq!(
+            fresh,
+            vec![1_000 + i],
+            "one push must yield exactly one entry"
+        );
         assert_eq!(missed, 0);
         cursor = next;
     }
@@ -54,7 +58,11 @@ fn eviction_keeps_unread_entries() {
     let (fresh, next, missed) = r.since(3);
     assert_eq!(missed, 0, "entries 3.. are all still held");
     assert_eq!(next, cursor + 3);
-    assert_eq!(fresh, vec![3, 4, 5, 6, 7, 100, 101, 102], "everything from seq 3 up, nothing skipped");
+    assert_eq!(
+        fresh,
+        vec![3, 4, 5, 6, 7, 100, 101, 102],
+        "everything from seq 3 up, nothing skipped"
+    );
 }
 
 #[test]
@@ -64,7 +72,10 @@ fn lagging_reader_told_missed_count() {
         r.push(i, CAP);
     }
     let (fresh, next, missed) = r.since(0);
-    assert_eq!(missed, CAP as u64, "the first CAP entries were evicted unread");
+    assert_eq!(
+        missed, CAP as u64,
+        "the first CAP entries were evicted unread"
+    );
     assert_eq!(next, CAP as u64 * 2);
     assert_eq!(fresh, (CAP as u64..CAP as u64 * 2).collect::<Vec<_>>());
 

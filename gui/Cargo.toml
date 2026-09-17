@@ -20,6 +20,7 @@ plaine-consensus = { path = "../lib/consensus" }
 plaine-noded = { path = "../node" }
 rfd = "0.15"
 directories = "6"
+image = "0.25.9"
 
 [build-dependencies]
 winresource = "0.1.31"

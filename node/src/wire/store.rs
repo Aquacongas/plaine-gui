@@ -156,7 +156,9 @@ impl NodeStore {
                 continue;
             };
             for i in 0..body.len() {
-                let Some(Ok(tx)) = body.decode_tx(i) else { continue };
+                let Some(Ok(tx)) = body.decode_tx(i) else {
+                    continue;
+                };
                 let found = match &tx {
                     plaine_consensus::codec::Tx::Coinbase(c) => c.txid().ok(),
                     plaine_consensus::codec::Tx::Transfer(t) => Some(t.txid()),
@@ -173,7 +175,9 @@ impl NodeStore {
     pub fn txindex_lookup(&self, txid: &Hash32) -> plaine_storage::TxLocation {
         match self.reader.txindex_lookup(txid) {
             Ok(l) => l,
-            Err(_) => plaine_storage::TxLocation::NotIndexed { indexed_from: u64::MAX },
+            Err(_) => plaine_storage::TxLocation::NotIndexed {
+                indexed_from: u64::MAX,
+            },
         }
     }
 
@@ -208,7 +212,10 @@ impl NodeStore {
 
 fn rec_from(height: u64, raw: [u8; HEADER_BYTES]) -> HeaderRec {
     let mut r = HeaderRec::from_raw(raw);
-    debug_assert_eq!(r.height, height, "stored height disagrees with the header bytes");
+    debug_assert_eq!(
+        r.height, height,
+        "stored height disagrees with the header bytes"
+    );
     r.height = height;
     r
 }
@@ -295,7 +302,10 @@ impl Store for NodeStore {
             }
         }
         match self.reader.account(addr) {
-            Ok(a) => Account { balance: a.balance, nonce: a.nonce },
+            Ok(a) => Account {
+                balance: a.balance,
+                nonce: a.nonce,
+            },
             Err(_) => Account::default(),
         }
     }
@@ -433,7 +443,10 @@ impl CommitSink {
         let mut c = self.committer.lock().expect("committer");
         c.flush()?;
         drop(c);
-        self.ring.write().expect("ring").prune(self.reader.hdr_watermark());
+        self.ring
+            .write()
+            .expect("ring")
+            .prune(self.reader.hdr_watermark());
         Ok(())
     }
 
@@ -447,7 +460,11 @@ impl CommitSink {
             undo: &o.undo,
             issued_delta: b.issued_delta,
             chainwork: work_be(&b.chainwork),
-            txids: if o.txids.is_empty() { None } else { Some(&o.txids) },
+            txids: if o.txids.is_empty() {
+                None
+            } else {
+                Some(&o.txids)
+            },
         }
     }
 
@@ -486,7 +503,15 @@ impl CommitSink {
             deltas: b
                 .deltas
                 .iter()
-                .map(|d| (d.addr, Account { balance: d.balance, nonce: d.nonce }))
+                .map(|d| {
+                    (
+                        d.addr,
+                        Account {
+                            balance: d.balance,
+                            nonce: d.nonce,
+                        },
+                    )
+                })
                 .collect(),
             undo: b.undo.clone(),
             issued_delta: b.issued_delta,
@@ -508,7 +533,10 @@ impl CommitSink {
     }
 
     fn after_write(&self) {
-        self.ring.write().expect("ring").prune(self.reader.hdr_watermark());
+        self.ring
+            .write()
+            .expect("ring")
+            .prune(self.reader.hdr_watermark());
     }
 }
 
@@ -576,9 +604,17 @@ impl Sink for CommitSink {
         // ring, then apply the new branch.
         c.flush().map_err(storage_err)?;
         self.ring.write().expect("ring").clear();
-        let fork_height = p.rollback.last().copied().map(|h| h - 1).unwrap_or_else(|| {
-            p.apply.first().map(|b| b.height.saturating_sub(1)).unwrap_or(0)
-        });
+        let fork_height = p
+            .rollback
+            .last()
+            .copied()
+            .map(|h| h - 1)
+            .unwrap_or_else(|| {
+                p.apply
+                    .first()
+                    .map(|b| b.height.saturating_sub(1))
+                    .unwrap_or(0)
+            });
         let owned: Vec<Owned> = p.apply.iter().map(CommitSink::own).collect();
         let plans: Vec<BlockToCommit<'_>> = p
             .apply
@@ -586,7 +622,11 @@ impl Sink for CommitSink {
             .zip(owned.iter())
             .map(|(b, o)| CommitSink::to_plan(b, o))
             .collect();
-        let plan = ReorgPlan { fork_height, rollback: &p.rollback, apply: &plans };
+        let plan = ReorgPlan {
+            fork_height,
+            rollback: &p.rollback,
+            apply: &plans,
+        };
         let r = c.reorg(&plan).map_err(storage_err)?;
         drop(c);
         for b in &p.apply {
@@ -601,7 +641,11 @@ impl Sink for CommitSink {
             tip: TipRef {
                 height: r.tip.height,
                 hash: r.tip.hash,
-                time: p.apply.last().map(|b| HeaderRec::from_raw(b.header_raw).time).unwrap_or(0),
+                time: p
+                    .apply
+                    .last()
+                    .map(|b| HeaderRec::from_raw(b.header_raw).time)
+                    .unwrap_or(0),
                 chainwork: p.apply.last().map(|b| b.chainwork).unwrap_or_default(),
             },
         })
@@ -611,7 +655,11 @@ impl Sink for CommitSink {
         let mut c = self.committer.lock().expect("committer");
         c.flush().map_err(storage_err)?;
         self.ring.write().expect("ring").clear();
-        let fork_height = p.apply.first().map(|b| b.height.saturating_sub(1)).unwrap_or(p.rewind_to);
+        let fork_height = p
+            .apply
+            .first()
+            .map(|b| b.height.saturating_sub(1))
+            .unwrap_or(p.rewind_to);
         let owned: Vec<Owned> = p.apply.iter().map(CommitSink::own).collect();
         let plans: Vec<BlockToCommit<'_>> = p
             .apply
@@ -639,7 +687,11 @@ impl Sink for CommitSink {
             tip: TipRef {
                 height: r.tip.height,
                 hash: r.tip.hash,
-                time: p.apply.last().map(|b| HeaderRec::from_raw(b.header_raw).time).unwrap_or(0),
+                time: p
+                    .apply
+                    .last()
+                    .map(|b| HeaderRec::from_raw(b.header_raw).time)
+                    .unwrap_or(0),
                 chainwork: p.apply.last().map(|b| b.chainwork).unwrap_or_default(),
             },
         })
@@ -648,7 +700,12 @@ impl Sink for CommitSink {
     fn store_side_header(&self, h: &SideHeaderRec) -> Result<(), SinkError> {
         let mut c = self.committer.lock().expect("committer");
         let r = c
-            .put_side_header(&h.rec.hash, &h.rec.raw, h.rec.height, plaine_storage::HeaderStatus::PowOk)
+            .put_side_header(
+                &h.rec.hash,
+                &h.rec.raw,
+                h.rec.height,
+                plaine_storage::HeaderStatus::PowOk,
+            )
             .map_err(storage_err);
         drop(c);
 
@@ -719,8 +776,11 @@ pub(crate) mod tests {
         panic!("the store write capability was held for six seconds");
     }
 
-    fn temp_store() -> (std::path::PathBuf, plaine_storage::Committer, plaine_storage::StoreReader)
-    {
+    fn temp_store() -> (
+        std::path::PathBuf,
+        plaine_storage::Committer,
+        plaine_storage::StoreReader,
+    ) {
         use std::sync::atomic::{AtomicU32, Ordering};
         static N: AtomicU32 = AtomicU32::new(0);
         let dir = std::env::temp_dir().join(format!(
@@ -740,7 +800,11 @@ pub(crate) mod tests {
         let (dir, mut committer, reader) = temp_store();
         let ring = new_ring();
         let store = NodeStore::new(reader, Arc::clone(&ring));
-        assert_eq!(store.side_headers_from(0, 16).len(), 0, "an empty store has no side headers");
+        assert_eq!(
+            store.side_headers_from(0, 16).len(),
+            0,
+            "an empty store has no side headers"
+        );
 
         let mut rows = Vec::new();
         for h in 1u64..=3 {
@@ -779,16 +843,27 @@ pub(crate) mod tests {
             to: [0x77; 20],
             reward: plaine_consensus::emission::block_reward(5),
             fees: 0,
-            note: AuthorNote { encoding: 0x01, payload: vec![0x41; 3] },
+            note: AuthorNote {
+                encoding: 0x01,
+                payload: vec![0x41; 3],
+            },
         };
         let rec = cb.encode().expect("encode");
         let body = BlockBody::encode(&[rec.as_slice()]).expect("body");
-        let txid = match BlockBody::parse(&body).unwrap().decode_tx(0).unwrap().unwrap() {
+        let txid = match BlockBody::parse(&body)
+            .unwrap()
+            .decode_tx(0)
+            .unwrap()
+            .unwrap()
+        {
             Tx::Coinbase(c) => c.txid().unwrap(),
             _ => unreachable!(),
         };
 
-        assert!(store.body_at(5).is_none(), "the reader must be empty for this to prove anything");
+        assert!(
+            store.body_at(5).is_none(),
+            "the reader must be empty for this to prove anything"
+        );
         assert!(store.tx_in_ring(&txid).is_none());
 
         let mut hash = [0u8; 32];
@@ -808,7 +883,10 @@ pub(crate) mod tests {
             .expect("tx_in_ring must find a tx whose block is still unsealed");
         assert_eq!(h, 5);
         assert_eq!(ix, 0);
-        assert_eq!(raw, rec, "the bytes must be the record's own, not a re-serialization");
+        assert_eq!(
+            raw, rec,
+            "the bytes must be the record's own, not a re-serialization"
+        );
 
         assert!(store.tx_in_ring(&[0xEE; 32]).is_none());
     }
@@ -819,14 +897,20 @@ pub(crate) mod tests {
         let ring = new_ring();
         let store = NodeStore::new(reader, Arc::clone(&ring));
 
-        assert!(store.header_at(0).is_none(), "the empty store must not answer for height 0");
+        assert!(
+            store.header_at(0).is_none(),
+            "the empty store must not answer for height 0"
+        );
         assert!(store.body_at(0).is_none());
         assert!(store.hash_at(0).is_none());
         assert!(store.undo_at(0).is_none());
         assert_eq!(store.headers_range(0, 8).len(), 0);
 
         let addr: Address = [7u8; 20];
-        let funded = Account { balance: 4_242, nonce: 9 };
+        let funded = Account {
+            balance: 4_242,
+            nonce: 9,
+        };
         let mut header = [0u8; HEADER_BYTES];
         header[0] = 0xAB;
         let mut hash = [0u8; 32];
@@ -837,7 +921,12 @@ pub(crate) mod tests {
             header,
             body: vec![0xC0, 0xFF, 0xEE],
             deltas: vec![(addr, funded)],
-            undo: vec![UndoRec { addr, prev_balance: 1, prev_nonce: 2, existed: true }],
+            undo: vec![UndoRec {
+                addr,
+                prev_balance: 1,
+                prev_nonce: 2,
+                existed: true,
+            }],
             issued_delta: 500,
         });
 
@@ -868,7 +957,11 @@ pub(crate) mod tests {
             "undo_at lost its ring read - a missing undo row forces a needless deep replay"
         );
         assert_eq!(store.account(&addr), funded, "account lost its ring read");
-        assert_eq!(store.accounts(&[addr]), vec![funded], "accounts lost its ring read");
+        assert_eq!(
+            store.accounts(&[addr]),
+            vec![funded],
+            "accounts lost its ring read"
+        );
         assert_eq!(store.issued(), 500, "issued lost its ring read");
         assert_eq!(
             store.headers_range(0, 8).len(),
@@ -877,8 +970,15 @@ pub(crate) mod tests {
         );
 
         ring.write().expect("ring").clear();
-        assert!(store.header_at(0).is_none(), "a cleared ring must stop answering");
-        assert_eq!(store.issued(), 0, "issued must stop double-counting a sealed block");
+        assert!(
+            store.header_at(0).is_none(),
+            "a cleared ring must stop answering"
+        );
+        assert_eq!(
+            store.issued(),
+            0,
+            "issued must stop double-counting a sealed block"
+        );
 
         drop(_committer);
         let _ = std::fs::remove_dir_all(&dir);
@@ -893,7 +993,10 @@ pub(crate) mod tests {
         assert_eq!(r.len(), 10);
         r.prune(4);
         assert_eq!(r.len(), 6);
-        assert!(r.at(3).is_none(), "3 is below the watermark and is the reader's now");
+        assert!(
+            r.at(3).is_none(),
+            "3 is below the watermark and is the reader's now"
+        );
         assert!(r.at(4).is_some());
         assert_eq!(r.bytes(), 600, "byte accounting survives a prune");
 
@@ -951,5 +1054,4 @@ pub(crate) mod tests {
         assert!(line.contains("0 verified"), "{line}");
         assert!(line.contains("0 MISMATCHED"), "{line}");
     }
-
 }

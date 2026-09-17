@@ -58,7 +58,9 @@ impl MemStore {
         inner.canonical.push(rec);
         inner.chainwork.push(w);
         inner.issued_at.push(0);
-        MemStore { inner: Mutex::new(inner) }
+        MemStore {
+            inner: Mutex::new(inner),
+        }
     }
 
     pub fn commit_count(&self) -> u64 {
@@ -86,7 +88,11 @@ impl MemStore {
     }
 
     pub fn evict_side_below(&self, height: u64) {
-        self.inner.lock().expect("mock lock").side.retain(|_, r| r.height >= height);
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .side
+            .retain(|_, r| r.height >= height);
     }
 
     pub fn fail_next_commit(&self, e: SinkError) {
@@ -106,7 +112,11 @@ impl MemStore {
     }
 
     pub fn set_account(&self, addr: Address, acct: Account) {
-        self.inner.lock().expect("mock lock").accounts.insert(addr, acct);
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .accounts
+            .insert(addr, acct);
     }
 
     pub fn set_snapshot_interval(&self, n: u64) {
@@ -135,7 +145,13 @@ impl MemStore {
     }
 
     pub fn canonical_hashes(&self) -> Vec<Hash32> {
-        self.inner.lock().expect("mock lock").canonical.iter().map(|r| r.hash).collect()
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .canonical
+            .iter()
+            .map(|r| r.hash)
+            .collect()
     }
 
     pub fn stored_chainwork(&self) -> Vec<Work> {
@@ -143,9 +159,16 @@ impl MemStore {
     }
 
     fn apply_commit(g: &mut Inner, b: &CommitBlock) {
-        debug_assert_eq!(b.deltas.len(), b.undo.len(), "deltas and undo must be aligned");
+        debug_assert_eq!(
+            b.deltas.len(),
+            b.undo.len(),
+            "deltas and undo must be aligned"
+        );
         for d in &b.deltas {
-            let acct = Account { balance: d.balance, nonce: d.nonce };
+            let acct = Account {
+                balance: d.balance,
+                nonce: d.nonce,
+            };
             if acct.is_absent() {
                 g.accounts.remove(&d.addr);
             } else {
@@ -182,7 +205,10 @@ impl MemStore {
             .remove(&height)
             .ok_or(SinkError::Invalid("undo records pruned for that height"))?;
         for r in &recs {
-            let prev = Account { balance: r.prev_balance, nonce: r.prev_nonce };
+            let prev = Account {
+                balance: r.prev_balance,
+                nonce: r.prev_nonce,
+            };
             if !r.existed && prev.is_absent() {
                 g.accounts.remove(&r.addr);
             } else {
@@ -218,11 +244,20 @@ impl Store for MemStore {
         }
     }
     fn header_at(&self, height: u64) -> Option<HeaderRec> {
-        self.inner.lock().expect("mock lock").canonical.get(height as usize).copied()
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .canonical
+            .get(height as usize)
+            .copied()
     }
     fn header_by_hash(&self, h: &Hash32) -> Option<HeaderRec> {
         let g = self.inner.lock().expect("mock lock");
-        g.canonical.iter().find(|r| r.hash == *h).copied().or_else(|| g.side.get(h).copied())
+        g.canonical
+            .iter()
+            .find(|r| r.hash == *h)
+            .copied()
+            .or_else(|| g.side.get(h).copied())
     }
     fn hash_at(&self, height: u64) -> Option<Hash32> {
         self.header_at(height).map(|r| r.hash)
@@ -245,7 +280,12 @@ impl Store for MemStore {
             .unwrap_or_default()
     }
     fn undo_at(&self, height: u64) -> Option<Vec<UndoRec>> {
-        self.inner.lock().expect("mock lock").undo.get(&height).cloned()
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .undo
+            .get(&height)
+            .cloned()
     }
     fn undo_floor(&self) -> u64 {
         let g = self.inner.lock().expect("mock lock");
@@ -264,7 +304,12 @@ impl Store for MemStore {
             .map(|(h, _)| *h)
     }
     fn state_snapshot(&self, height: u64) -> Option<Vec<(Address, Account)>> {
-        self.inner.lock().expect("mock lock").snapshots.get(&height).cloned()
+        self.inner
+            .lock()
+            .expect("mock lock")
+            .snapshots
+            .get(&height)
+            .cloned()
     }
     fn issued(&self) -> u128 {
         self.inner.lock().expect("mock lock").issued
@@ -287,8 +332,12 @@ impl Store for MemStore {
         if g.hide_side_headers {
             return Vec::new();
         }
-        let mut v: Vec<HeaderRec> =
-            g.side.values().filter(|r| r.height >= from).copied().collect();
+        let mut v: Vec<HeaderRec> = g
+            .side
+            .values()
+            .filter(|r| r.height >= from)
+            .copied()
+            .collect();
         v.sort_by_key(|r| (r.height, r.hash));
         v.truncate(max);
         v
@@ -453,9 +502,11 @@ impl PowVerifier for CountingPow {
         match mode {
             PowMode::AlwaysOk => true,
             PowMode::AlwaysFail => false,
-            PowMode::AllButListed => {
-                !self.reject.lock().expect("mock lock").contains(&crypto::header_hash(hdr))
-            }
+            PowMode::AllButListed => !self
+                .reject
+                .lock()
+                .expect("mock lock")
+                .contains(&crypto::header_hash(hdr)),
         }
     }
     fn cost_micros(&self) -> u64 {
@@ -470,7 +521,10 @@ pub struct MockClock {
 
 impl MockClock {
     pub fn new(unix: u64) -> MockClock {
-        MockClock { unix: AtomicU64::new(unix), mono: AtomicU64::new(0) }
+        MockClock {
+            unix: AtomicU64::new(unix),
+            mono: AtomicU64::new(0),
+        }
     }
 
     pub fn set_unix(&self, t: u64) {
@@ -530,7 +584,10 @@ impl Scenario {
             author_note_len: 0,
             nonce: 0,
         };
-        s.blocks.push(BuiltBlock { rec: HeaderRec::from_raw(hdr.encode()), body });
+        s.blocks.push(BuiltBlock {
+            rec: HeaderRec::from_raw(hdr.encode()),
+            body,
+        });
         s
     }
 
@@ -590,7 +647,10 @@ impl Scenario {
             author_note_len: 0,
             nonce: 0,
         });
-        let b = BuiltBlock { rec: HeaderRec::from_raw(hdr.encode()), body };
+        let b = BuiltBlock {
+            rec: HeaderRec::from_raw(hdr.encode()),
+            body,
+        };
         self.blocks.push(b.clone());
         b
     }
@@ -623,7 +683,10 @@ impl Scenario {
             author_note_len: 0,
             nonce: 0,
         });
-        let b = BuiltBlock { rec: HeaderRec::from_raw(hdr.encode()), body };
+        let b = BuiltBlock {
+            rec: HeaderRec::from_raw(hdr.encode()),
+            body,
+        };
         self.blocks.push(b.clone());
         b
     }
@@ -640,9 +703,18 @@ impl Scenario {
         fees: u128,
         note: Vec<u8>,
     ) -> Vec<u8> {
-        CoinbaseTx { height, to, reward, fees, note: AuthorNote { encoding: 0, payload: note } }
-            .encode()
-            .expect("note length is the caller's business")
+        CoinbaseTx {
+            height,
+            to,
+            reward,
+            fees,
+            note: AuthorNote {
+                encoding: 0,
+                payload: note,
+            },
+        }
+        .encode()
+        .expect("note length is the caller's business")
     }
 
     pub fn normal_coinbase(&self, height: u64, fees: u128) -> Vec<u8> {
@@ -685,7 +757,11 @@ impl Scenario {
     }
 
     pub fn raw_headers_from(&self, from: u64) -> Vec<[u8; HEADER_BYTES]> {
-        self.blocks.iter().skip(from as usize).map(|b| b.rec.raw).collect()
+        self.blocks
+            .iter()
+            .skip(from as usize)
+            .map(|b| b.rec.raw)
+            .collect()
     }
 
     fn body_for(&self, height: u64, txs: &[Vec<u8>], fees: u128) -> Vec<u8> {
@@ -694,7 +770,10 @@ impl Scenario {
             to: self.miner,
             reward: emission::block_reward(height),
             fees,
-            note: AuthorNote { encoding: 0, payload: Vec::new() },
+            note: AuthorNote {
+                encoding: 0,
+                payload: Vec::new(),
+            },
         };
         let cb_bytes = cb.encode().expect("note is empty");
         let mut all: Vec<&[u8]> = vec![&cb_bytes];
@@ -711,7 +790,9 @@ pub fn body_root(raw: &[u8]) -> Hash32 {
 }
 
 fn tx_fee(raw: &[u8]) -> Option<u128> {
-    plaine_consensus::codec::decode_tx(raw).ok().map(|t| t.fee())
+    plaine_consensus::codec::decode_tx(raw)
+        .ok()
+        .map(|t| t.fee())
 }
 
 pub fn root_of(txs: &[&[u8]]) -> Hash32 {
@@ -725,5 +806,14 @@ pub fn unsigned_transfer(
     fee: u128,
     nonce: u64,
 ) -> Vec<u8> {
-    TransferTx { from_pub, to, amount, fee, nonce, sig: [0u8; 64] }.encode().to_vec()
+    TransferTx {
+        from_pub,
+        to,
+        amount,
+        fee,
+        nonce,
+        sig: [0u8; 64],
+    }
+    .encode()
+    .to_vec()
 }

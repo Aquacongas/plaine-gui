@@ -213,9 +213,12 @@ impl Committer {
     pub fn staging_bytes(&self) -> usize {
         self.undo_buf.capacity()
             + self.frame_buf.capacity()
-
             + self.cont.buf.capacity()
-            + self.pending_cont.iter().map(|(_, f)| f.capacity()).sum::<usize>()
+            + self
+                .pending_cont
+                .iter()
+                .map(|(_, f)| f.capacity())
+                .sum::<usize>()
     }
 
     pub fn anchor_floor(&self) -> Option<u64> {
@@ -392,7 +395,8 @@ impl Committer {
             self.frame_buf.shrink_to(crate::MAX_BODY_BYTES);
         }
         self.meta.body_append_offset = end as u32;
-        self.cont.record(layout::slot_of(b.height), b.body.len() as u32, crc);
+        self.cont
+            .record(layout::slot_of(b.height), b.body.len() as u32, crc);
         self.dirty_body = true;
         self.bytes_written += (crate::BODY_FRAME_BYTES + b.body.len()) as u64;
         Ok(())
@@ -452,13 +456,9 @@ impl Committer {
                         .then(|| self.cont.complete().map(|f| f.to_vec()))
                         .flatten()
                 });
-            let Some(v) = anchor::compute(
-                &self.root,
-                self.meta.network,
-                seg,
-                grade,
-                frames.as_deref(),
-            ) else {
+            let Some(v) =
+                anchor::compute(&self.root, self.meta.network, seg, grade, frames.as_deref())
+            else {
                 continue;
             };
             anchor::insert(txn, seg, &v)?;
@@ -506,8 +506,7 @@ impl Committer {
     }
 
     fn publish_damage(&self) {
-        *self.inner.damage.write().expect("damage lock poisoned") =
-            Arc::new(self.damage.clone());
+        *self.inner.damage.write().expect("damage lock poisoned") = Arc::new(self.damage.clone());
         self.publish();
     }
 
@@ -592,7 +591,9 @@ impl Committer {
         match plan.rollback.last() {
             Some(&lowest) => {
                 if lowest != plan.fork_height + 1 || plan.rollback[0] != old_tip {
-                    return Err(StoreError::BadPlan("rollback must cover fork_height+1..=tip"));
+                    return Err(StoreError::BadPlan(
+                        "rollback must cover fork_height+1..=tip",
+                    ));
                 }
                 if lowest < self.meta.undo_floor {
                     return Err(StoreError::UndoExhausted {
@@ -614,7 +615,9 @@ impl Committer {
 
         for (i, b) in plan.apply.iter().enumerate() {
             if b.height != plan.fork_height + 1 + i as u64 {
-                return Err(StoreError::BadPlan("apply heights must be contiguous ascending"));
+                return Err(StoreError::BadPlan(
+                    "apply heights must be contiguous ascending",
+                ));
             }
             check_block_inputs(b)?;
         }
@@ -745,8 +748,9 @@ impl Committer {
             }
             txn.commit()?;
         }
-        self.meta = crate::meta::load(&self.inner.db)?
-            .ok_or(StoreError::BadPlan("state checkpoint restored a store with no meta"))?;
+        self.meta = crate::meta::load(&self.inner.db)?.ok_or(StoreError::BadPlan(
+            "state checkpoint restored a store with no meta",
+        ))?;
         self.hdr = None;
         self.body = None;
         self.bidx = None;
@@ -784,7 +788,8 @@ impl Committer {
             // boundary, so the undo blob has to carry every sector we're about to
             // overwrite - a partial sector would leave the neighbour unrecoverable.
             let start = layout::hdr_offset(h) / SECTOR * SECTOR;
-            let end = (layout::hdr_offset(seg_last) + HEADER_BYTES as u64).div_ceil(SECTOR) * SECTOR;
+            let end =
+                (layout::hdr_offset(seg_last) + HEADER_BYTES as u64).div_ceil(SECTOR) * SECTOR;
             if let Ok(f) = posio::open_ro(&layout::hdr_seg_path(&self.root, seg)) {
                 let mut sec = start;
                 while sec < end {
@@ -1328,7 +1333,9 @@ impl Committer {
             let mut t = txn.open_table(SIDE_HEADERS)?;
             let mut ix = txn.open_table(SIDE_BY_HEIGHT)?;
             for (hash, hdr, height, st) in rows {
-                if t.insert(hash, &codec::encode_side(hdr, *height, *st))?.is_none() {
+                if t.insert(hash, &codec::encode_side(hdr, *height, *st))?
+                    .is_none()
+                {
                     self.meta.side_rows += 1;
                 }
                 ix.insert(&codec::side_by_height_key(*height, hash), ())?;
@@ -1376,7 +1383,10 @@ impl Committer {
         self.mark_invalid_batch(&[(*hash, r)])
     }
 
-    pub fn mark_invalid_batch(&mut self, rows: &[([u8; 32], InvalidReason)]) -> Result<(), StoreError> {
+    pub fn mark_invalid_batch(
+        &mut self,
+        rows: &[([u8; 32], InvalidReason)],
+    ) -> Result<(), StoreError> {
         self.guard()?;
         self.seal(false)?;
         let mut txn = self.inner.db.begin_write()?;
@@ -1453,11 +1463,15 @@ fn check_block_inputs(b: &BlockToCommit<'_>) -> Result<(), StoreError> {
     }
     for (d, u) in b.deltas.iter().zip(b.undo.iter()) {
         if d.addr != u.addr {
-            return Err(StoreError::BadPlan("deltas and undo must be address-aligned"));
+            return Err(StoreError::BadPlan(
+                "deltas and undo must be address-aligned",
+            ));
         }
     }
     if b.body.len() > crate::MAX_BODY_BYTES {
-        return Err(StoreError::BadPlan("body exceeds MAX_BLOCK_BYTES - HEADER_BYTES"));
+        return Err(StoreError::BadPlan(
+            "body exceeds MAX_BLOCK_BYTES - HEADER_BYTES",
+        ));
     }
 
     if b.body.is_empty() {
@@ -1481,7 +1495,9 @@ fn apply_block(
         let mut st = txn.open_table(STATE)?;
         for (d, u) in b.deltas.iter().zip(b.undo.iter()) {
             if d.addr != u.addr {
-                return Err(StoreError::BadPlan("deltas and undo must be address-aligned"));
+                return Err(StoreError::BadPlan(
+                    "deltas and undo must be address-aligned",
+                ));
             }
             // fold the old row out here, the new row in below: the running XOR
             // stays equal to a from-scratch digest of the live state table.
@@ -1524,7 +1540,11 @@ fn apply_block(
         let p = codec::hash_prefix_n(&b.hash, prefix_bytes);
         // HACK: copy the value out and drop the read guard in the same statement -
         // the guard borrows `hi` immutably and we need it &mut a few lines down.
-        let existing = { let g = hi.get(p)?; let v = g.map(|x| x.value()); v };
+        let existing = {
+            let g = hi.get(p)?;
+            let v = g.map(|x| x.value());
+            v
+        };
         match existing {
             None => {
                 hi.insert(p, b.height)?;
@@ -1557,7 +1577,10 @@ fn apply_block(
         if let Some(ids) = b.txids {
             let mut tx = txn.open_table(TXINDEX)?;
             for (i, id) in ids.iter().enumerate() {
-                tx.insert(&codec::txid_key(id), &codec::encode_txloc(b.height, i as u16))?;
+                tx.insert(
+                    &codec::txid_key(id),
+                    &codec::encode_txloc(b.height, i as u16),
+                )?;
             }
             if meta.txindex_from.is_none() {
                 meta.txindex_from = Some(b.height);

@@ -71,7 +71,10 @@ impl Offence {
     // Once a peer feeds us bad pow/bits/signature it is never a sync source again
     // this session - even after the score decays back down.
     pub const fn is_session_sync_disqualifying(self) -> bool {
-        matches!(self, Offence::BadPow | Offence::BadBits | Offence::BadSignature)
+        matches!(
+            self,
+            Offence::BadPow | Offence::BadBits | Offence::BadSignature
+        )
     }
 }
 
@@ -115,7 +118,11 @@ impl Score {
         let halves = elapsed / SCORE_HALF_LIFE_MS;
 
         // guard the shift: >> 64 on a u64 is UB (and past 63 halvings it's zero)
-        let mut v = if halves >= 63 { 0 } else { self.milli >> halves };
+        let mut v = if halves >= 63 {
+            0
+        } else {
+            self.milli >> halves
+        };
 
         let rem = elapsed % SCORE_HALF_LIFE_MS;
         if v > 0 && rem > 0 {

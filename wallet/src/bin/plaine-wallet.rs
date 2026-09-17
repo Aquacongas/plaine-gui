@@ -17,7 +17,12 @@ fn main() {
         plaine_wallet::wallet_cli::run(&argv, &mut s)
     };
 
-    if code == 0 && matches!(argv.first().map(String::as_str), Some("version" | "--version")) {
+    if code == 0
+        && matches!(
+            argv.first().map(String::as_str),
+            Some("version" | "--version")
+        )
+    {
         println!("{}", env!("PLAINE_BUILD_LINE"));
     }
 

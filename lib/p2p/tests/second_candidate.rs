@@ -22,7 +22,11 @@ fn stranded_with_a_talking_chain(peers: usize) -> (Sim, Vec<HeaderRec>) {
     sim.chain.applied_tip(true);
     let branch = sim.fork(DEPTH, THEIR_TIP - FORK_BASE, 7);
     assert_eq!(branch[0].height, LINK, "fixture: fork base");
-    assert_eq!(branch.last().expect("branch").height, THEIR_TIP, "fixture: their tip");
+    assert_eq!(
+        branch.last().expect("branch").height,
+        THEIR_TIP,
+        "fixture: their tip"
+    );
     const { assert!(DEPTH < MAX_REORG_DEPTH) };
     sim.chain.refuse_headers_from(LINK);
     for _ in 0..peers {
@@ -46,7 +50,12 @@ fn breaks(sim: &Sim) -> Vec<u64> {
         .collect()
 }
 
-fn ms_to_converge(sim: &mut Sim, branch: &[HeaderRec], budget_ms: u64, step_ms: u64) -> Option<u64> {
+fn ms_to_converge(
+    sim: &mut Sim,
+    branch: &[HeaderRec],
+    budget_ms: u64,
+    step_ms: u64,
+) -> Option<u64> {
     let mut elapsed = 0;
     while elapsed < budget_ms {
         sim.run(step_ms, step_ms);
@@ -72,7 +81,10 @@ fn missing(sim: &Sim, branch: &[HeaderRec]) -> Vec<u64> {
 fn reported_break_does_not_climb() {
     let (sim, _b) = stranded_with_a_talking_chain(1);
     let seen = breaks(&sim);
-    assert!(!seen.is_empty(), "the chain named a break and the engine never reported one");
+    assert!(
+        !seen.is_empty(),
+        "the chain named a break and the engine never reported one"
+    );
     let climbed: Vec<u64> = seen.iter().copied().filter(|h| *h != LINK).collect();
     assert!(
         climbed.is_empty(),
@@ -99,9 +111,13 @@ fn partition_heals_through_truthful_door() {
 fn heal_within_one_audit_truthful() {
     let (mut sim, branch) = stranded_with_a_talking_chain(1);
     sim.chain.keep_all_headers();
-    let ms = ms_to_converge(&mut sim, &branch, 10 * TRACKING_AUDIT_MS, 1_000).unwrap_or_else(
-        || panic!("the branch never arrived in {} s", 10 * TRACKING_AUDIT_MS / 1_000),
-    );
+    let ms =
+        ms_to_converge(&mut sim, &branch, 10 * TRACKING_AUDIT_MS, 1_000).unwrap_or_else(|| {
+            panic!(
+                "the branch never arrived in {} s",
+                10 * TRACKING_AUDIT_MS / 1_000
+            )
+        });
     assert!(
         ms <= TRACKING_AUDIT_MS,
         "the healed partition took {ms} ms to converge, more than one audit interval \
@@ -117,7 +133,11 @@ fn three_peers_do_not_change_it() {
     sim.chain.keep_all_headers();
     sim.run(600_000, 1_000);
     let gone = missing(&sim, &branch);
-    assert!(gone.is_empty(), "with three honest peers, {} headers never arrived", gone.len());
+    assert!(
+        gone.is_empty(),
+        "with three honest peers, {} headers never arrived",
+        gone.len()
+    );
 }
 
 #[test]
@@ -131,7 +151,10 @@ fn wedge_is_reported() {
         )
     });
     assert_eq!(height, LINK, "the node named the wrong break as the wedge");
-    assert!(repeats >= REPAIR_STUCK_REPEATS, "reported after only {repeats} repeats");
+    assert!(
+        repeats >= REPAIR_STUCK_REPEATS,
+        "reported after only {repeats} repeats"
+    );
     assert!(
         sim.said(|c| matches!(c, Condition::HeaderRepairStuck { our_tip, .. } if *our_tip == TIP)),
         "the getter answers and the condition was never raised, so an embedder \
@@ -144,7 +167,10 @@ fn healed_node_clears_stuck() {
     let (mut sim, branch) = stranded_with_a_talking_chain(1);
     sim.chain.keep_all_headers();
     sim.run(10 * TRACKING_AUDIT_MS, 1_000);
-    assert!(missing(&sim, &branch).is_empty(), "fixture: the heal must have worked");
+    assert!(
+        missing(&sim, &branch).is_empty(),
+        "fixture: the heal must have worked"
+    );
     assert_eq!(
         sim.engine.repair_stuck(),
         None,
@@ -193,16 +219,19 @@ fn fixture_names_break_like_chain() {
 
 #[test]
 fn sink_journal_records_offers() {
-
     let (mut sim, branch) = stranded_with_a_talking_chain(1);
     sim.chain.clear_submissions();
     sim.chain.keep_all_headers();
     sim.run(600_000, 1_000);
     let subs = sim.chain.submissions();
     assert!(
-        subs.iter().any(|(lo, hi, v)| *lo <= LINK && *hi >= LINK && *v == "ok"),
+        subs.iter()
+            .any(|(lo, hi, v)| *lo <= LINK && *hi >= LINK && *v == "ok"),
         "the branch arrived and the sink's journal has no accepted batch containing \
          height {LINK}: {subs:?}"
     );
-    assert!(missing(&sim, &branch).is_empty(), "fixture: the heal must have worked");
+    assert!(
+        missing(&sim, &branch).is_empty(),
+        "fixture: the heal must have worked"
+    );
 }

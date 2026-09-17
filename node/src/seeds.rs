@@ -32,33 +32,36 @@ impl Resolve for SystemResolver {
 pub enum Seed {
     Literal(SocketAddr),
 
-    Host {
-        name: String,
-        port: u16,
-    },
+    Host { name: String, port: u16 },
     Placeholder(String),
 
-    Malformed {
-        text: String,
-        why: &'static str,
-    },
+    Malformed { text: String, why: &'static str },
 }
 
 pub fn parse(text: &str, default_port: u16) -> Seed {
     let t = text.trim();
     if t.is_empty() {
-        return Seed::Malformed { text: text.to_string(), why: "empty entry" };
+        return Seed::Malformed {
+            text: text.to_string(),
+            why: "empty entry",
+        };
     }
 
     if let Ok(sa) = t.parse::<SocketAddr>() {
         return if sa.port() == 0 {
-            Seed::Malformed { text: t.to_string(), why: "port 0 is not a listener" }
+            Seed::Malformed {
+                text: t.to_string(),
+                why: "port 0 is not a listener",
+            }
         } else {
             Seed::Literal(sa)
         };
     }
 
-    let bare = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')).unwrap_or(t);
+    let bare = t
+        .strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .unwrap_or(t);
     if let Ok(ip) = bare.parse::<IpAddr>() {
         return Seed::Literal(SocketAddr::new(ip, default_port));
     }
@@ -70,13 +73,19 @@ pub fn parse(text: &str, default_port: u16) -> Seed {
         };
     }
     if t.contains('@') {
-        return Seed::Malformed { text: t.to_string(), why: "a seed is a host, not a user@host" };
+        return Seed::Malformed {
+            text: t.to_string(),
+            why: "a seed is a host, not a user@host",
+        };
     }
 
     let (name, port) = match t.rsplit_once(':') {
         Some((h, p)) => match p.parse::<u16>() {
             Ok(0) => {
-                return Seed::Malformed { text: t.to_string(), why: "port 0 is not a listener" }
+                return Seed::Malformed {
+                    text: t.to_string(),
+                    why: "port 0 is not a listener",
+                }
             }
             Ok(p) => (h, p),
             Err(_) => {
@@ -89,12 +98,18 @@ pub fn parse(text: &str, default_port: u16) -> Seed {
         None => (t, default_port),
     };
     if let Some(why) = name_fault(name) {
-        return Seed::Malformed { text: t.to_string(), why };
+        return Seed::Malformed {
+            text: t.to_string(),
+            why,
+        };
     }
     if embedded::is_placeholder_host(name) {
         return Seed::Placeholder(name.to_ascii_lowercase());
     }
-    Seed::Host { name: name.to_ascii_lowercase(), port }
+    Seed::Host {
+        name: name.to_ascii_lowercase(),
+        port,
+    }
 }
 
 fn name_fault(name: &str) -> Option<&'static str> {
@@ -124,7 +139,10 @@ fn name_fault(name: &str) -> Option<&'static str> {
         if label.starts_with('-') || label.ends_with('-') {
             return Some("a hostname label may not start or end with '-'");
         }
-        if !label.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-') {
+        if !label
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-')
+        {
             return Some("a hostname is letters, digits and '-' only");
         }
     }
@@ -154,17 +172,11 @@ fn is_routable_v4(a: Ipv4Addr) -> bool {
         || a.is_multicast()
         || a.is_broadcast()
         || a.is_documentation()
-
         || o[0] == 0
-
         || (o[0] == 100 && (o[1] & 0xc0) == 64)
-
         || (o[0] == 192 && o[1] == 0 && o[2] == 0)
-
         || (o[0] == 192 && o[1] == 88 && o[2] == 99)
-
         || (o[0] == 198 && (o[1] & 0xfe) == 18)
-
         || o[0] >= 240)
 }
 
@@ -173,16 +185,11 @@ fn is_routable_v6(a: Ipv6Addr) -> bool {
     !(a.is_unspecified()
         || a.is_loopback()
         || a.is_multicast()
-
         || (s[0] & 0xfe00) == 0xfc00
-
         || (s[0] & 0xffc0) == 0xfe80
-
         || (s[0] == 0x2001 && s[1] == 0x0db8)
-
         || (s[0] == 0x2001 && s[1] == 0x0002 && s[2] == 0)
         || (s[0] == 0x2001 && (s[1] & 0xfff0) == 0x0010)
-
         || (s[0] == 0x0064 && s[1] == 0xff9b))
 }
 
@@ -251,13 +258,19 @@ impl Attempt {
         self.notes
             .iter()
             .filter(|n| {
-                matches!(n, Note::Resolved { .. } | Note::Empty { .. } | Note::Failed { .. })
+                matches!(
+                    n,
+                    Note::Resolved { .. } | Note::Empty { .. } | Note::Failed { .. }
+                )
             })
             .count()
     }
 
     pub fn names_answered(&self) -> usize {
-        self.notes.iter().filter(|n| matches!(n, Note::Resolved { .. })).count()
+        self.notes
+            .iter()
+            .filter(|n| matches!(n, Note::Resolved { .. }))
+            .count()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -273,7 +286,10 @@ pub struct Bootstrap {
 
 impl Bootstrap {
     pub fn new(seeds: &[String], port: u16) -> Bootstrap {
-        Bootstrap { seeds: seeds.iter().map(|s| parse(s, port)).collect(), failures: 0 }
+        Bootstrap {
+            seeds: seeds.iter().map(|s| parse(s, port)).collect(),
+            failures: 0,
+        }
     }
 
     #[allow(dead_code)]
@@ -282,11 +298,17 @@ impl Bootstrap {
     }
 
     pub fn resolvable_names(&self) -> usize {
-        self.seeds.iter().filter(|s| matches!(s, Seed::Host { .. })).count()
+        self.seeds
+            .iter()
+            .filter(|s| matches!(s, Seed::Host { .. }))
+            .count()
     }
 
     pub fn placeholders(&self) -> usize {
-        self.seeds.iter().filter(|s| matches!(s, Seed::Placeholder(_))).count()
+        self.seeds
+            .iter()
+            .filter(|s| matches!(s, Seed::Placeholder(_)))
+            .count()
     }
 
     pub fn literals(&self) -> Vec<SocketAddr> {
@@ -300,7 +322,10 @@ impl Bootstrap {
     }
 
     pub fn is_hopeless(&self) -> bool {
-        !self.seeds.iter().any(|s| matches!(s, Seed::Literal(_) | Seed::Host { .. }))
+        !self
+            .seeds
+            .iter()
+            .any(|s| matches!(s, Seed::Literal(_) | Seed::Host { .. }))
     }
 
     pub fn run(&mut self, r: &dyn Resolve) -> Attempt {
@@ -318,11 +343,15 @@ impl Bootstrap {
                     }
                 }
                 Seed::Placeholder(h) => notes.push(Note::Placeholder(h.clone())),
-                Seed::Malformed { text, why } => {
-                    notes.push(Note::Malformed { text: text.clone(), why })
-                }
+                Seed::Malformed { text, why } => notes.push(Note::Malformed {
+                    text: text.clone(),
+                    why,
+                }),
                 Seed::Host { name, port } => match r.lookup(name, *port) {
-                    Err(e) => notes.push(Note::Failed { host: name.clone(), why: e.to_string() }),
+                    Err(e) => notes.push(Note::Failed {
+                        host: name.clone(),
+                        why: e.to_string(),
+                    }),
                     Ok(answers) => {
                         let total = answers.len();
                         let mut kept = Vec::new();
@@ -341,7 +370,10 @@ impl Bootstrap {
                         }
                         let capped = total - unroutable - kept.len();
                         if kept.is_empty() {
-                            notes.push(Note::Empty { host: name.clone(), unroutable });
+                            notes.push(Note::Empty {
+                                host: name.clone(),
+                                unroutable,
+                            });
                         } else {
                             notes.push(Note::Resolved {
                                 host: name.clone(),
@@ -410,10 +442,16 @@ pub fn lines(a: &Attempt, backoff_ms: u64) -> Vec<(LogLevel, String)> {
     let mut out = Vec::new();
     for n in &a.notes {
         match n {
-            Note::Literal(addr) => {
-                out.push((LogLevel::Debug, format!("seed {addr} (literal address, dialling)")))
-            }
-            Note::Resolved { host, kept, unroutable, capped } => {
+            Note::Literal(addr) => out.push((
+                LogLevel::Debug,
+                format!("seed {addr} (literal address, dialling)"),
+            )),
+            Note::Resolved {
+                host,
+                kept,
+                unroutable,
+                capped,
+            } => {
                 let mut m = format!("seed {host} resolved to {kept} address(es)");
                 if *unroutable > 0 {
                     m.push_str(&format!(
@@ -422,7 +460,9 @@ pub fn lines(a: &Attempt, backoff_ms: u64) -> Vec<(LogLevel, String)> {
                     ));
                 }
                 if *capped > 0 {
-                    m.push_str(&format!(", {capped} dropped by the per-seed cap of {MAX_ADDRS_PER_SEED}"));
+                    m.push_str(&format!(
+                        ", {capped} dropped by the per-seed cap of {MAX_ADDRS_PER_SEED}"
+                    ));
                 }
                 out.push((LogLevel::Info, m));
             }
@@ -434,9 +474,10 @@ pub fn lines(a: &Attempt, backoff_ms: u64) -> Vec<(LogLevel, String)> {
                      at the wrong thing or the answer did not come from the real zone."
                 ),
             )),
-            Note::Failed { host, why } => {
-                out.push((LogLevel::Warn, format!("seed {host} did not resolve: {why}")))
-            }
+            Note::Failed { host, why } => out.push((
+                LogLevel::Warn,
+                format!("seed {host} did not resolve: {why}"),
+            )),
             Note::Placeholder(host) => out.push((
                 LogLevel::Error,
                 format!(
@@ -518,7 +559,11 @@ pub struct Driver {
 
 impl Driver {
     pub fn new(b: Bootstrap) -> Driver {
-        Driver { b, already: HashSet::new(), last: None }
+        Driver {
+            b,
+            already: HashSet::new(),
+            last: None,
+        }
     }
 
     pub fn step(
@@ -592,12 +637,18 @@ mod tests {
         fn ok(mut self, host: &str, addrs: &[&str]) -> Fake {
             self.table.insert(
                 host.to_string(),
-                Ok(addrs.iter().map(|a| a.parse().expect("test address")).collect()),
+                Ok(addrs
+                    .iter()
+                    .map(|a| a.parse().expect("test address"))
+                    .collect()),
             );
             self
         }
         fn fail(mut self, host: &str, kind: std::io::ErrorKind, msg: &str) -> Fake {
-            self.table.insert(host.to_string(), Err(std::io::Error::new(kind, msg.to_string())));
+            self.table.insert(
+                host.to_string(),
+                Err(std::io::Error::new(kind, msg.to_string())),
+            );
             self
         }
     }
@@ -624,18 +675,57 @@ mod tests {
 
     #[test]
     fn parse_understands_every_shape() {
-        assert_eq!(parse("1.2.3.4:9256", P), Seed::Literal("1.2.3.4:9256".parse().unwrap()));
+        assert_eq!(
+            parse("1.2.3.4:9256", P),
+            Seed::Literal("1.2.3.4:9256".parse().unwrap())
+        );
 
-        assert_eq!(parse("1.2.3.4", P), Seed::Literal("1.2.3.4:9256".parse().unwrap()));
-        assert_eq!(parse("[2001:db8::1]:9256", P), Seed::Literal("[2001:db8::1]:9256".parse().unwrap()));
-        assert_eq!(parse("2001:db8::1", P), Seed::Literal("[2001:db8::1]:9256".parse().unwrap()));
-        assert_eq!(parse("[2001:db8::1]", P), Seed::Literal("[2001:db8::1]:9256".parse().unwrap()));
-        assert_eq!(parse("seed1.example.net", P), Seed::Host { name: "seed1.example.net".into(), port: P });
-        assert_eq!(parse("seed1.example.net:19256", P), Seed::Host { name: "seed1.example.net".into(), port: 19256 });
+        assert_eq!(
+            parse("1.2.3.4", P),
+            Seed::Literal("1.2.3.4:9256".parse().unwrap())
+        );
+        assert_eq!(
+            parse("[2001:db8::1]:9256", P),
+            Seed::Literal("[2001:db8::1]:9256".parse().unwrap())
+        );
+        assert_eq!(
+            parse("2001:db8::1", P),
+            Seed::Literal("[2001:db8::1]:9256".parse().unwrap())
+        );
+        assert_eq!(
+            parse("[2001:db8::1]", P),
+            Seed::Literal("[2001:db8::1]:9256".parse().unwrap())
+        );
+        assert_eq!(
+            parse("seed1.example.net", P),
+            Seed::Host {
+                name: "seed1.example.net".into(),
+                port: P
+            }
+        );
+        assert_eq!(
+            parse("seed1.example.net:19256", P),
+            Seed::Host {
+                name: "seed1.example.net".into(),
+                port: 19256
+            }
+        );
 
-        assert_eq!(parse("  Seed1.Example.NET  ", P), Seed::Host { name: "seed1.example.net".into(), port: P });
+        assert_eq!(
+            parse("  Seed1.Example.NET  ", P),
+            Seed::Host {
+                name: "seed1.example.net".into(),
+                port: P
+            }
+        );
 
-        assert_eq!(parse("localhost:9256", P), Seed::Host { name: "localhost".into(), port: 9256 });
+        assert_eq!(
+            parse("localhost:9256", P),
+            Seed::Host {
+                name: "localhost".into(),
+                port: 9256
+            }
+        );
     }
 
     #[test]
@@ -663,7 +753,10 @@ mod tests {
         ] {
             match parse(text, P) {
                 Seed::Malformed { why, .. } => {
-                    assert!(why.contains(needle), "{text:?} -> {why:?} (wanted {needle:?})")
+                    assert!(
+                        why.contains(needle),
+                        "{text:?} -> {why:?} (wanted {needle:?})"
+                    )
                 }
                 other => panic!("{text:?} should be malformed, got {other:?}"),
             }
@@ -686,8 +779,16 @@ mod tests {
     #[test]
     fn no_resolution_warns_and_retries() {
         let r = Fake::default()
-            .fail("a.example.net", std::io::ErrorKind::Other, "Temporary failure in name resolution")
-            .fail("b.example.net", std::io::ErrorKind::Other, "Temporary failure in name resolution");
+            .fail(
+                "a.example.net",
+                std::io::ErrorKind::Other,
+                "Temporary failure in name resolution",
+            )
+            .fail(
+                "b.example.net",
+                std::io::ErrorKind::Other,
+                "Temporary failure in name resolution",
+            );
         let mut b = Bootstrap::new(&s(&["a.example.net", "b.example.net"]), P);
         let a = b.run(&r);
         b.record(!a.is_empty());
@@ -702,7 +803,9 @@ mod tests {
         assert!(text.iter().any(|(l, m)| *l == LogLevel::Warn
             && m.contains("a.example.net")
             && m.contains("Temporary failure")));
-        assert!(text.iter().any(|(l, m)| *l == LogLevel::Warn && m.contains("No seed addresses")));
+        assert!(text
+            .iter()
+            .any(|(l, m)| *l == LogLevel::Warn && m.contains("No seed addresses")));
         assert!(text.iter().any(|(_, m)| m.contains("Retrying in 5s")));
     }
 
@@ -753,9 +856,11 @@ mod tests {
 
     #[test]
     fn partial_resolution_uses_and_names() {
-        let r = Fake::default()
-            .ok("a.example.net", &["5.6.7.7:9256"])
-            .fail("b.example.net", std::io::ErrorKind::NotFound, "NXDOMAIN");
+        let r = Fake::default().ok("a.example.net", &["5.6.7.7:9256"]).fail(
+            "b.example.net",
+            std::io::ErrorKind::NotFound,
+            "NXDOMAIN",
+        );
         let mut b = Bootstrap::new(&s(&["a.example.net", "b.example.net", "c.example.net"]), P);
         let a = b.run(&r);
         b.record(!a.is_empty());
@@ -767,7 +872,9 @@ mod tests {
         assert_eq!(b.failures(), 0);
 
         let text = lines(&a, b.backoff_ms());
-        assert!(text.iter().any(|(_, m)| m.contains("b.example.net") && m.contains("NXDOMAIN")));
+        assert!(text
+            .iter()
+            .any(|(_, m)| m.contains("b.example.net") && m.contains("NXDOMAIN")));
         assert!(text.iter().any(|(_, m)| m.contains("c.example.net")));
         assert!(!text.iter().any(|(_, m)| m.contains("No seed addresses")));
     }
@@ -777,11 +884,17 @@ mod tests {
         let moved = Fake::default().ok("a.example.net", &["5.6.7.7:9256"]);
         let mut b = Bootstrap::new(&s(&["a.example.net"]), P);
         let first = b.run(&moved);
-        assert_eq!(first.addrs, vec!["5.6.7.7:9256".parse::<SocketAddr>().unwrap()]);
+        assert_eq!(
+            first.addrs,
+            vec!["5.6.7.7:9256".parse::<SocketAddr>().unwrap()]
+        );
 
         let after = Fake::default().ok("a.example.net", &["9.9.9.9:9256"]);
         let second = b.run(&after);
-        assert_eq!(second.addrs, vec!["9.9.9.9:9256".parse::<SocketAddr>().unwrap()]);
+        assert_eq!(
+            second.addrs,
+            vec!["9.9.9.9:9256".parse::<SocketAddr>().unwrap()]
+        );
     }
 
     #[test]
@@ -811,7 +924,11 @@ mod tests {
         );
         let mut b = Bootstrap::new(&s(&["hostile.example.net"]), P);
         let a = b.run(&r);
-        assert!(a.is_empty(), "every one of those must be refused, got {:?}", a.addrs);
+        assert!(
+            a.is_empty(),
+            "every one of those must be refused, got {:?}",
+            a.addrs
+        );
         match &a.notes[0] {
             Note::Empty { unroutable, .. } => assert_eq!(*unroutable, 18),
             other => panic!("expected Empty, got {other:?}"),
@@ -823,21 +940,54 @@ mod tests {
 
     #[test]
     fn routable_answers_accepted() {
-        for a in ["5.6.7.7", "8.8.8.8", "1.1.1.1", "192.0.3.1", "9.9.9.9", "203.0.114.1"] {
+        for a in [
+            "5.6.7.7",
+            "8.8.8.8",
+            "1.1.1.1",
+            "192.0.3.1",
+            "9.9.9.9",
+            "203.0.114.1",
+        ] {
             assert!(is_routable(a.parse().unwrap()), "{a} should be dialable");
         }
 
-        for a in ["198.17.255.255", "198.20.0.0", "100.63.255.255", "100.128.0.0", "192.0.1.1"] {
-            assert!(is_routable(a.parse().unwrap()), "{a} is not reserved and must pass");
+        for a in [
+            "198.17.255.255",
+            "198.20.0.0",
+            "100.63.255.255",
+            "100.128.0.0",
+            "192.0.1.1",
+        ] {
+            assert!(
+                is_routable(a.parse().unwrap()),
+                "{a} is not reserved and must pass"
+            );
         }
-        for a in ["198.18.0.0", "198.19.255.255", "100.64.0.0", "100.127.255.255", "192.0.0.1"] {
-            assert!(!is_routable(a.parse().unwrap()), "{a} is reserved and must not pass");
+        for a in [
+            "198.18.0.0",
+            "198.19.255.255",
+            "100.64.0.0",
+            "100.127.255.255",
+            "192.0.0.1",
+        ] {
+            assert!(
+                !is_routable(a.parse().unwrap()),
+                "{a} is reserved and must not pass"
+            );
         }
         assert!(is_routable("2606:4700::1111".parse().unwrap()));
-        assert!(is_routable("::ffff:5.6.7.7".parse::<Ipv6Addr>().map(IpAddr::V6).unwrap()));
+        assert!(is_routable(
+            "::ffff:5.6.7.7"
+                .parse::<Ipv6Addr>()
+                .map(IpAddr::V6)
+                .unwrap()
+        ));
 
         for a in ["203.0.113.1", "198.51.100.1", "192.0.2.1"] {
-            assert!(!is_routable(a.parse().unwrap()), "{a} is documentation space");
+            assert!(
+                !is_routable(a.parse().unwrap()),
+                "{a} is documentation space"
+            );
         }
     }
 
@@ -852,8 +1002,7 @@ mod tests {
 
     #[test]
     fn one_seed_capped() {
-        let many: Vec<String> =
-            (1..=40).map(|i| format!("5.6.7.{i}:9256")).collect();
+        let many: Vec<String> = (1..=40).map(|i| format!("5.6.7.{i}:9256")).collect();
         let refs: Vec<&str> = many.iter().map(|x| x.as_str()).collect();
         let r = Fake::default().ok("greedy.example.net", &refs);
         let mut b = Bootstrap::new(&s(&["greedy.example.net"]), P);
@@ -874,8 +1023,7 @@ mod tests {
         let mut names = Vec::new();
         for n in 0..10 {
             let host = format!("s{n}.example.net");
-            let addrs: Vec<String> =
-                (1..=8).map(|i| format!("203.0.{n}.{i}:9256")).collect();
+            let addrs: Vec<String> = (1..=8).map(|i| format!("203.0.{n}.{i}:9256")).collect();
             let refs: Vec<&str> = addrs.iter().map(|x| x.as_str()).collect();
             r = r.ok(&host, &refs);
             names.push(host);
@@ -888,7 +1036,10 @@ mod tests {
     #[test]
     fn dial_order_round_robin() {
         let r = Fake::default()
-            .ok("a.example.net", &["5.6.7.1:9256", "5.6.7.2:9256", "5.6.7.3:9256"])
+            .ok(
+                "a.example.net",
+                &["5.6.7.1:9256", "5.6.7.2:9256", "5.6.7.3:9256"],
+            )
             .ok("b.example.net", &["9.9.9.1:9256", "9.9.9.2:9256"]);
         let mut b = Bootstrap::new(&s(&["a.example.net", "b.example.net"]), P);
         let a = b.run(&r);
@@ -927,12 +1078,19 @@ mod tests {
     fn placeholder_seeds_not_dialled() {
         let r = Fake::default();
         let mut b = Bootstrap::new(
-            &s(&["seed1.main.placeholder-not-real.invalid", "seed2.main.placeholder-not-real.invalid"]),
+            &s(&[
+                "seed1.main.placeholder-not-real.invalid",
+                "seed2.main.placeholder-not-real.invalid",
+            ]),
             P,
         );
         let a = b.run(&r);
         assert!(a.is_empty());
-        assert_eq!(a.names_tried(), 0, "a reserved TLD must not reach a resolver");
+        assert_eq!(
+            a.names_tried(),
+            0,
+            "a reserved TLD must not reach a resolver"
+        );
         assert!(r.asked.borrow().is_empty(), "asked: {:?}", r.asked.borrow());
         assert!(b.is_hopeless());
         let text = lines(&a, b.backoff_ms());
@@ -947,7 +1105,10 @@ mod tests {
         for host in embedded::SEEDS_MAIN.hosts.iter() {
             let seed = parse(host, P);
             assert!(
-                matches!(seed, Seed::Host { .. } | Seed::Placeholder(_) | Seed::Literal(_)),
+                matches!(
+                    seed,
+                    Seed::Host { .. } | Seed::Placeholder(_) | Seed::Literal(_)
+                ),
                 "{host} parsed as {seed:?}"
             );
 
@@ -961,8 +1122,11 @@ mod tests {
 
     #[test]
     fn bootstrap_uses_network_port() {
-        let hosts: Vec<String> =
-            embedded::SEEDS_MAIN.hosts.iter().map(|h| h.to_string()).collect();
+        let hosts: Vec<String> = embedded::SEEDS_MAIN
+            .hosts
+            .iter()
+            .map(|h| h.to_string())
+            .collect();
         let b = Bootstrap::new(&hosts, 19256);
         for seed in b.seeds() {
             match seed {
@@ -995,7 +1159,10 @@ mod tests {
         let a = b.run(&r);
         b.record(!a.is_empty());
         assert_eq!(a.addrs.len(), 2);
-        assert!(r.asked.borrow().is_empty(), "no name should have been looked up");
+        assert!(
+            r.asked.borrow().is_empty(),
+            "no name should have been looked up"
+        );
         assert_eq!(b.failures(), 0);
     }
 
@@ -1005,7 +1172,10 @@ mod tests {
         let mut b = Bootstrap::new(&s(&["10.44.0.11:9256", "seed1.example.net"]), P);
         let a = b.run(&r);
         b.record(!a.is_empty());
-        assert_eq!(a.addrs, vec!["10.44.0.11:9256".parse::<SocketAddr>().unwrap()]);
+        assert_eq!(
+            a.addrs,
+            vec!["10.44.0.11:9256".parse::<SocketAddr>().unwrap()]
+        );
         assert_eq!(b.failures(), 0, "a working literal is not a failed attempt");
     }
 
@@ -1018,7 +1188,11 @@ mod tests {
                 s(&["a.example.net"]),
                 Fake::default().ok("a.example.net", &["127.0.0.1:9256"]),
             ),
-            ("placeholder", s(&["x.main.placeholder-not-real.invalid"]), Fake::default()),
+            (
+                "placeholder",
+                s(&["x.main.placeholder-not-real.invalid"]),
+                Fake::default(),
+            ),
             ("malformed", s(&["http://x"]), Fake::default()),
             ("no seeds at all", Vec::new(), Fake::default()),
         ];
@@ -1027,7 +1201,8 @@ mod tests {
             let a = b.run(&r);
             let text = lines(&a, b.backoff_ms());
             assert!(
-                text.iter().any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error)),
+                text.iter()
+                    .any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error)),
                 "{name}: produced no warning at all: {text:?}"
             );
         }
@@ -1042,16 +1217,26 @@ mod tests {
         let a = b.run(&r);
         let text = lines(&a, b.backoff_ms());
         assert!(
-            !text.iter().any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error)),
+            !text
+                .iter()
+                .any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error)),
             "clean bootstrap warned: {text:?}"
         );
-        assert!(text.iter().any(|(_, m)| m.contains("2 address(es) from 2/2 seed name(s)")));
+        assert!(text
+            .iter()
+            .any(|(_, m)| m.contains("2 address(es) from 2/2 seed name(s)")));
     }
 
-    fn run_driver(d: &mut Driver, r: &dyn Resolve, peers: usize) -> (Vec<SocketAddr>, Vec<(LogLevel, String)>, u64) {
+    fn run_driver(
+        d: &mut Driver,
+        r: &dyn Resolve,
+        peers: usize,
+    ) -> (Vec<SocketAddr>, Vec<(LogLevel, String)>, u64) {
         let mut dialled = Vec::new();
         let mut said = Vec::new();
-        let wait = d.step(r, peers, &mut |a| dialled.push(a), &mut |l, m| said.push((l, m)));
+        let wait = d.step(r, peers, &mut |a| dialled.push(a), &mut |l, m| {
+            said.push((l, m))
+        });
         (dialled, said, wait)
     }
 
@@ -1095,7 +1280,10 @@ mod tests {
             .map(str::trim)
             .filter(|l| l.contains("&|| net.peer_count()") && !l.starts_with("//"))
             .collect();
-        assert!(bad.is_empty(), "the total peer count is not the question: {bad:?}");
+        assert!(
+            bad.is_empty(),
+            "the total peer count is not the question: {bad:?}"
+        );
     }
 
     #[test]
@@ -1104,9 +1292,15 @@ mod tests {
         let mut d = Driver::new(Bootstrap::new(&s(&["a.example.net"]), P));
 
         let (dialled, _said, wait) = run_driver(&mut d, &r, 0);
-        assert!(!r.asked.borrow().is_empty(), "a node that can sync from nobody must ask DNS");
+        assert!(
+            !r.asked.borrow().is_empty(),
+            "a node that can sync from nobody must ask DNS"
+        );
         assert_eq!(dialled, vec!["5.6.7.7:9256".parse::<SocketAddr>().unwrap()]);
-        assert_ne!(wait, SETTLED_POLL_MS, "it has not settled: it cannot reach anybody");
+        assert_ne!(
+            wait, SETTLED_POLL_MS,
+            "it has not settled: it cannot reach anybody"
+        );
     }
 
     #[test]
@@ -1129,12 +1323,18 @@ mod tests {
         for i in 0..20 {
             let (_, said, wait) = run_driver(&mut d, &Fake::default(), 0);
             assert!(wait > 0 && wait <= 600_000, "iteration {i}: wait {wait}");
-            if said.iter().any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error)) {
+            if said
+                .iter()
+                .any(|(l, _)| matches!(l, LogLevel::Warn | LogLevel::Error))
+            {
                 spoke += 1;
             }
         }
 
-        assert_eq!(spoke, 1, "the answer never changed, so it should be said once");
+        assert_eq!(
+            spoke, 1,
+            "the answer never changed, so it should be said once"
+        );
     }
 
     #[test]
@@ -1160,7 +1360,11 @@ mod tests {
         for _ in 0..6 {
             run_driver(&mut d, &moved, 0);
         }
-        assert_eq!(wait_of(&mut d, &moved), 600_000, "a stuck node must stop hammering DNS");
+        assert_eq!(
+            wait_of(&mut d, &moved),
+            600_000,
+            "a stuck node must stop hammering DNS"
+        );
     }
 
     fn wait_of(d: &mut Driver, r: &dyn Resolve) -> u64 {
@@ -1170,8 +1374,12 @@ mod tests {
 
     #[test]
     fn interleave_bounded_keeps_order() {
-        let a: Vec<SocketAddr> = (1..=3).map(|i| format!("5.6.7.{i}:9256").parse().unwrap()).collect();
-        let b: Vec<SocketAddr> = (1..=1).map(|i| format!("9.9.9.{i}:9256").parse().unwrap()).collect();
+        let a: Vec<SocketAddr> = (1..=3)
+            .map(|i| format!("5.6.7.{i}:9256").parse().unwrap())
+            .collect();
+        let b: Vec<SocketAddr> = (1..=1)
+            .map(|i| format!("9.9.9.{i}:9256").parse().unwrap())
+            .collect();
         let out = interleave(vec![a.clone(), b.clone()], 100);
         assert_eq!(out, vec![a[0], b[0], a[1], a[2]]);
         assert_eq!(interleave(vec![a, b], 2).len(), 2);

@@ -314,11 +314,7 @@ mod tests {
     #[test]
     fn pool_and_solo_totals() {
         let pool = total_resident_bytes(Caps::POOL.max_connections, 2 * 1024);
-        assert!(
-            pool < 400 * 1024 * 1024,
-            "{} MiB",
-            pool / 1024 / 1024
-        );
+        assert!(pool < 400 * 1024 * 1024, "{} MiB", pool / 1024 / 1024);
 
         let solo = total_resident_bytes(Caps::SOLO.max_connections, 2 * 1024);
         assert!(solo < 24 * 1024 * 1024, "{} MiB", solo / 1024 / 1024);
@@ -392,7 +388,11 @@ mod tests {
     #[test]
     fn a_small_pool_host_still_runs_two_verification_threads() {
         assert_eq!(pool_verify_threads(1), 2, "the floor, not cores/4");
-        assert_eq!(pool_verify_threads(4), 2, "the floor still binds at 4 cores");
+        assert_eq!(
+            pool_verify_threads(4),
+            2,
+            "the floor still binds at 4 cores"
+        );
         assert_eq!(pool_verify_threads(7), 2);
         assert_eq!(pool_verify_threads(8), 2, "cores/4 reaches the floor here");
         assert_eq!(pool_verify_threads(12), 3, "and takes over above it");

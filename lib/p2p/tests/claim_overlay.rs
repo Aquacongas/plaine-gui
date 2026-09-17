@@ -194,7 +194,10 @@ fn tip_below_watermark_not_missing() {
     assert!(verified > 200, "the fixture did not sync");
 
     sim.chain.regress_tip(50);
-    assert!(sim.chain.tip().height < verified, "the mock did not regress");
+    assert!(
+        sim.chain.tip().height < verified,
+        "the mock did not regress"
+    );
     let designated_before = sim
         .actions
         .iter()

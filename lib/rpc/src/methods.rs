@@ -130,7 +130,10 @@ fn header_json(h: &HeaderRecord) -> Json {
         ("confirmations".into(), Json::u64(h.confirmations)),
         ("canonical".into(), Json::Bool(h.canonical)),
         ("chainwork".into(), hex32(&h.chainwork)),
-        ("raw".into(), Json::str(plaine_consensus::hex::encode(&h.raw))),
+        (
+            "raw".into(),
+            Json::str(plaine_consensus::hex::encode(&h.raw)),
+        ),
     ];
     if let Some(d) = decoded {
         members.extend([
@@ -186,7 +189,10 @@ fn tx_json(t: &TxRecord) -> Json {
             ("where".into(), Json::str("mempool")),
             ("confirmations".into(), Json::u64(0)),
         ]),
-        TxLocation::Block { height, confirmations } => Json::Obj(vec![
+        TxLocation::Block {
+            height,
+            confirmations,
+        } => Json::Obj(vec![
             ("where".into(), Json::str("block")),
             ("height".into(), Json::u64(height)),
             ("confirmations".into(), Json::u64(confirmations)),
@@ -195,19 +201,26 @@ fn tx_json(t: &TxRecord) -> Json {
     Json::Obj(vec![
         ("txid".into(), hex32(&t.txid)),
         ("type".into(), Json::u64(t.type_byte as u64)),
-        ("raw".into(), Json::str(plaine_consensus::hex::encode(&t.raw))),
+        (
+            "raw".into(),
+            Json::str(plaine_consensus::hex::encode(&t.raw)),
+        ),
         ("location".into(), location),
         ("decoded".into(), t.decoded.clone()),
     ])
 }
 
-fn address_param(node: &Node, params: &Json, index: usize, name: &str) -> Result<Address20, RpcError> {
+fn address_param(
+    node: &Node,
+    params: &Json,
+    index: usize,
+    name: &str,
+) -> Result<Address20, RpcError> {
     let s = str_param(params, index, name)?;
     let (hrp, data) = plaine_consensus::bech32m::decode_bytes(s).map_err(|e| {
         RpcError::detail(
             ErrorCode::InvalidParams,
             format!(
-
                 "`{name}` is not a valid bech32m address: {e}. A Plaine address looks like \
                  plne1... and carries a checksum, so this is a typo, not a missing account."
             ),
@@ -241,7 +254,9 @@ fn verbosity_param(params: &Json, index: usize) -> Result<Verbosity, RpcError> {
         Some(v) => Verbosity::from_int(v).ok_or_else(|| {
             RpcError::detail(
                 ErrorCode::InvalidParams,
-                format!("verbosity must be 0 (raw hex), 1 (header + txids) or 2 (full txs), got {v}"),
+                format!(
+                    "verbosity must be 0 (raw hex), 1 (header + txids) or 2 (full txs), got {v}"
+                ),
             )
         }),
     }
@@ -251,7 +266,10 @@ fn arity(params: &Json, max: usize, method: &str) -> Result<(), RpcError> {
     if param_count(params) > max {
         return Err(RpcError::detail(
             ErrorCode::InvalidParams,
-            format!("{method} takes at most {max} parameters, got {}", param_count(params)),
+            format!(
+                "{method} takes at most {max} parameters, got {}",
+                param_count(params)
+            ),
         ));
     }
     Ok(())
@@ -270,7 +288,10 @@ fn chain_get_info(node: &Node) -> Result<Json, RpcError> {
         ("sync".into(), Json::str(i.sync.as_str())),
         ("txindex".into(), Json::Bool(i.txindex)),
         ("pruned".into(), Json::Bool(i.pruned)),
-        ("pruneHorizonHeight".into(), Json::u64(i.prune_horizon_height)),
+        (
+            "pruneHorizonHeight".into(),
+            Json::u64(i.prune_horizon_height),
+        ),
         ("peers".into(), Json::u64(node.net.peers().len() as u64)),
     ];
     members.push((
@@ -312,7 +333,10 @@ fn chain_get_header_by_hash(node: &Node, params: &Json) -> Result<Json, RpcError
             ),
         ));
     }
-    Err(RpcError::detail(ErrorCode::NotFound, "no header with that hash"))
+    Err(RpcError::detail(
+        ErrorCode::NotFound,
+        "no header with that hash",
+    ))
 }
 
 fn chain_get_block_by_height(node: &Node, params: &Json) -> Result<Json, RpcError> {
@@ -381,7 +405,10 @@ fn account_get(node: &Node, params: &Json) -> Result<Json, RpcError> {
         ("nonce".into(), Json::u64(a.nonce)),
         ("pendingNonce".into(), Json::u64(a.pending_nonce)),
         ("immature".into(), Json::mile(a.immature)),
-        ("spendable".into(), Json::mile(a.balance.saturating_sub(a.immature))),
+        (
+            "spendable".into(),
+            Json::mile(a.balance.saturating_sub(a.immature)),
+        ),
     ]))
 }
 
@@ -405,7 +432,10 @@ fn tx_send_raw(node: &Node, params: &Json) -> Result<Json, RpcError> {
         ));
     }
     let raw = plaine_consensus::hex::decode(hex).map_err(|e| {
-        RpcError::detail(ErrorCode::InvalidParams, format!("`raw` is not valid hex: {e}"))
+        RpcError::detail(
+            ErrorCode::InvalidParams,
+            format!("`raw` is not valid hex: {e}"),
+        )
     })?;
     match node.mempool.submit(&raw) {
         Ok(txid) => Ok(hex32(&txid)),
@@ -423,9 +453,10 @@ fn tx_get(node: &Node, params: &Json) -> Result<Json, RpcError> {
     match node.chain.tx(&txid) {
         TxLookup::Found(t) => Ok(tx_json(&t)),
 
-        TxLookup::Absent => {
-            Err(RpcError::detail(ErrorCode::NotFound, "no transaction with that id"))
-        }
+        TxLookup::Absent => Err(RpcError::detail(
+            ErrorCode::NotFound,
+            "no transaction with that id",
+        )),
         TxLookup::NotIndexed { indexed_from: None } => Err(RpcError::detail(
             ErrorCode::FeatureDisabled,
             "not in the mempool, and this node has no txid index, so confirmed \
@@ -433,7 +464,9 @@ fn tx_get(node: &Node, params: &Json) -> Result<Json, RpcError> {
              - it must then resync to build the index.",
         )),
 
-        TxLookup::NotIndexed { indexed_from: Some(from) } => Err(RpcError::detail(
+        TxLookup::NotIndexed {
+            indexed_from: Some(from),
+        } => Err(RpcError::detail(
             ErrorCode::FeatureDisabled,
             format!(
                 "not in the mempool, and this node's txid index begins at height {from}, so \
@@ -454,7 +487,6 @@ fn mempool_get_info(node: &Node) -> Result<Json, RpcError> {
         ("queued".into(), Json::u64(m.queued as u64)),
         ("relayFeeMile".into(), Json::mile(m.relay_fee_mile)),
         ("maxTxs".into(), Json::u64(m.max_txs as u64)),
-
         (
             "consensusFeeFloorMile".into(),
             Json::mile(plaine_consensus::constants::FEE_FLOOR_MILE),
@@ -508,9 +540,11 @@ fn emission_audit(node: &Node, params: &Json) -> Result<Json, RpcError> {
     Ok(Json::Obj(vec![
         ("height".into(), Json::u64(a.height)),
         ("issuedMile".into(), Json::mile(a.issued_mile)),
-        ("expectedByFormulaMile".into(), Json::mile(a.expected_by_formula_mile)),
+        (
+            "expectedByFormulaMile".into(),
+            Json::mile(a.expected_by_formula_mile),
+        ),
         ("differenceMile".into(), Json::Str(difference)),
-
         (
             "maxSupplyMile".into(),
             match a.max_supply_mile {
@@ -518,7 +552,10 @@ fn emission_audit(node: &Node, params: &Json) -> Result<Json, RpcError> {
                 None => Json::Null,
             },
         ),
-        ("subsidyAtHeightMile".into(), Json::mile(a.subsidy_at_height_mile)),
+        (
+            "subsidyAtHeightMile".into(),
+            Json::mile(a.subsidy_at_height_mile),
+        ),
         ("matchesFormula".into(), Json::Bool(matches)),
         (
             "underMaxSupply".into(),
@@ -532,7 +569,10 @@ fn checkpoint_get_status(node: &Node) -> Result<Json, RpcError> {
 
     let link = node.policy.checkpoint_link();
     let (last_anchor, enforced) = match &link {
-        CheckpointLink::Live { last_anchor, enforced } => (*last_anchor, *enforced),
+        CheckpointLink::Live {
+            last_anchor,
+            enforced,
+        } => (*last_anchor, *enforced),
         CheckpointLink::Severed => (None, 0),
     };
     // enabled reflects reality, not config: a severed-ingest node reports no protection it lacks.
@@ -543,7 +583,12 @@ fn checkpoint_get_status(node: &Node) -> Result<Json, RpcError> {
         ("keySource".into(), Json::str(c.key_source.as_str())),
         (
             "keyFingerprints".into(),
-            Json::Arr(c.key_fingerprints.iter().map(|f| Json::str(f.clone())).collect()),
+            Json::Arr(
+                c.key_fingerprints
+                    .iter()
+                    .map(|f| Json::str(f.clone()))
+                    .collect(),
+            ),
         ),
         ("threshold".into(), Json::u64(c.threshold as u64)),
         ("enforcedCount".into(), Json::u64(enforced as u64)),
@@ -617,7 +662,10 @@ fn checkpoint_submit(node: &Node, params: &Json) -> Result<Json, RpcError> {
         ));
     }
     let raw = plaine_consensus::hex::decode(hex).map_err(|e| {
-        RpcError::detail(ErrorCode::InvalidParams, format!("`record` is not valid hex: {e}"))
+        RpcError::detail(
+            ErrorCode::InvalidParams,
+            format!("`record` is not valid hex: {e}"),
+        )
     })?;
 
     let cp = plaine_consensus::checkpoint_record::decode(&raw).map_err(|e| {
@@ -634,7 +682,11 @@ fn checkpoint_submit(node: &Node, params: &Json) -> Result<Json, RpcError> {
         ("anchorAdvanced".into(), Json::Bool(out.advanced())),
     ];
     match out {
-        CheckpointSubmit::Advanced { height, enforced, enforcing } => {
+        CheckpointSubmit::Advanced {
+            height,
+            enforced,
+            enforcing,
+        } => {
             members.push(("height".into(), Json::u64(height)));
             members.push(("enforcedCount".into(), Json::u64(enforced as u64)));
             members.push(("enforcing".into(), Json::Bool(enforcing)));
@@ -705,15 +757,13 @@ fn author_get_notes(node: &Node, params: &Json) -> Result<Json, RpcError> {
     let from_height = opt_u64_param(params, 0, "fromHeight")?;
     let cursor_param = opt_u64_param(params, 2, "cursor")?;
     let cursor = match (from_height, cursor_param) {
-        (Some(_), Some(_)) => {
-            return Err(RpcError::detail(
-                ErrorCode::InvalidParams,
-                "give `fromHeight` or `cursor`, not both: `fromHeight` filters to announcements at \
+        (Some(_), Some(_)) => return Err(RpcError::detail(
+            ErrorCode::InvalidParams,
+            "give `fromHeight` or `cursor`, not both: `fromHeight` filters to announcements at \
                  or below a block height, `cursor` resumes an earlier page from the \
                  `nextCursor` it handed back. Combining them would have to guess which one you \
                  meant.",
-            ))
-        }
+        )),
         (Some(h), None) => NotesCursor::AtOrBelowHeight(h),
         (None, Some(c)) => NotesCursor::Before(c),
         (None, None) => NotesCursor::Newest,
@@ -828,7 +878,10 @@ fn net_get_peer_info(node: &Node) -> Result<Json, RpcError> {
                 Json::Obj(vec![
                     ("id".into(), Json::u64(p.id)),
                     ("addr".into(), Json::str(p.addr.clone())),
-                    ("direction".into(), Json::str(if p.outbound { "outbound" } else { "inbound" })),
+                    (
+                        "direction".into(),
+                        Json::str(if p.outbound { "outbound" } else { "inbound" }),
+                    ),
                     ("connectedSecs".into(), Json::u64(p.connected_secs)),
                     ("bestHeight".into(), Json::u64(p.best_height)),
                     ("bytesRecv".into(), Json::u64(p.bytes_recv)),
@@ -861,7 +914,10 @@ fn stratum_get_sessions(node: &Node) -> Result<Json, RpcError> {
                     ("connectedSecs".into(), Json::u64(s.connected_secs)),
                     ("lastShareSecs".into(), Json::Int(s.last_share_secs)),
                     ("acceptedShares".into(), Json::u64(s.accepted_shares)),
-                    ("acceptedDifficulty".into(), Json::mile(s.accepted_difficulty)),
+                    (
+                        "acceptedDifficulty".into(),
+                        Json::mile(s.accepted_difficulty),
+                    ),
                     ("difficulty".into(), Json::u64(s.difficulty)),
                 ])
             })
@@ -872,32 +928,61 @@ fn stratum_get_sessions(node: &Node) -> Result<Json, RpcError> {
 fn node_get_budgets(node: &Node) -> Result<Json, RpcError> {
     let b = node.budgets.budgets();
     Ok(Json::Obj(vec![
-        ("cpuPoolThreads".into(), Json::u64(b.cpu_pool_threads as u64)),
+        (
+            "cpuPoolThreads".into(),
+            Json::u64(b.cpu_pool_threads as u64),
+        ),
         ("powVerifiesTotal".into(), Json::u64(b.pow_verifies_total)),
-        ("powCacheHitPct".into(), Json::u64(b.pow_cache_hit_pct as u64)),
-        ("stratumSharesPerSec".into(), Json::u64(b.stratum_shares_per_sec)),
+        (
+            "powCacheHitPct".into(),
+            Json::u64(b.pow_cache_hit_pct as u64),
+        ),
+        (
+            "stratumSharesPerSec".into(),
+            Json::u64(b.stratum_shares_per_sec),
+        ),
         (
             "stratumSharesCapPerSec".into(),
             // 83.3 shares/sec per pool thread, kept as *833/10 to avoid floating point.
             Json::u64((b.cpu_pool_threads as u64 * 833) / 10),
         ),
-        ("validatorQueueBytes".into(), Json::u64(b.validator_queue_bytes)),
-        ("validatorQueueBytesCap".into(), Json::u64(b.validator_queue_bytes_cap)),
-        ("validatorQueueItems".into(), Json::u64(b.validator_queue_items as u64)),
-        ("validatorQueueItemsCap".into(), Json::u64(b.validator_queue_items_cap as u64)),
+        (
+            "validatorQueueBytes".into(),
+            Json::u64(b.validator_queue_bytes),
+        ),
+        (
+            "validatorQueueBytesCap".into(),
+            Json::u64(b.validator_queue_bytes_cap),
+        ),
+        (
+            "validatorQueueItems".into(),
+            Json::u64(b.validator_queue_items as u64),
+        ),
+        (
+            "validatorQueueItemsCap".into(),
+            Json::u64(b.validator_queue_items_cap as u64),
+        ),
         ("chainEventsTotal".into(), Json::u64(b.chain_events_total)),
         ("mempoolSources".into(), Json::u64(b.mempool_sources as u64)),
-        ("mempoolSourcesCap".into(), Json::u64(b.mempool_sources_cap as u64)),
+        (
+            "mempoolSourcesCap".into(),
+            Json::u64(b.mempool_sources_cap as u64),
+        ),
         ("rpcRejectedBusy".into(), Json::u64(b.rpc_rejected_busy)),
-
         (
             // unmeasured rss is null, never 0: a zero here would read as a healthy tiny process.
             "rssBytes".into(),
             b.rss_bytes.map(Json::u64).unwrap_or(Json::Null),
         ),
         ("rssBudgetBytes".into(), Json::u64(512 * 1024 * 1024)),
-        ("bodyRejectsAlreadyHeld".into(), Json::u64(b.body_rejects_already_held)),
-        ("bodyRejectsNotAdmissible".into(), Json::u64(b.body_rejects_not_admissible)),
+        (
+            "bodyRejectsAlreadyHeld".into(),
+            Json::u64(b.body_rejects_already_held),
+        ),
+        (
+            "bodyRejectsNotAdmissible".into(),
+            Json::u64(b.body_rejects_not_admissible),
+        ),
     ]))
 }
 
@@ -910,8 +995,8 @@ pub use jsonrpc::MAX_BATCH;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::views::{AuthorKeyStatus, CheckpointStatus, KeySource, PolicyView};
     use crate::mock::MockNode;
+    use crate::views::{AuthorKeyStatus, CheckpointStatus, KeySource, PolicyView};
 
     #[test]
     fn method_list_matches_the_doc() {
@@ -940,7 +1025,10 @@ mod tests {
             assert!(METHODS.contains(&m), "{m} missing from METHODS");
         }
         for m in METHODS {
-            assert!(expected.contains(m), "{m} is in METHODS and not in the documented list");
+            assert!(
+                expected.contains(m),
+                "{m} is in METHODS and not in the documented list"
+            );
         }
         assert_eq!(METHODS.len(), expected.len(), "a name is listed twice");
     }
@@ -949,11 +1037,19 @@ mod tests {
     fn every_method_reaches_a_handler() {
         let node = MockNode::synced().into_node();
         for m in METHODS {
-            let req = Request { method: (*m).into(), params: Json::Arr(vec![]), id: None };
+            let req = Request {
+                method: (*m).into(),
+                params: Json::Arr(vec![]),
+                id: None,
+            };
             let got = dispatch(&node, &req);
 
             if let Err(e) = got {
-                assert_ne!(e.code, ErrorCode::MethodNotFound, "{m} is advertised and not routed");
+                assert_ne!(
+                    e.code,
+                    ErrorCode::MethodNotFound,
+                    "{m} is advertised and not routed"
+                );
             }
         }
     }
@@ -970,7 +1066,11 @@ mod tests {
             "net_ban",
             "mining_start",
         ] {
-            let req = Request { method: forbidden.into(), params: Json::Arr(vec![]), id: None };
+            let req = Request {
+                method: forbidden.into(),
+                params: Json::Arr(vec![]),
+                id: None,
+            };
             let e = dispatch(&node, &req).unwrap_err();
             assert_eq!(e.code, ErrorCode::MethodNotFound, "{forbidden} dispatched");
         }
@@ -979,7 +1079,11 @@ mod tests {
     #[test]
     fn a_typo_gets_a_suggestion() {
         let node = MockNode::synced().into_node();
-        let req = Request { method: "chain_getinfo".into(), params: Json::Arr(vec![]), id: None };
+        let req = Request {
+            method: "chain_getinfo".into(),
+            params: Json::Arr(vec![]),
+            id: None,
+        };
         let e = dispatch(&node, &req).unwrap_err();
         assert!(e.detail.unwrap().contains("chain_getInfo"));
     }
@@ -988,26 +1092,45 @@ mod tests {
     fn long_method_name_is_bounded() {
         let node = MockNode::synced().into_node();
         let huge = "a".repeat(1_000_000);
-        let req = Request { method: huge, params: Json::Arr(vec![]), id: Some(Json::Int(1)) };
+        let req = Request {
+            method: huge,
+            params: Json::Arr(vec![]),
+            id: Some(Json::Int(1)),
+        };
         let e = dispatch(&node, &req).unwrap_err();
         assert_eq!(e.code, ErrorCode::MethodNotFound);
         let detail = e.detail.unwrap();
 
-        assert!(detail.len() < 1_000, "the giant name was echoed back: {} bytes", detail.len());
+        assert!(
+            detail.len() < 1_000,
+            "the giant name was echoed back: {} bytes",
+            detail.len()
+        );
         assert!(detail.contains("1000000 chars"));
         assert!(detail.contains("The list is closed"));
 
         let at_bound = "z".repeat(MAX_SUGGESTABLE_METHOD_LEN);
         let e2 = dispatch(
             &node,
-            &Request { method: at_bound, params: Json::Arr(vec![]), id: Some(Json::Int(1)) },
+            &Request {
+                method: at_bound,
+                params: Json::Arr(vec![]),
+                id: Some(Json::Int(1)),
+            },
         )
         .unwrap_err();
         assert_eq!(e2.code, ErrorCode::MethodNotFound);
     }
 
     fn call(node: &Node, method: &str, params: Json) -> Result<Json, RpcError> {
-        dispatch(node, &Request { method: method.into(), params, id: Some(Json::Int(1)) })
+        dispatch(
+            node,
+            &Request {
+                method: method.into(),
+                params,
+                id: Some(Json::Int(1)),
+            },
+        )
     }
 
     #[test]
@@ -1096,7 +1219,12 @@ mod tests {
     #[test]
     fn notes_paging_cursor_works() {
         let node = MockNode::synced().with_notes().into_node();
-        let v = call(&node, "author_getNotes", Json::Arr(vec![Json::Null, Json::Int(1)])).unwrap();
+        let v = call(
+            &node,
+            "author_getNotes",
+            Json::Arr(vec![Json::Null, Json::Int(1)]),
+        )
+        .unwrap();
         assert_eq!(v.get("notes").unwrap().as_arr().unwrap().len(), 1);
         assert_eq!(v.get("more").unwrap().as_bool(), Some(true));
         let next = v.get("nextCursor").unwrap().as_int().unwrap();
@@ -1169,7 +1297,9 @@ mod tests {
         .unwrap();
         assert!(v.get("notes").unwrap().as_arr().unwrap().is_empty());
         assert_eq!(v.get("total").unwrap().as_int().unwrap(), 3);
-        let hint = v.get("hint").expect("an empty page over a real history must explain itself");
+        let hint = v
+            .get("hint")
+            .expect("an empty page over a real history must explain itself");
         assert!(hint.as_str().unwrap().contains("end of the history"));
     }
 
@@ -1179,7 +1309,9 @@ mod tests {
         let v = call(&node, "author_getNotes", Json::Arr(vec![Json::Int(0)])).unwrap();
         assert!(v.get("notes").unwrap().as_arr().unwrap().is_empty());
         assert!(v.get("total").unwrap().as_int().unwrap() > 0);
-        let hint = v.get("hint").expect("an empty page over a real history must explain itself");
+        let hint = v
+            .get("hint")
+            .expect("an empty page over a real history must explain itself");
         let hint = hint.as_str().unwrap();
         assert!(hint.contains("backwards"), "{hint}");
         assert!(hint.contains("no parameters"), "{hint}");
@@ -1193,8 +1325,12 @@ mod tests {
     #[test]
     fn notes_limit_enforced() {
         let node = MockNode::synced().with_notes().into_node();
-        let e = call(&node, "author_getNotes", Json::Arr(vec![Json::Null, Json::Int(1000)]))
-            .unwrap_err();
+        let e = call(
+            &node,
+            "author_getNotes",
+            Json::Arr(vec![Json::Null, Json::Int(1000)]),
+        )
+        .unwrap_err();
         assert_eq!(e.code, ErrorCode::InvalidParams);
         assert!(e.detail.unwrap().contains("1..=100"));
     }
@@ -1214,7 +1350,12 @@ mod tests {
             v.get("sunsetHeight").unwrap().as_int(),
             Some(plaine_consensus::constants::CHECKPOINT_SUNSET_HEIGHT as i64)
         );
-        assert!(v.get("note").unwrap().as_str().unwrap().contains("only reject"));
+        assert!(v
+            .get("note")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("only reject"));
     }
 
     #[test]
@@ -1222,7 +1363,12 @@ mod tests {
         let node = MockNode::synced().with_checkpoints_disabled().into_node();
         let v = call(&node, "checkpoint_getStatus", Json::Arr(vec![])).unwrap();
         assert_eq!(v.get("enabled").unwrap().as_bool(), Some(false));
-        assert!(v.get("warning").unwrap().as_str().unwrap().contains("deep reorgs"));
+        assert!(v
+            .get("warning")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("deep reorgs"));
     }
 
     struct LiteralPolicy;
@@ -1303,7 +1449,11 @@ mod tests {
     }
 
     fn submit(node: &Node, hex: &str) -> Result<Json, RpcError> {
-        call(node, "checkpoint_submit", Json::Arr(vec![Json::str(hex.to_string())]))
+        call(
+            node,
+            "checkpoint_submit",
+            Json::Arr(vec![Json::str(hex.to_string())]),
+        )
     }
 
     #[test]
@@ -1348,7 +1498,10 @@ mod tests {
     fn every_refusal_fails_the_call() {
         for (out, code) in [
             (CheckpointSubmit::Unverified, ErrorCode::CheckpointRejected),
-            (CheckpointSubmit::GenesisImmutable, ErrorCode::CheckpointRejected),
+            (
+                CheckpointSubmit::GenesisImmutable,
+                ErrorCode::CheckpointRejected,
+            ),
             (CheckpointSubmit::NotConfigured, ErrorCode::FeatureDisabled),
             (CheckpointSubmit::Severed, ErrorCode::FeatureDisabled),
         ] {
@@ -1374,11 +1527,23 @@ mod tests {
             e.detail.as_deref().unwrap_or(""),
             e.data.as_ref().and_then(|d| d.as_str()).unwrap_or("")
         );
-        for leak in ["threshold not met", "zero hash", "sunset height reached", "too many signatures"] {
-            assert!(!msg.contains(leak), "the refusal named the failing check: {msg}");
+        for leak in [
+            "threshold not met",
+            "zero hash",
+            "sunset height reached",
+            "too many signatures",
+        ] {
+            assert!(
+                !msg.contains(leak),
+                "the refusal named the failing check: {msg}"
+            );
         }
 
-        assert!(e.detail.as_deref().unwrap_or("").contains("keyFingerprints"));
+        assert!(e
+            .detail
+            .as_deref()
+            .unwrap_or("")
+            .contains("keyFingerprints"));
     }
 
     #[test]
@@ -1397,12 +1562,18 @@ mod tests {
     fn malformed_record_refused_by_shape() {
         let node = MockNode::synced().into_node();
 
-        assert_eq!(submit(&node, "zz").unwrap_err().code, ErrorCode::InvalidParams);
+        assert_eq!(
+            submit(&node, "zz").unwrap_err().code,
+            ErrorCode::InvalidParams
+        );
 
         let good = cp_hex(77);
         for (mangle, want) in [
             (good[..good.len() - 4].to_string(), "truncated"),
-            (format!("{good}00"), "trailing bytes after the last signature"),
+            (
+                format!("{good}00"),
+                "trailing bytes after the last signature",
+            ),
             (format!("02{}", &good[2..]), "unknown record version"),
         ] {
             let e = submit(&node, &mangle).unwrap_err();
@@ -1424,7 +1595,9 @@ mod tests {
     fn checkpoint_submit_takes_exactly_one_parameter() {
         let node = MockNode::synced().into_node();
         assert_eq!(
-            call(&node, "checkpoint_submit", Json::Arr(vec![])).unwrap_err().code,
+            call(&node, "checkpoint_submit", Json::Arr(vec![]))
+                .unwrap_err()
+                .code,
             ErrorCode::InvalidParams
         );
         assert_eq!(
@@ -1441,14 +1614,21 @@ mod tests {
 
     #[test]
     fn severed_ingest_reported_despite_config() {
-        let node = MockNode::synced().with_checkpoint_ingest_severed().into_node();
+        let node = MockNode::synced()
+            .with_checkpoint_ingest_severed()
+            .into_node();
         let v = call(&node, "checkpoint_getStatus", Json::Arr(vec![])).unwrap();
         assert_eq!(v.get("enabled").unwrap().as_bool(), Some(false));
         assert_eq!(v.get("configured").unwrap().as_bool(), Some(true));
         assert_eq!(v.get("ingest").unwrap().as_str(), Some("severed"));
 
         assert_eq!(v.get("keyFingerprints").unwrap().as_arr().unwrap().len(), 1);
-        assert!(v.get("warning").unwrap().as_str().unwrap().contains("not in use"));
+        assert!(v
+            .get("warning")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("not in use"));
     }
 
     #[test]
@@ -1471,7 +1651,9 @@ mod tests {
             fingerprint: "4d1e77b0".into(),
             show_in_log: true,
         };
-        let node = MockNode::synced().with_key_status(lying, author).into_node();
+        let node = MockNode::synced()
+            .with_key_status(lying, author)
+            .into_node();
         let v = call(&node, "checkpoint_getStatus", Json::Arr(vec![])).unwrap();
 
         assert_eq!(v.get("enforcedCount").unwrap().as_int(), Some(3));
@@ -1500,7 +1682,10 @@ mod tests {
         assert_eq!(e.code, ErrorCode::InvalidParams);
         let detail = e.detail.expect("detail");
         assert!(detail.contains("abcd"), "{detail}");
-        assert!(detail.contains(plaine_consensus::constants::ADDRESS_HRP), "{detail}");
+        assert!(
+            detail.contains(plaine_consensus::constants::ADDRESS_HRP),
+            "{detail}"
+        );
 
         for len in [0usize, 19, 21, 32] {
             let s = plaine_consensus::bech32m::encode_bytes(
@@ -1511,7 +1696,10 @@ mod tests {
             let e = call(&node, "account_get", Json::Arr(vec![Json::str(&s)]))
                 .expect_err(&format!("a {len}-byte payload was accepted as an address"));
             assert_eq!(e.code, ErrorCode::InvalidParams, "{len} bytes");
-            assert!(e.detail.expect("detail").contains("expected 20"), "{len} bytes");
+            assert!(
+                e.detail.expect("detail").contains("expected 20"),
+                "{len} bytes"
+            );
         }
 
         assert!(call(
@@ -1525,8 +1713,12 @@ mod tests {
     #[test]
     fn bad_address_reads_as_typo() {
         let node = MockNode::synced().into_node();
-        let e = call(&node, "account_get", Json::Arr(vec![Json::str("plne1qqqqqqqqbad")]))
-            .unwrap_err();
+        let e = call(
+            &node,
+            "account_get",
+            Json::Arr(vec![Json::str("plne1qqqqqqqqbad")]),
+        )
+        .unwrap_err();
         assert_eq!(e.code, ErrorCode::InvalidParams);
         assert!(e.detail.unwrap().contains("checksum"));
     }
@@ -1583,7 +1775,12 @@ mod tests {
     #[test]
     fn pruned_body_is_feature_disabled() {
         let node = MockNode::synced().pruned_at(1000).into_node();
-        let e = call(&node, "chain_getBlockByHeight", Json::Arr(vec![Json::Int(5)])).unwrap_err();
+        let e = call(
+            &node,
+            "chain_getBlockByHeight",
+            Json::Arr(vec![Json::Int(5)]),
+        )
+        .unwrap_err();
         assert_eq!(e.code, ErrorCode::FeatureDisabled);
         assert!(e.detail.unwrap().contains("pruning horizon"));
     }
@@ -1621,7 +1818,11 @@ mod tests {
     fn hostile_peer_agent_is_neutralised() {
         let node = MockNode::synced().with_hostile_peer().into_node();
         let v = call(&node, "net_getPeerInfo", Json::Arr(vec![])).unwrap();
-        let ua = v.as_arr().unwrap()[0].get("userAgent").unwrap().as_str().unwrap();
+        let ua = v.as_arr().unwrap()[0]
+            .get("userAgent")
+            .unwrap()
+            .as_str()
+            .unwrap();
         assert!(!ua.contains('\u{1b}'));
         assert!(!ua.contains('\n'));
     }
@@ -1674,7 +1875,10 @@ mod tests {
 
     impl crate::views::BudgetView for UnmeasuredRss {
         fn budgets(&self) -> crate::views::Budgets {
-            crate::views::Budgets { rss_bytes: None, ..Default::default() }
+            crate::views::Budgets {
+                rss_bytes: None,
+                ..Default::default()
+            }
         }
     }
 
@@ -1682,7 +1886,11 @@ mod tests {
     fn unmeasured_rss_is_null() {
         let node = MockNode::synced().into_node();
         let v = call(&node, "node_getBudgets", Json::Arr(vec![])).unwrap();
-        let measured = node.budgets.budgets().rss_bytes.expect("the mock measures it");
+        let measured = node
+            .budgets
+            .budgets()
+            .rss_bytes
+            .expect("the mock measures it");
         assert!(measured > 0);
         assert_eq!(v.get("rssBytes").unwrap().as_int(), Some(measured as i64));
 
@@ -1692,7 +1900,10 @@ mod tests {
         assert_eq!(*v.get("rssBytes").unwrap(), Json::Null, "{v:?}");
         assert_ne!(v.get("rssBytes").unwrap().as_int(), Some(0), "{v:?}");
 
-        assert_eq!(v.get("rssBudgetBytes").unwrap().as_int(), Some(512 * 1024 * 1024));
+        assert_eq!(
+            v.get("rssBudgetBytes").unwrap().as_int(),
+            Some(512 * 1024 * 1024)
+        );
     }
 
     #[test]
@@ -1710,8 +1921,12 @@ mod tests {
     #[test]
     fn verbosity_three_refused() {
         let node = MockNode::synced().into_node();
-        let e = call(&node, "chain_getBlockByHeight", Json::Arr(vec![Json::Int(1), Json::Int(3)]))
-            .unwrap_err();
+        let e = call(
+            &node,
+            "chain_getBlockByHeight",
+            Json::Arr(vec![Json::Int(1), Json::Int(3)]),
+        )
+        .unwrap_err();
         assert!(e.detail.unwrap().contains("verbosity must be 0"));
     }
 }

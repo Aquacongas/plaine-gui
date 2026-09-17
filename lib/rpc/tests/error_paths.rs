@@ -13,9 +13,16 @@ use plaine_rpc::views::{
 
 #[test]
 fn submit_error_human_never_overflows() {
-    let e = SubmitError::NonceOutOfRange { got: 3, next: u64::MAX, max_gap: 16 };
+    let e = SubmitError::NonceOutOfRange {
+        got: 3,
+        next: u64::MAX,
+        max_gap: 16,
+    };
     let msg = std::panic::catch_unwind(|| e.human());
-    assert!(msg.is_ok(), "human() overflowed on next+max_gap near u64::MAX");
+    assert!(
+        msg.is_ok(),
+        "human() overflowed on next+max_gap near u64::MAX"
+    );
 }
 
 struct TopOfNonceSpacePool;
@@ -31,7 +38,11 @@ impl MempoolView for TopOfNonceSpacePool {
         FeeSuggestion::default()
     }
     fn submit(&self, _raw: &[u8]) -> Result<Hash32, SubmitError> {
-        Err(SubmitError::NonceOutOfRange { got: 1, next: u64::MAX, max_gap: 16 })
+        Err(SubmitError::NonceOutOfRange {
+            got: 1,
+            next: u64::MAX,
+            max_gap: 16,
+        })
     }
 }
 
@@ -61,7 +72,8 @@ fn speak(addr: std::net::SocketAddr, payload: &str) -> String {
         Ok(s) => s,
         Err(e) => return format!("<connect failed: {e}>"),
     };
-    sock.set_read_timeout(Some(Duration::from_secs(3))).expect("timeout");
+    sock.set_read_timeout(Some(Duration::from_secs(3)))
+        .expect("timeout");
     if sock.write_all(req.as_bytes()).is_err() {
         return "<write failed>".into();
     }
@@ -109,7 +121,10 @@ fn panicking_handler_costs_one_connection() {
     let handle = std::thread::spawn(move || server.serve());
 
     for _ in 0..3 {
-        let _ = speak(addr, r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["00"],"id":1}"#);
+        let _ = speak(
+            addr,
+            r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["00"],"id":1}"#,
+        );
         std::thread::sleep(Duration::from_millis(150));
     }
 
@@ -119,7 +134,10 @@ fn panicking_handler_costs_one_connection() {
     shutdown.trigger();
     let _ = handle.join();
 
-    assert_eq!(leaked, 0, "in_flight is stuck at {leaked} with no connection open");
+    assert_eq!(
+        leaked, 0,
+        "in_flight is stuck at {leaked} with no connection open"
+    );
     assert!(
         after.starts_with("HTTP/1.1 200"),
         "three panicking requests wedged the interface: {}. the slot decrement must be a Drop \
@@ -143,7 +161,10 @@ fn panicking_request_frees_its_slot() {
     let ok = speak(addr, r#"{"jsonrpc":"2.0","method":"fee_suggest","id":1}"#);
     assert!(ok.starts_with("HTTP/1.1 200"), "baseline: {ok}");
 
-    let _ = speak(addr, r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["00"],"id":1}"#);
+    let _ = speak(
+        addr,
+        r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["00"],"id":1}"#,
+    );
     std::thread::sleep(Duration::from_millis(300));
 
     let leaked = metrics.in_flight.load(Ordering::SeqCst);
@@ -169,7 +190,10 @@ fn call(node: &Node, payload: &str) -> String {
 fn refusal_never_prints_foreign_debug() {
     let node = MockNode::synced().into_node();
 
-    let hex = call(&node, r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["zz"],"id":1}"#);
+    let hex = call(
+        &node,
+        r#"{"jsonrpc":"2.0","method":"tx_sendRaw","params":["zz"],"id":1}"#,
+    );
     assert!(
         !hex.contains("InvalidChar") && !hex.contains("byte:"),
         "tx_sendRaw leaked HexError Debug instead of its Display: {hex}"
@@ -193,43 +217,81 @@ fn closed_list_exposes_no_key_or_control() {
     let node = MockNode::synced().with_notes().into_node();
 
     for method in ["checkpoint_getStatus", "author_getNotes"] {
-        let out = call(&node, &format!(r#"{{"jsonrpc":"2.0","method":"{method}","id":1}}"#));
+        let out = call(
+            &node,
+            &format!(r#"{{"jsonrpc":"2.0","method":"{method}","id":1}}"#),
+        );
         assert!(!out.contains("privkey") && !out.contains("secret") && !out.contains("seed"));
         let v = plaine_rpc::json::parse(out.as_bytes(), JsonLimits::default()).expect("json");
         let result = v.get("result").expect("result");
 
         if let Some(fps) = result.get("keyFingerprints").and_then(|f| f.as_arr()) {
             for f in fps {
-                assert!(f.as_str().expect("str").len() < 32, "full key emitted: {f:?}");
+                assert!(
+                    f.as_str().expect("str").len() < 32,
+                    "full key emitted: {f:?}"
+                );
             }
         }
         if let Some(k) = result.get("authorKey") {
-            let fp = k.get("fingerprint").and_then(|f| f.as_str()).expect("fingerprint");
+            let fp = k
+                .get("fingerprint")
+                .and_then(|f| f.as_str())
+                .expect("fingerprint");
             assert!(fp.len() < 32, "full author key emitted: {fp}");
         }
     }
 
     for forbidden in [
-        "getblocktemplate", "getwork", "submitblock", "setgenerate", "generatetoaddress",
-        "node_shutdown", "stop", "net_addPeer", "net_ban", "net_disconnect", "wallet_sign",
-        "dumpprivkey", "importprivkey", "author_publish", "checkpoint_add", "config_set",
-        "chain_reindex", "chain_invalidateBlock",
+        "getblocktemplate",
+        "getwork",
+        "submitblock",
+        "setgenerate",
+        "generatetoaddress",
+        "node_shutdown",
+        "stop",
+        "net_addPeer",
+        "net_ban",
+        "net_disconnect",
+        "wallet_sign",
+        "dumpprivkey",
+        "importprivkey",
+        "author_publish",
+        "checkpoint_add",
+        "config_set",
+        "chain_reindex",
+        "chain_invalidateBlock",
     ] {
-        let out = call(&node, &format!(r#"{{"jsonrpc":"2.0","method":"{forbidden}","id":1}}"#));
-        assert!(out.contains("-32601"), "{forbidden} was not a MethodNotFound: {out}");
+        let out = call(
+            &node,
+            &format!(r#"{{"jsonrpc":"2.0","method":"{forbidden}","id":1}}"#),
+        );
+        assert!(
+            out.contains("-32601"),
+            "{forbidden} was not a MethodNotFound: {out}"
+        );
     }
 }
 
 #[test]
 fn hostile_note_and_agent_stay_in_json() {
-    let node = MockNode::synced().with_hostile_note().with_hostile_peer().into_node();
+    let node = MockNode::synced()
+        .with_hostile_note()
+        .with_hostile_peer()
+        .into_node();
     for method in ["author_getNotes", "net_getPeerInfo"] {
-        let out = call(&node, &format!(r#"{{"jsonrpc":"2.0","method":"{method}","id":1}}"#));
+        let out = call(
+            &node,
+            &format!(r#"{{"jsonrpc":"2.0","method":"{method}","id":1}}"#),
+        );
         for raw in ['\u{1b}', '\r', '\n', '\u{2028}', '\u{2029}', '\u{202e}'] {
             assert!(!out.contains(raw), "{method} emitted a raw {raw:?}");
         }
 
-        assert!(plaine_rpc::json::parse(out.as_bytes(), JsonLimits::default()).is_ok(), "{out}");
+        assert!(
+            plaine_rpc::json::parse(out.as_bytes(), JsonLimits::default()).is_ok(),
+            "{out}"
+        );
     }
 }
 

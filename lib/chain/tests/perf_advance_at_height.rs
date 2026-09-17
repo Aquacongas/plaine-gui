@@ -12,10 +12,17 @@ fn heights() -> Vec<u64> {
     let raw = std::env::var("PLAINE_PERF_HEIGHTS").unwrap_or_else(|_| "2000,4000".to_string());
     let hs: Vec<u64> = raw
         .split(',')
-        .map(|s| s.trim().parse::<u64>().expect("PLAINE_PERF_HEIGHTS: comma-separated integers"))
+        .map(|s| {
+            s.trim()
+                .parse::<u64>()
+                .expect("PLAINE_PERF_HEIGHTS: comma-separated integers")
+        })
         .collect();
     for h in &hs {
-        assert!(*h >= 100, "a height below 100 measures the fixture, not the chain");
+        assert!(
+            *h >= 100,
+            "a height below 100 measures the fixture, not the chain"
+        );
         assert!(
             *h <= MAX_HEIGHT,
             "height {h} is above MAX_HEIGHT ({MAX_HEIGHT}); the fixture is ~1 KB/block resident"
@@ -50,7 +57,8 @@ fn sync_staged(r: &mut Rig, chain: &Scenario) {
         r.clock.set_unix(chain.blocks[to - 1].rec.time.max(T0));
         let raws: Vec<[u8; 132]> = chain.blocks[from..to].iter().map(|b| b.rec.raw).collect();
         for part in raws.chunks(plaine_consensus::constants::MAX_HEADERS_PER_MSG) {
-            r.cm.submit_headers_solicited(1, part).expect("headers ingest");
+            r.cm.submit_headers_solicited(1, part)
+                .expect("headers ingest");
         }
         for b in &chain.blocks[from..to] {
             let _ = r.cm.submit_block(&b.rec.hash, b.body.clone());
@@ -135,10 +143,13 @@ fn run_skips(h: u64, branches: usize, per_branch: u64, n: usize) {
         sib.blocks.truncate(h as usize + 1);
         sib = sib.spacing(1 + k as u64).extend(per_branch);
 
-        let raws: Vec<[u8; 132]> =
-            sib.blocks[h as usize + 1..].iter().map(|b| b.rec.raw).collect();
+        let raws: Vec<[u8; 132]> = sib.blocks[h as usize + 1..]
+            .iter()
+            .map(|b| b.rec.raw)
+            .collect();
         for part in raws.chunks(plaine_consensus::constants::MAX_HEADERS_PER_MSG) {
-            r.cm.submit_headers_solicited(20 + k as u32, part).expect("headers ingest");
+            r.cm.submit_headers_solicited(20 + k as u32, part)
+                .expect("headers ingest");
         }
     }
 

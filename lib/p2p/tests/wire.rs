@@ -233,7 +233,14 @@ fn trailing_bytes_are_rejected() {
 
 #[test]
 fn absurd_count_no_alloc() {
-    for cmd in [Cmd::Inv, Cmd::GetData, Cmd::NotFound, Cmd::Headers, Cmd::Addr, Cmd::GetHeaders] {
+    for cmd in [
+        Cmd::Inv,
+        Cmd::GetData,
+        Cmd::NotFound,
+        Cmd::Headers,
+        Cmd::Addr,
+        Cmd::GetHeaders,
+    ] {
         let payload = 0xFFFF_FFFFu32.to_le_bytes().to_vec();
         let e = decode(cmd, &payload).unwrap_err();
         assert!(

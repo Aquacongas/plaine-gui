@@ -41,9 +41,18 @@ mod tests {
 
     #[test]
     fn u64_reports_send_and_sync() {
-        assert!(SendProbe::<u64>::IS_SEND, "u64 is Send; the probe is broken");
-        assert!(SyncProbe::<u64>::IS_SYNC, "u64 is Sync; the probe is broken");
-        assert!(!SendProbe::<*const ()>::IS_SEND, "a raw pointer is not Send; the probe is broken");
+        assert!(
+            SendProbe::<u64>::IS_SEND,
+            "u64 is Send; the probe is broken"
+        );
+        assert!(
+            SyncProbe::<u64>::IS_SYNC,
+            "u64 is Sync; the probe is broken"
+        );
+        assert!(
+            !SendProbe::<*const ()>::IS_SEND,
+            "a raw pointer is not Send; the probe is broken"
+        );
     }
 
     #[test]

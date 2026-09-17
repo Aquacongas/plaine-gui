@@ -1,6 +1,4 @@
-use crate::consts::{
-    BLOCKS, BLOCK_INSTR, NREG, PER_BLOCK, PROG_INSTR, RNG_DOM_PROGRAM, ROLE_OFFS,
-};
+use crate::consts::{BLOCKS, BLOCK_INSTR, NREG, PER_BLOCK, PROG_INSTR, RNG_DOM_PROGRAM, ROLE_OFFS};
 use crate::op::{Op, ALU_POOL, MEM_POOL, MUL_POOL, ROTREG_POOL, ROT_POOL};
 use crate::rng::Rng;
 
@@ -54,7 +52,9 @@ impl Program {
 
 impl core::fmt::Debug for Program {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Program").field("slots", &PROG_INSTR).finish()
+        f.debug_struct("Program")
+            .field("slots", &PROG_INSTR)
+            .finish()
     }
 }
 
@@ -94,8 +94,7 @@ pub fn build_program(prog_seed: u64) -> Program {
             };
             ctr[k] = ctr[k].wrapping_add(1);
 
-            prog[b * BLOCK_INSTR + i] =
-                Instr::new(op, dr as u8, sr as u8, n.next() as u32);
+            prog[b * BLOCK_INSTR + i] = Instr::new(op, dr as u8, sr as u8, n.next() as u32);
         }
     }
 

@@ -97,11 +97,7 @@ impl Budgets {
             ),
             pow_pool: TokenBucket::new(POW_POOL_MS_PER_SEC, POW_POOL_MS_PER_SEC, now),
 
-            probe_pool: TokenBucket::new(
-                INV_PROBE_GLOBAL_BURST,
-                INV_PROBE_GLOBAL_PER_SEC,
-                now,
-            ),
+            probe_pool: TokenBucket::new(INV_PROBE_GLOBAL_BURST, INV_PROBE_GLOBAL_PER_SEC, now),
         }
     }
 

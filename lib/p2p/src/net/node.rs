@@ -70,10 +70,7 @@ pub struct Wire {
 pub enum DialReq {
     Explicit(SocketAddr),
 
-    Reach {
-        count: usize,
-        widen: bool,
-    },
+    Reach { count: usize, widen: bool },
 }
 
 pub struct Net {
@@ -127,7 +124,10 @@ pub struct Ring<T> {
 
 impl<T> Default for Ring<T> {
     fn default() -> Self {
-        Ring { items: VecDeque::new(), dropped: 0 }
+        Ring {
+            items: VecDeque::new(),
+            dropped: 0,
+        }
     }
 }
 
@@ -207,8 +207,8 @@ impl Net {
         };
         let queued = w.outbox_bytes.load(Ordering::Relaxed);
         if tier == Tier::Bulk {
-            if queued + n > OUTBOX_BYTES || self.outbox_pool.load(Ordering::Relaxed) + n
-                > OUTBOX_POOL_BYTES
+            if queued + n > OUTBOX_BYTES
+                || self.outbox_pool.load(Ordering::Relaxed) + n > OUTBOX_POOL_BYTES
             {
                 let _ = w.kill.send(true);
                 return false;
@@ -256,19 +256,23 @@ impl Net {
 
     pub fn learn_address(&self, addr: SocketAddr) {
         self.book.lock().expect("book").push_back(addr);
-        self.addrs
-            .lock()
-            .expect("addrs")
-            .add(ip_bytes(&addr), addr.port(), false, self.clock.now_unix());
+        self.addrs.lock().expect("addrs").add(
+            ip_bytes(&addr),
+            addr.port(),
+            false,
+            self.clock.now_unix(),
+        );
     }
 
     pub fn add_address(&self, addr: SocketAddr) {
         self.book.lock().expect("book").push_back(addr);
 
-        self.addrs
-            .lock()
-            .expect("addrs")
-            .add(ip_bytes(&addr), addr.port(), true, self.clock.now_unix());
+        self.addrs.lock().expect("addrs").add(
+            ip_bytes(&addr),
+            addr.port(),
+            true,
+            self.clock.now_unix(),
+        );
         let _ = self.dials.try_send(DialReq::Explicit(addr));
     }
 
@@ -304,7 +308,12 @@ impl Net {
         vec![Msg::Addr(recs)]
     }
 
-    pub fn ingest_addrs(&self, recs: &[crate::wire::msg::AddrRec], from: &[u8; 16], limit: usize) -> usize {
+    pub fn ingest_addrs(
+        &self,
+        recs: &[crate::wire::msg::AddrRec],
+        from: &[u8; 16],
+        limit: usize,
+    ) -> usize {
         let now_unix = self.clock.now_unix();
         let source = group_of(from);
         let allow_local = self.cfg.accept_local_addrs;
@@ -472,7 +481,10 @@ impl Net {
 impl NetOut for Net {
     fn dispatch(&self, a: Action) {
         {
-            self.journal.lock().expect("journal").push(a.clone(), JOURNAL_MAX);
+            self.journal
+                .lock()
+                .expect("journal")
+                .push(a.clone(), JOURNAL_MAX);
         }
         match a {
             Action::Send { peer, msg } => {
@@ -480,12 +492,7 @@ impl NetOut for Net {
             }
             Action::Disconnect { peer, .. } => self.kill(peer),
             Action::Ban { peer, ms } => {
-                let ip = self
-                    .peers
-                    .lock()
-                    .expect("peers")
-                    .get(&peer)
-                    .map(|w| w.ip);
+                let ip = self.peers.lock().expect("peers").get(&peer).map(|w| w.ip);
                 if let Some(ip) = ip {
                     let now = self.clock.mono();
                     self.bans.lock().expect("bans").ban(ip, ms, now);
@@ -512,7 +519,10 @@ impl NetOut for Net {
     }
 
     fn say(&self, c: Condition) {
-        self.conditions.lock().expect("conditions").push(c, JOURNAL_MAX);
+        self.conditions
+            .lock()
+            .expect("conditions")
+            .push(c, JOURNAL_MAX);
     }
 
     fn publish_tip(&self, t: TipSnapshot) {
@@ -524,7 +534,9 @@ impl NetOut for Net {
         for (id, h, score) in stats {
             if let Some(w) = g.get(id) {
                 w.stat.best_height.store(*h, Ordering::Relaxed);
-                w.stat.misbehaviour.store(u64::from(*score), Ordering::Relaxed);
+                w.stat
+                    .misbehaviour
+                    .store(u64::from(*score), Ordering::Relaxed);
             }
         }
     }
@@ -540,10 +552,7 @@ pub(crate) async fn accept_loop(listener: tokio::net::TcpListener, lease: FdLeas
         let (stream, addr) = match r {
             Ok(v) => v,
             Err(_) => {
-                tokio::time::sleep(std::time::Duration::from_millis(
-                    ACCEPT_ERROR_BACKOFF_MS,
-                ))
-                .await;
+                tokio::time::sleep(std::time::Duration::from_millis(ACCEPT_ERROR_BACKOFF_MS)).await;
                 continue;
             }
         };
@@ -659,7 +668,10 @@ pub(crate) async fn dial_loop(mut rx: mpsc::Receiver<DialReq>, net: Arc<Net>) {
 
             {
                 let now = net.clock.mono();
-                net.addrs.lock().expect("addrs").note_attempt(&ip, a.port(), now);
+                net.addrs
+                    .lock()
+                    .expect("addrs")
+                    .note_attempt(&ip, a.port(), now);
             }
             net.dialing.fetch_add(1, Ordering::Relaxed);
             let net2 = Arc::clone(&net);
@@ -675,7 +687,10 @@ pub(crate) async fn dial_loop(mut rx: mpsc::Receiver<DialReq>, net: Arc<Net>) {
                         net2.dialing.fetch_sub(1, Ordering::Relaxed);
                         net2.limits.lock().expect("limits").release_outbound(ip);
 
-                        net2.addrs.lock().expect("addrs").on_failure(&ip, port, false);
+                        net2.addrs
+                            .lock()
+                            .expect("addrs")
+                            .on_failure(&ip, port, false);
                         let _ = DeadReason::DialTimeout;
                     }
                 }

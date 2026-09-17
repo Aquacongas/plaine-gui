@@ -44,7 +44,10 @@ fn wrong_key_announcement_not_pooled() {
     let ann = signed_announcement(&impostor_key(), b"not the author", 2_000_000, 0);
     assert!(matches!(
         r.cm.submit_tx(TxOrigin::Local, ann),
-        Err(Reject::Tx { index: 0, err: plaine_consensus::tx::TxError::NotAuthorKey })
+        Err(Reject::Tx {
+            index: 0,
+            err: plaine_consensus::tx::TxError::NotAuthorKey
+        })
     ));
     assert_eq!(r.cm.mempool().len(), 0);
 }
@@ -61,8 +64,13 @@ fn immature_coinbase_spend_refused() {
     assert!(r.store.account(&m).balance > 0, "the miner has been paid");
 
     let tx = signed_transfer(&miner, [0xEE; 20], 1, 2_000_000, 0);
-    let err = r.cm.submit_tx(TxOrigin::Local, tx).expect_err("every reward is still immature");
-    assert!(matches!(err, Reject::InsufficientBalance { .. }), "got {err:?}");
+    let err =
+        r.cm.submit_tx(TxOrigin::Local, tx)
+            .expect_err("every reward is still immature");
+    assert!(
+        matches!(err, Reject::InsufficientBalance { .. }),
+        "got {err:?}"
+    );
     assert_eq!(r.cm.mempool().len(), 0);
 }
 
@@ -87,7 +95,10 @@ fn matured_coinbase_spend_admitted() {
     params_low.mempool.relay_fee_floor = 1;
     let mut r2 = Rig::new(&chain, params_low);
     r2.sync(&chain, 1);
-    let a = r2.cm.submit_tx(TxOrigin::Local, tx).expect("the matured part covers 1 + 2 mile");
+    let a = r2
+        .cm
+        .submit_tx(TxOrigin::Local, tx)
+        .expect("the matured part covers 1 + 2 mile");
     assert!(a.executable);
     let _ = r.cm.mempool().len();
 }
@@ -109,9 +120,16 @@ fn connected_block_removes_mined_txs() {
     let cb = next.normal_coinbase(6, 2_000_000);
     next.push_body(Scenario::encode_body(&[&cb, &t0]));
     r.offer(3, &blocks_above(&next, 5));
-    assert!(matches!(r.cm.advance().expect("adopted"), Progress::Advanced { .. }));
+    assert!(matches!(
+        r.cm.advance().expect("adopted"),
+        Progress::Advanced { .. }
+    ));
 
-    assert_eq!(r.cm.mempool().len(), 1, "the mined one is gone, the other is not");
+    assert_eq!(
+        r.cm.mempool().len(),
+        1,
+        "the mined one is gone, the other is not"
+    );
     assert_eq!(r.store.account(&addr_of(&user)).nonce, 1);
 }
 
@@ -128,24 +146,41 @@ fn reorg_reinjects_disconnected_txs() {
     let cb = honest.normal_coinbase(21, 2_000_000);
     honest.push_body(Scenario::encode_body(&[&cb, &t0]));
     r.offer(3, &blocks_above(&honest, 20));
-    assert!(matches!(r.cm.advance().expect("adopted"), Progress::Advanced { .. }));
+    assert!(matches!(
+        r.cm.advance().expect("adopted"),
+        Progress::Advanced { .. }
+    ));
     assert_eq!(r.store.account(&u).nonce, 1);
     assert_eq!(r.cm.mempool().len(), 0);
 
     let attacker = chain.fork_at(20).spacing(1).extend(3);
     r.offer(4, &blocks_above(&attacker, 20));
     match r.cm.advance().expect("adopted") {
-        Progress::Advanced { rolled_back, tip, .. } => {
+        Progress::Advanced {
+            rolled_back, tip, ..
+        } => {
             assert_eq!(rolled_back, 1);
             assert_eq!(tip.hash, attacker.tip().hash);
         }
         other => panic!("expected a reorg, got {other:?}"),
     }
 
-    assert_eq!(r.store.account(&u).nonce, 0, "the reorg moved the nonce backwards");
-    assert_eq!(r.cm.mempool().len(), 1, "the disconnected transaction was re-injected");
+    assert_eq!(
+        r.store.account(&u).nonce,
+        0,
+        "the reorg moved the nonce backwards"
+    );
+    assert_eq!(
+        r.cm.mempool().len(),
+        1,
+        "the disconnected transaction was re-injected"
+    );
     let pooled = r.cm.mempool().executable_ids();
-    assert_eq!(pooled.len(), 1, "it is executable again against the new state");
+    assert_eq!(
+        pooled.len(),
+        1,
+        "it is executable again against the new state"
+    );
 }
 
 #[test]
@@ -155,15 +190,29 @@ fn template_uses_executable_only() {
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = rig_with_funds(&chain, addr_of(&user), 1_000_000_000);
 
-    r.cm.submit_tx(TxOrigin::Local, signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 0)).expect("valid");
-    let q = r.cm.submit_tx(TxOrigin::Local, signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 2)).expect("queued");
+    r.cm.submit_tx(
+        TxOrigin::Local,
+        signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 0),
+    )
+    .expect("valid");
+    let q =
+        r.cm.submit_tx(
+            TxOrigin::Local,
+            signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 2),
+        )
+        .expect("queued");
     assert!(!q.executable, "a future nonce waits, it is not dropped");
     assert_eq!(r.cm.mempool().len(), 2);
 
     let t = r.cm.block_template();
     assert_eq!(t.len(), 1, "only the executable run goes into a template");
 
-    let a = r.cm.submit_tx(TxOrigin::Local, signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 1)).expect("filler");
+    let a =
+        r.cm.submit_tx(
+            TxOrigin::Local,
+            signed_transfer(&user, [0xEE; 20], 10, 2_000_000, 1),
+        )
+        .expect("filler");
     assert!(a.executable);
     assert_eq!(a.promoted.len(), 1, "nonce 2 promotes with it");
     assert_eq!(r.cm.block_template().len(), 3);
@@ -176,5 +225,8 @@ fn coinbase_not_relayable() {
     let mut r = Rig::new(&chain, params());
     r.sync(&chain, 1);
     let cb = Scenario::coinbase_bytes(6, [0x33; 20], 1, 0, Vec::new());
-    assert!(matches!(r.cm.submit_tx(TxOrigin::Local, cb), Err(Reject::TxTypeNotRelayable { type_byte: 0x00 })));
+    assert!(matches!(
+        r.cm.submit_tx(TxOrigin::Local, cb),
+        Err(Reject::TxTypeNotRelayable { type_byte: 0x00 })
+    ));
 }

@@ -2,10 +2,9 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use plaine_rpc::views::{
     AccountRecord, Address20, AuthorKeyStatus, AuthorNote, AuthorNotesPage, BlockRecord, Budgets,
-    ChainInfo, CheckpointStatus, CheckpointSubmit, EmissionAudit, FeeSuggestion, HeaderRecord,
-    Hash32, MempoolInfo,
-    Network, NotesCursor, PeerInfo, StratumSession, SubmitError, SyncStatus, TxLocation, TxLookup,
-    TxRecord, Verbosity,
+    ChainInfo, CheckpointStatus, CheckpointSubmit, EmissionAudit, FeeSuggestion, Hash32,
+    HeaderRecord, MempoolInfo, Network, NotesCursor, PeerInfo, StratumSession, SubmitError,
+    SyncStatus, TxLocation, TxLookup, TxRecord, Verbosity,
 };
 
 use plaine_chain::error::Reject;
@@ -93,8 +92,17 @@ impl NoteIndex {
             })
             .collect();
         let more = filtered.len() > notes.len();
-        let next_seq = if more { notes.last().map(|n| n.seq) } else { None };
-        AuthorNotesPage { notes, more, total, next_seq }
+        let next_seq = if more {
+            notes.last().map(|n| n.seq)
+        } else {
+            None
+        };
+        AuthorNotesPage {
+            notes,
+            more,
+            total,
+            next_seq,
+        }
     }
 }
 
@@ -106,7 +114,10 @@ pub struct Ask {
 
 impl Ask {
     pub fn new(tx: tokio::sync::mpsc::Sender<Cmd>) -> Ask {
-        Ask { tx, refused: Arc::new(std::sync::atomic::AtomicU64::new(0)) }
+        Ask {
+            tx,
+            refused: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        }
     }
 
     pub fn queue_depth(&self) -> usize {
@@ -128,13 +139,15 @@ impl Ask {
     ) -> Option<T> {
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         if self.tx.try_send(Cmd::Ask(make(tx))).is_err() {
-            self.refused.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.refused
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return None;
         }
         match rx.recv_timeout(wait) {
             Ok(v) => Some(v),
             Err(_) => {
-                self.refused.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                self.refused
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 None
             }
         }
@@ -165,9 +178,17 @@ impl RpcChain {
             raw: r.raw,
             hash: r.hash,
             height: r.height,
-            confirmations: if canonical { tip.height.saturating_sub(r.height) + 1 } else { 0 },
+            confirmations: if canonical {
+                tip.height.saturating_sub(r.height) + 1
+            } else {
+                0
+            },
             canonical,
-            chainwork: if canonical && r.height == tip.height { tip.chainwork } else { [0u8; 32] },
+            chainwork: if canonical && r.height == tip.height {
+                tip.chainwork
+            } else {
+                [0u8; 32]
+            },
         }
     }
 
@@ -252,7 +273,10 @@ impl plaine_rpc::views::ChainView for RpcChain {
         // verdict, refreshed against live height and peers - never a fresh assessment
         // of our own. That is what keeps the rpc and the log from contradicting.
         let (sync, stall_reason) = if let Some(h) = t.halted {
-            (SyncStatus::Stalled, Some(format!("the validator has halted: {h}")))
+            (
+                SyncStatus::Stalled,
+                Some(format!("the validator has halted: {h}")),
+            )
         } else {
             match self.verdict.lock().expect("verdict cell").as_ref() {
                 Some(l) => {
@@ -291,12 +315,16 @@ impl plaine_rpc::views::ChainView for RpcChain {
     }
 
     fn invalid_reason(&self, hash: &Hash32) -> Option<String> {
-        self.store.invalid_reason(hash).map(|r| r.as_str().to_string())
+        self.store
+            .invalid_reason(hash)
+            .map(|r| r.as_str().to_string())
     }
 
     fn header_by_hash(&self, hash: &Hash32) -> Option<HeaderRecord> {
         use plaine_chain::traits::Store;
-        self.store.header_by_hash(hash).map(|r| self.header_record(r))
+        self.store
+            .header_by_hash(hash)
+            .map(|r| self.header_record(r))
     }
 
     fn block_by_height(&self, height: u64, verbosity: Verbosity) -> Option<BlockRecord> {
@@ -321,8 +349,12 @@ impl plaine_rpc::views::ChainView for RpcChain {
         let lo = tip.saturating_sub(plaine_consensus::constants::COINBASE_MATURITY - 1);
         let mut immature: u128 = 0;
         for h in lo..=tip {
-            let Some(body) = self.store.body_at_verified(h) else { continue };
-            let Ok(b) = plaine_consensus::codec::BlockBody::parse(&body) else { continue };
+            let Some(body) = self.store.body_at_verified(h) else {
+                continue;
+            };
+            let Ok(b) = plaine_consensus::codec::BlockBody::parse(&body) else {
+                continue;
+            };
             if let Some(Ok(plaine_consensus::codec::Tx::Coinbase(cb))) = b.decode_tx(0) {
                 if cb.to == *addr {
                     if let Ok(c) = plaine_consensus::tx::coinbase_credit(&cb) {
@@ -380,12 +412,18 @@ impl plaine_rpc::views::ChainView for RpcChain {
         }
         match self.store.txindex_lookup(txid) {
             plaine_storage::TxLocation::NotIndexed { indexed_from } => TxLookup::NotIndexed {
-                indexed_from: if indexed_from == u64::MAX { None } else { Some(indexed_from) },
+                indexed_from: if indexed_from == u64::MAX {
+                    None
+                } else {
+                    Some(indexed_from)
+                },
             },
             plaine_storage::TxLocation::Absent => TxLookup::Absent,
             plaine_storage::TxLocation::Found { height, index } => {
                 let Some(body_bytes) = self.store.body_at_verified(height) else {
-                    return TxLookup::NotIndexed { indexed_from: Some(height) };
+                    return TxLookup::NotIndexed {
+                        indexed_from: Some(height),
+                    };
                 };
                 let Ok(body) = plaine_consensus::codec::BlockBody::parse(&body_bytes) else {
                     return TxLookup::Absent;
@@ -427,7 +465,10 @@ pub struct RpcMempool {
 
 impl plaine_rpc::views::MempoolView for RpcMempool {
     fn info(&self) -> MempoolInfo {
-        let s = self.ask.ask(Query::MempoolInfo, ASK_DEADLINE).unwrap_or_default();
+        let s = self
+            .ask
+            .ask(Query::MempoolInfo, ASK_DEADLINE)
+            .unwrap_or_default();
         MempoolInfo {
             tx_count: s.tx_count,
             bytes: s.bytes,
@@ -439,7 +480,10 @@ impl plaine_rpc::views::MempoolView for RpcMempool {
     }
 
     fn by_sender(&self, addr: &Address20) -> Vec<TxRecord> {
-        let raws = self.ask.ask(|r| Query::BySender(*addr, r), ASK_DEADLINE).unwrap_or_default();
+        let raws = self
+            .ask
+            .ask(|r| Query::BySender(*addr, r), ASK_DEADLINE)
+            .unwrap_or_default();
         raws.into_iter()
             .filter_map(|raw| {
                 let tx = plaine_consensus::codec::decode_tx(&raw).ok()?;
@@ -500,14 +544,21 @@ fn map_reject(why: &Reject) -> SubmitError {
         },
 
         (SubmitTag::FeeBelowFloor, Reject::BelowRelayFloor { fee, floor }) => {
-            SubmitError::FeeBelowRelayFloor { fee: *fee, floor: *floor }
-        }
-        (SubmitTag::FeeBelowFloor, Reject::Tx { err: TxError::FeeBelowFloor { fee }, .. }) => {
             SubmitError::FeeBelowRelayFloor {
                 fee: *fee,
-                floor: plaine_consensus::constants::FEE_FLOOR_MILE,
+                floor: *floor,
             }
         }
+        (
+            SubmitTag::FeeBelowFloor,
+            Reject::Tx {
+                err: TxError::FeeBelowFloor { fee },
+                ..
+            },
+        ) => SubmitError::FeeBelowRelayFloor {
+            fee: *fee,
+            floor: plaine_consensus::constants::FEE_FLOOR_MILE,
+        },
         (SubmitTag::FeeBelowFloor, _) => SubmitError::FeeBelowRelayFloor {
             fee: 0,
             floor: plaine_consensus::constants::FEE_FLOOR_MILE,
@@ -517,35 +568,60 @@ fn map_reject(why: &Reject) -> SubmitError {
             let gap = plaine_consensus::constants::MAX_MEMPOOL_NONCE_GAP;
             match r {
                 Reject::TxStale { next, got } | Reject::NonceGapTooLarge { next, got } => {
-                    SubmitError::NonceOutOfRange { got: *got, next: *next, max_gap: gap }
+                    SubmitError::NonceOutOfRange {
+                        got: *got,
+                        next: *next,
+                        max_gap: gap,
+                    }
                 }
-                Reject::Tx { err: TxError::BadNonce { expected, got }, .. } => {
-                    SubmitError::NonceOutOfRange { got: *got, next: *expected, max_gap: gap }
-                }
-                _ => SubmitError::NonceOutOfRange { got: 0, next: 0, max_gap: gap },
+                Reject::Tx {
+                    err: TxError::BadNonce { expected, got },
+                    ..
+                } => SubmitError::NonceOutOfRange {
+                    got: *got,
+                    next: *expected,
+                    max_gap: gap,
+                },
+                _ => SubmitError::NonceOutOfRange {
+                    got: 0,
+                    next: 0,
+                    max_gap: gap,
+                },
             }
         }
 
         (SubmitTag::InsufficientFunds, Reject::InsufficientBalance { need, have, .. }) => {
-            SubmitError::InsufficientFunds { need: *need, have: *have }
+            SubmitError::InsufficientFunds {
+                need: *need,
+                have: *have,
+            }
         }
         (
             SubmitTag::InsufficientFunds,
-            Reject::Tx { err: TxError::InsufficientBalance { need, have }, .. },
-        ) => SubmitError::InsufficientFunds { need: *need, have: *have },
+            Reject::Tx {
+                err: TxError::InsufficientBalance { need, have },
+                ..
+            },
+        ) => SubmitError::InsufficientFunds {
+            need: *need,
+            have: *have,
+        },
         (SubmitTag::InsufficientFunds, _) => SubmitError::InsufficientFunds { need: 0, have: 0 },
 
         (SubmitTag::ReplacementUnderpriced, Reject::ReplacementUnderpriced { need, got }) => {
-            SubmitError::ReplacementUnderpriced { need: *need, got: *got }
+            SubmitError::ReplacementUnderpriced {
+                need: *need,
+                got: *got,
+            }
         }
         (SubmitTag::ReplacementUnderpriced, _) => {
             SubmitError::ReplacementUnderpriced { need: 0, got: 0 }
         }
 
         (SubmitTag::PoolFull, Reject::SenderCap { cap }) => SubmitError::PoolFull { cap: *cap },
-        (SubmitTag::PoolFull, _) => {
-            SubmitError::PoolFull { cap: plaine_consensus::constants::MAX_MEMPOOL_TXS }
-        }
+        (SubmitTag::PoolFull, _) => SubmitError::PoolFull {
+            cap: plaine_consensus::constants::MAX_MEMPOOL_TXS,
+        },
 
         (SubmitTag::Malformed, _) => SubmitError::Malformed(
             "the bytes do not decode as a transfer or an author announcement, or carry a type \
@@ -646,7 +722,10 @@ impl plaine_rpc::views::PolicyView for RpcPolicy {
         let (reply, rx) = std::sync::mpsc::sync_channel(1);
         if self
             .tx
-            .try_send(Cmd::Checkpoint { cp: Box::new(cp), reply })
+            .try_send(Cmd::Checkpoint {
+                cp: Box::new(cp),
+                reply,
+            })
             .is_err()
         {
             return CheckpointSubmit::Busy;
@@ -680,7 +759,10 @@ pub struct RpcBudgets {
 
 impl plaine_rpc::views::BudgetView for RpcBudgets {
     fn budgets(&self) -> Budgets {
-        let b = self.ask.ask(Query::Budgets, ASK_DEADLINE).unwrap_or_default();
+        let b = self
+            .ask
+            .ask(Query::Budgets, ASK_DEADLINE)
+            .unwrap_or_default();
         Budgets {
             cpu_pool_threads: self.cpu_pool_threads,
             pow_verifies_total: b.pow_calls,
@@ -691,7 +773,9 @@ impl plaine_rpc::views::BudgetView for RpcBudgets {
                 (b.pow_cache_hits * 100 / (b.pow_calls + b.pow_cache_hits)) as u32
             },
             stratum_shares_per_sec: self.shares.load(std::sync::atomic::Ordering::Relaxed),
-            validator_queue_bytes: self.validator_queue.load(std::sync::atomic::Ordering::Relaxed),
+            validator_queue_bytes: self
+                .validator_queue
+                .load(std::sync::atomic::Ordering::Relaxed),
             validator_queue_bytes_cap: crate::wire::net::QUEUE_BYTES,
             validator_queue_items: self.ask.queue_depth(),
             validator_queue_items_cap: self.ask.queue_capacity(),
@@ -824,7 +908,10 @@ mod tests {
             info.stall_reason
         );
         assert!(
-            !info.stall_reason.unwrap_or_default().contains("no new block for"),
+            !info
+                .stall_reason
+                .unwrap_or_default()
+                .contains("no new block for"),
             "and above all it must not print the sentence the rest of the reply refutes"
         );
     }
@@ -906,13 +993,19 @@ mod tests {
             "a record that never reached the chain must be retryable"
         );
 
-        let off = RpcPolicy { checkpoints_enabled: false, ..p };
+        let off = RpcPolicy {
+            checkpoints_enabled: false,
+            ..p
+        };
         assert_eq!(off.checkpoint_submit(&cp), CheckpointSubmit::NotConfigured);
     }
 
     fn note_body(payloads: &[&[u8]]) -> Vec<u8> {
-        use plaine_consensus::codec::{AnnouncementTx, BlockBody, AuthorNote as _AuthorNote};
-        let _ = _AuthorNote { encoding: 0, payload: Vec::new() };
+        use plaine_consensus::codec::{AnnouncementTx, AuthorNote as _AuthorNote, BlockBody};
+        let _ = _AuthorNote {
+            encoding: 0,
+            payload: Vec::new(),
+        };
         let txs: Vec<Vec<u8>> = payloads
             .iter()
             .enumerate()
@@ -935,8 +1028,15 @@ mod tests {
 
     #[test]
     fn refusals_keep_distinct_tags() {
-        let broke = map_reject(&Reject::InsufficientBalance { index: 0, need: 1_000_000, have: 0 });
-        let forged = map_reject(&Reject::Tx { index: 0, err: TxError::NotAuthorKey });
+        let broke = map_reject(&Reject::InsufficientBalance {
+            index: 0,
+            need: 1_000_000,
+            have: 0,
+        });
+        let forged = map_reject(&Reject::Tx {
+            index: 0,
+            err: TxError::NotAuthorKey,
+        });
         assert_eq!(broke.tag(), "insufficient-funds");
         assert_eq!(forged.tag(), "not-author-key");
         assert_ne!(broke.tag(), forged.tag());
@@ -949,7 +1049,10 @@ mod tests {
 
         let h = forged.human();
         assert!(h.contains("author"), "{h}");
-        assert!(!h.contains("mile"), "a wrong-key refusal must not quote any balance: {h}");
+        assert!(
+            !h.contains("mile"),
+            "a wrong-key refusal must not quote any balance: {h}"
+        );
     }
 
     #[test]
@@ -957,18 +1060,31 @@ mod tests {
         for r in [
             Reject::TxDecode,
             Reject::TxTooLarge { got: 9_000 },
-            Reject::BelowRelayFloor { fee: 1, floor: 1_000_000 },
+            Reject::BelowRelayFloor {
+                fee: 1,
+                floor: 1_000_000,
+            },
             Reject::BadTransferSignature { index: 0 },
             Reject::TxStale { next: 4, got: 2 },
             Reject::TxKnown,
             Reject::PoolFull,
             Reject::Busy,
-            Reject::Tx { index: 0, err: TxError::NotAuthorKey },
-            Reject::Tx { index: 0, err: TxError::AnnouncementLength { len: 0 } },
+            Reject::Tx {
+                index: 0,
+                err: TxError::NotAuthorKey,
+            },
+            Reject::Tx {
+                index: 0,
+                err: TxError::AnnouncementLength { len: 0 },
+            },
         ] {
             let e = map_reject(&r);
             let dbg = format!("{r:?}");
-            assert!(!e.human().contains(&dbg), "{} leaks its debug text", e.tag());
+            assert!(
+                !e.human().contains(&dbg),
+                "{} leaks its debug text",
+                e.tag()
+            );
             assert!(!e.tag().is_empty());
         }
     }
@@ -987,7 +1103,10 @@ mod tests {
         assert_eq!(p2.notes.len(), 1);
         assert_eq!(p2.notes[0].payload, b"first");
         assert!(!p2.more);
-        assert_eq!(p2.total, 2, "total is the true count regardless of the cursor");
+        assert_eq!(
+            p2.total, 2,
+            "total is the true count regardless of the cursor"
+        );
     }
 
     #[test]
@@ -995,7 +1114,10 @@ mod tests {
         let ix = NoteIndex::new();
         ix.on_block(5, [0u8; 32], &note_body(&[b"x"]));
         let p = ix.page(NotesCursor::Newest, 10, 5);
-        assert_eq!(p.notes[0].confirmations, 1, "a note in the tip block has one confirmation");
+        assert_eq!(
+            p.notes[0].confirmations, 1,
+            "a note in the tip block has one confirmation"
+        );
     }
 
     #[test]
@@ -1008,7 +1130,10 @@ mod tests {
         assert_eq!(ix.page(NotesCursor::Newest, 10, 10).total, 1);
         let p = ix.page(NotesCursor::Newest, 10, 5);
         assert_eq!(p.notes[0].payload, b"kept");
-        assert_eq!(p.notes[0].seq, 0, "sequence numbers are compacted after a reorg");
+        assert_eq!(
+            p.notes[0].seq, 0,
+            "sequence numbers are compacted after a reorg"
+        );
     }
 
     #[test]
@@ -1019,7 +1144,10 @@ mod tests {
             to: [0x77; 20],
             reward: plaine_consensus::emission::block_reward(h),
             fees: 0,
-            note: AuthorNote { encoding: 0x01, payload: vec![0x41; 4] },
+            note: AuthorNote {
+                encoding: 0x01,
+                payload: vec![0x41; 4],
+            },
         };
         let recs: Vec<Vec<u8>> = (10..14).map(|h| cb(h).encode().expect("encode")).collect();
         let refs: Vec<&[u8]> = recs.iter().map(|v| v.as_slice()).collect();
@@ -1050,7 +1178,11 @@ mod tests {
         let p = policy_with_tip(tip.clone());
 
         let s = p.checkpoint_status();
-        assert_eq!(s.blocks_until_sunset, Some(sunset), "at height 0 the whole sunset is ahead");
+        assert_eq!(
+            s.blocks_until_sunset,
+            Some(sunset),
+            "at height 0 the whole sunset is ahead"
+        );
         assert!(!s.sunset_passed);
 
         publish_height(&tip, 1_000);
@@ -1075,7 +1207,10 @@ mod tests {
 
     #[cfg(test)]
     fn publish_height(cell: &TipCell, height: u64) {
-        cell.publish(crate::wire::tip::TipView { height, ..Default::default() });
+        cell.publish(crate::wire::tip::TipView {
+            height,
+            ..Default::default()
+        });
     }
 
     #[cfg(test)]
@@ -1111,5 +1246,4 @@ mod tests {
             checkpoints_enabled: true,
         }
     }
-
 }

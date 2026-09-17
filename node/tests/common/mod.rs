@@ -29,13 +29,24 @@ pub fn scratch(name: &str) -> PathBuf {
     d
 }
 
-pub fn write_config(dir: &Path, data: &Path, p2p: u16, rpc: u16, stratum: u16, seeds: &[String]) -> PathBuf {
+pub fn write_config(
+    dir: &Path,
+    data: &Path,
+    p2p: u16,
+    rpc: u16,
+    stratum: u16,
+    seeds: &[String],
+) -> PathBuf {
     let seeds = if seeds.is_empty() {
         String::new()
     } else {
         format!(
             "seeds = [{}]\n",
-            seeds.iter().map(|s| format!("{s:?}")).collect::<Vec<_>>().join(", ")
+            seeds
+                .iter()
+                .map(|s| format!("{s:?}"))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
     };
     let text = format!(
@@ -53,7 +64,10 @@ pub fn start(name: &str, dir: &Path, config: &Path, p2p: u16, rpc: u16, stratum:
     let out = std::fs::File::create(&log).expect("log file");
     let err = out.try_clone().expect("log clone");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_plaine-noded"));
-    cmd.arg("--config").arg(config).stdout(Stdio::from(out)).stderr(Stdio::from(err));
+    cmd.arg("--config")
+        .arg(config)
+        .stdout(Stdio::from(out))
+        .stderr(Stdio::from(err));
 
     #[cfg(windows)]
     {
@@ -90,7 +104,8 @@ pub fn wait_for_rpc(n: &Node, within: Duration) {
 }
 
 pub fn rpc(port: u16, method: &str, params: &str) -> Option<String> {
-    let body = format!("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"{method}\",\"params\":{params}}}");
+    let body =
+        format!("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"{method}\",\"params\":{params}}}");
     let req = format!(
         "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
          Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -106,7 +121,11 @@ pub fn rpc(port: u16, method: &str, params: &str) -> Option<String> {
         return None;
     }
     let i = json.find("\"result\":")? + "\"result\":".len();
-    Some(json[i..].trim_end_matches(&['}', '\n', ' '][..]).to_string())
+    Some(
+        json[i..]
+            .trim_end_matches(&['}', '\n', ' '][..])
+            .to_string(),
+    )
 }
 
 pub fn num(json: &str, key: &str) -> Option<u64> {
@@ -170,12 +189,22 @@ pub fn miner_binary() -> Option<PathBuf> {
         .parent()?
         .join("target")
         .join("release")
-        .join(if cfg!(windows) { "plaine-miner.exe" } else { "plaine-miner" });
+        .join(if cfg!(windows) {
+            "plaine-miner.exe"
+        } else {
+            "plaine-miner"
+        });
     if exe.exists() {
         return Some(exe);
     }
     let st = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-        .args(["build", "--release", "--bin", "plaine-miner", "--manifest-path"])
+        .args([
+            "build",
+            "--release",
+            "--bin",
+            "plaine-miner",
+            "--manifest-path",
+        ])
         .arg(&manifest)
         .status()
         .ok()?;
@@ -229,7 +258,6 @@ pub fn mine_to(node: &Node, target: u64, within: Duration) -> u64 {
             "--stratum",
             &format!("127.0.0.1:{}", node.stratum),
             "--threads",
-
             &std::thread::available_parallelism()
                 .map(|n| (n.get() - 1).max(1))
                 .unwrap_or(3)
@@ -288,21 +316,26 @@ pub fn mine_background(node: &Node, deadline: Duration) -> RunningMiner {
         .stderr(Stdio::null())
         .spawn()
         .expect("spawn plaine-miner");
-    RunningMiner { child, _serial: serial }
+    RunningMiner {
+        child,
+        _serial: serial,
+    }
 }
 
 pub fn walk_chain(port: u16) -> Vec<(u64, String)> {
     let tip = height(port).expect("the node must report a height");
     let mut out = Vec::with_capacity(tip as usize + 1);
     for h in 0..=tip {
-        let r = rpc(port, "chain_getHeaderByHeight", &format!("[{h}]")).unwrap_or_else(|| {
-            panic!("the node claims height {tip} but cannot serve header {h}")
-        });
-        let hash = text(&r, "hash")
-            .unwrap_or_else(|| panic!("header {h} came back without a hash: {r}"));
+        let r = rpc(port, "chain_getHeaderByHeight", &format!("[{h}]"))
+            .unwrap_or_else(|| panic!("the node claims height {tip} but cannot serve header {h}"));
+        let hash =
+            text(&r, "hash").unwrap_or_else(|| panic!("header {h} came back without a hash: {r}"));
         let reported = num(&r, "height")
             .unwrap_or_else(|| panic!("header {h} came back without a height: {r}"));
-        assert_eq!(reported, h, "the node served height {reported} when asked for {h}");
+        assert_eq!(
+            reported, h,
+            "the node served height {reported} when asked for {h}"
+        );
         out.push((h, hash));
     }
     out
@@ -319,11 +352,15 @@ pub fn assert_chain_intact(port: u16, chain: &[(u64, String)]) {
     for w in chain.windows(2) {
         let (parent_h, parent_hash) = &w[0];
         let (child_h, _) = &w[1];
-        assert_eq!(*child_h, parent_h + 1, "heights {parent_h} and {child_h} are not contiguous");
+        assert_eq!(
+            *child_h,
+            parent_h + 1,
+            "heights {parent_h} and {child_h} are not contiguous"
+        );
         let r = rpc(port, "chain_getHeaderByHeight", &format!("[{child_h}]"))
             .unwrap_or_else(|| panic!("header {child_h} vanished between reads"));
-        let prev = text(&r, "prevHash")
-            .unwrap_or_else(|| panic!("header {child_h} has no prevHash: {r}"));
+        let prev =
+            text(&r, "prevHash").unwrap_or_else(|| panic!("header {child_h} has no prevHash: {r}"));
         assert_eq!(
             &prev, parent_hash,
             "height {child_h} does not point at height {parent_h}: the chain is spliced"
@@ -347,7 +384,9 @@ pub fn request_stop(n: &Node) -> std::io::Result<()> {
             .stderr(Stdio::null())
             .status()?;
         if !st.success() {
-            return Err(std::io::Error::other(format!("`kill -TERM {pid}` failed: {st}")));
+            return Err(std::io::Error::other(format!(
+                "`kill -TERM {pid}` failed: {st}"
+            )));
         }
         Ok(())
     }

@@ -23,8 +23,9 @@ fn view_and_arena_agree_on_work() {
     assert_eq!(r.height(), 60);
 
     let idx = r.cm.index();
-    let distinct: HashSet<u32> =
-        (0..=idx.tip_height()).map(|h| idx.canonical_at(h).expect("dense").bits).collect();
+    let distinct: HashSet<u32> = (0..=idx.tip_height())
+        .map(|h| idx.canonical_at(h).expect("dense").bits)
+        .collect();
     assert!(
         distinct.len() >= 3,
         "fixture: the canonical chain must carry varying bits or this guard is vacuous, got {}",
@@ -35,8 +36,13 @@ fn view_and_arena_agree_on_work() {
     let mut running = Work::ZERO;
     for h in 0..=idx.tip_height() {
         let node = idx.canonical_at(h).expect("canonical is dense");
-        let seen = view.header_at(h).expect("ChainView contract: h <= tip_height");
-        assert_eq!(seen.hash, node.hash, "the view lost the block at height {h}");
+        let seen = view
+            .header_at(h)
+            .expect("ChainView contract: h <= tip_height");
+        assert_eq!(
+            seen.hash, node.hash,
+            "the view lost the block at height {h}"
+        );
         assert_eq!(seen.height, node.height);
         assert_eq!(seen.time, node.time);
         running = running
@@ -49,8 +55,13 @@ fn view_and_arena_agree_on_work() {
     }
 
     let tip = idx.canonical_at(idx.tip_height()).expect("dense");
-    let by_hash = view.header_by_hash(&tip.hash).expect("the tip is canonical");
-    assert_eq!(by_hash.target, view.header_at(tip.height).expect("dense").target);
+    let by_hash = view
+        .header_by_hash(&tip.hash)
+        .expect("the tip is canonical");
+    assert_eq!(
+        by_hash.target,
+        view.header_at(tip.height).expect("dense").target
+    );
 }
 
 #[test]
@@ -66,11 +77,19 @@ fn deep_replay_records_real_chainwork() {
 
     let attacker = honest.fork_at(7).spacing(1).extend(15);
     r.offer(7, &blocks_above(&attacker, 7));
-    match r.cm.advance().expect("the deep path exists precisely for this") {
+    match r
+        .cm
+        .advance()
+        .expect("the deep path exists precisely for this")
+    {
         Progress::Advanced { tip, .. } => assert_eq!(tip.hash, attacker.tip().hash),
         other => panic!("expected adoption, got {other:?}"),
     }
-    assert_eq!(r.cm.stats().deep_reorgs, 1, "premise: this must be the deep path");
+    assert_eq!(
+        r.cm.stats().deep_reorgs,
+        1,
+        "premise: this must be the deep path"
+    );
 
     let idx = r.cm.index();
     let stored = r.store.stored_chainwork();

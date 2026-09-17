@@ -35,13 +35,19 @@ fn cfg_of(s: &Scratch) -> StoreConfig {
 }
 
 fn hdr_path(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 fn bseg_path(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bseg"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bseg"))
 }
 fn bidx_path(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bidx"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bidx"))
 }
 
 fn truncate_by(p: &std::path::Path, by: u64) {
@@ -70,7 +76,10 @@ fn s1_body_hole_is_damage_not_pruning() {
     assert_eq!(d.last_height, 2 * SEG - 1);
 
     assert_eq!(d.reason, DamageKind::Missing);
-    assert_eq!(d.actual_len, None, "an absent file is not a zero-length one");
+    assert_eq!(
+        d.actual_len, None,
+        "an absent file is not a zero-length one"
+    );
 
     assert_eq!(r.prune_floor(), 0, "a hole was laundered into a prune");
     assert_eq!(r.body_watermark(), 3 * SEG);
@@ -79,7 +88,14 @@ fn s1_body_hole_is_damage_not_pruning() {
 
     let mut buf = Vec::new();
     match r.body_at(5_000, &mut buf) {
-        Err(StoreError::SegmentDamaged { segment, height, first_height, last_height, reason, .. }) => {
+        Err(StoreError::SegmentDamaged {
+            segment,
+            height,
+            first_height,
+            last_height,
+            reason,
+            ..
+        }) => {
             assert_eq!((segment, height), (1, 5_000));
             assert_eq!((first_height, last_height), (SEG, 2 * SEG - 1));
             assert_eq!(reason, DamageKind::Missing);
@@ -88,13 +104,20 @@ fn s1_body_hole_is_damage_not_pruning() {
     }
     assert!(matches!(
         r.body_availability(5_000),
-        RangeAvailability::Damaged { first: 4_096, last: 8_191, .. }
+        RangeAvailability::Damaged {
+            first: 4_096,
+            last: 8_191,
+            ..
+        }
     ));
 
     assert_eq!(body(&r, 1_000, &mut buf), bs[1_000].body.len());
     assert_eq!(body(&r, 9_000, &mut buf), bs[9_000].body.len());
     assert_eq!(r.body_availability(1_000), RangeAvailability::Verified);
-    assert!(r.header_at(5_000).unwrap().is_some(), "headers were not touched");
+    assert!(
+        r.header_at(5_000).unwrap().is_some(),
+        "headers were not touched"
+    );
     assert!(r.is_degraded());
     assert_eq!(r.damaged_ranges().len(), 1);
     r.verify_state_fingerprint().unwrap();
@@ -140,7 +163,10 @@ fn s2_short_header_detected_repairable() {
     assert_eq!(d.segment, 1);
     assert_eq!(d.expected_len, HDR_SEG_BYTES);
     assert_eq!(d.actual_len, Some(HDR_SEG_BYTES - 132 * 40));
-    assert_eq!(d.first_height, 8_152, "the first height the bytes cannot back");
+    assert_eq!(
+        d.first_height, 8_152,
+        "the first height the bytes cannot back"
+    );
     assert_eq!(d.last_height, 8_191);
     assert_eq!(d.reason, DamageKind::Short);
 
@@ -153,7 +179,10 @@ fn s2_short_header_detected_repairable() {
         "a range across a hole was served short again"
     );
     assert!(r.header_at(8_160).unwrap_or(None).is_none());
-    assert!(matches!(r.header_at(8_160), Err(StoreError::SegmentDamaged { .. })));
+    assert!(matches!(
+        r.header_at(8_160),
+        Err(StoreError::SegmentDamaged { .. })
+    ));
 
     assert_eq!(r.headers_range(8_000, 100, &mut out).unwrap(), 100);
     assert_eq!(r.header_at(8_192).unwrap().unwrap(), bs[8_192].header);
@@ -193,7 +222,10 @@ fn s2b_repair_needs_both_anchors() {
     let mut bad_top = good.clone();
     bad_top[39][124..132].copy_from_slice(&0xDEAD_BEEFu64.to_le_bytes());
     assert!(
-        matches!(c.repair_headers(8_152, &bad_top), Err(StoreError::LinkageBroken { .. })),
+        matches!(
+            c.repair_headers(8_152, &bad_top),
+            Err(StoreError::LinkageBroken { .. })
+        ),
         "a run with a broken upper anchor was accepted"
     );
 
@@ -210,7 +242,10 @@ fn s2b_repair_needs_both_anchors() {
     ));
 
     assert!(c.is_degraded());
-    assert!(matches!(r.header_at(8_160), Err(StoreError::SegmentDamaged { .. })));
+    assert!(matches!(
+        r.header_at(8_160),
+        Err(StoreError::SegmentDamaged { .. })
+    ));
     assert_eq!(
         std::fs::metadata(hdr_path(&s, 1)).unwrap().len(),
         HDR_SEG_BYTES - 132 * 40,
@@ -273,7 +308,11 @@ fn pruning_and_damage_reported_apart() {
     drop(r);
 
     let (c, r, rep) = open(cfg_of(&s)).expect("reopen");
-    assert!(rep.integrity.is_clean(), "pruning was reported as damage: {:?}", rep.integrity);
+    assert!(
+        rep.integrity.is_clean(),
+        "pruning was reported as damage: {:?}",
+        rep.integrity
+    );
     assert!(!r.is_degraded());
     assert_eq!(r.prune_floor(), floor);
     drop(c);
@@ -326,7 +365,10 @@ fn degraded_node_wont_answer_hole() {
     for h in [SEG, SEG + 1, SEG + 2_000, 2 * SEG - 2, 2 * SEG - 1] {
         assert!(r.header_at(h).is_err(), "header_at({h}) answered");
         assert!(r.hash_at(h).is_err(), "hash_at({h}) answered");
-        assert!(r.headers_range(h, 4, &mut out).is_err(), "headers_range({h}) answered");
+        assert!(
+            r.headers_range(h, 4, &mut out).is_err(),
+            "headers_range({h}) answered"
+        );
         assert!(r.body_at(h, &mut buf).is_err(), "body_at({h}) answered");
 
         match r.body_at(h, &mut buf) {
@@ -334,8 +376,14 @@ fn degraded_node_wont_answer_hole() {
             Ok(n) => panic!("body_at({h}) returned {n:?}"),
             Err(_) => {}
         }
-        assert!(matches!(r.header_availability(h), RangeAvailability::Damaged { .. }));
-        assert!(matches!(r.body_availability(h), RangeAvailability::Damaged { .. }));
+        assert!(matches!(
+            r.header_availability(h),
+            RangeAvailability::Damaged { .. }
+        ));
+        assert!(matches!(
+            r.body_availability(h),
+            RangeAvailability::Damaged { .. }
+        ));
 
         assert!(
             r.header_by_hash(&bs[h as usize].hash).is_err(),
@@ -354,7 +402,10 @@ fn degraded_node_wont_answer_hole() {
     assert!(r.verify_state_fingerprint().is_ok());
 
     assert_eq!(r.header_at(100).unwrap().unwrap(), bs[100].header);
-    assert_eq!(body(&r, 2 * SEG + 5, &mut buf), bs[(2 * SEG + 5) as usize].body.len());
+    assert_eq!(
+        body(&r, 2 * SEG + 5, &mut buf),
+        bs[(2 * SEG + 5) as usize].body.len()
+    );
     drop(c);
     drop(r);
 }
@@ -388,7 +439,11 @@ fn deep_reorg_names_hole_not_floor() {
         apply: &[],
     });
     match e {
-        Err(StoreError::ReplayRangeDamaged { damaged_first, damaged_last, .. }) => {
+        Err(StoreError::ReplayRangeDamaged {
+            damaged_first,
+            damaged_last,
+            ..
+        }) => {
             assert_eq!((damaged_first, damaged_last), (SEG, 2 * SEG - 1));
         }
         other => panic!("expected ReplayRangeDamaged, got {other:?}"),
@@ -408,7 +463,10 @@ fn strict_integrity_refuses_start() {
         drop(c);
         drop(r);
     }) {
-        Err(StoreError::IntegrityRefused { damaged_ranges, first }) => {
+        Err(StoreError::IntegrityRefused {
+            damaged_ranges,
+            first,
+        }) => {
             assert_eq!(damaged_ranges, 1);
             assert!(first.contains("000001"), "{first}");
         }
@@ -431,7 +489,10 @@ fn scratch_above_gap_unlinked() {
     std::fs::write(bseg_path(&s, 4), [0u8; 8]).unwrap();
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     assert!(!hdr_path(&s, 2).exists(), "segment 2 survived");
-    assert!(!hdr_path(&s, 4).exists(), "segment 4 above the gap survived");
+    assert!(
+        !hdr_path(&s, 4).exists(),
+        "segment 4 above the gap survived"
+    );
     assert!(!bseg_path(&s, 4).exists());
     assert!(rep.integrity.is_clean(), "{:?}", rep.integrity);
     assert_eq!(r.hdr_watermark(), SEG + 100);
@@ -444,17 +505,29 @@ fn overlong_truncated_losslessly() {
     let (s, bs) = seed("int-overlong", 3 * SEG);
     {
         use std::io::Write;
-        let mut f = std::fs::OpenOptions::new().append(true).open(hdr_path(&s, 1)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .append(true)
+            .open(hdr_path(&s, 1))
+            .unwrap();
         f.write_all(&[0xAB; 5_000]).unwrap();
         f.sync_all().unwrap();
     }
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
 
     assert_eq!(rep.integrity.overlong_truncated.len(), 1);
-    assert_eq!(rep.integrity.overlong_truncated[0].reason, DamageKind::Overlong);
+    assert_eq!(
+        rep.integrity.overlong_truncated[0].reason,
+        DamageKind::Overlong
+    );
     assert!(rep.hdr_scratch_discarded >= 5_000);
-    assert!(rep.integrity.is_clean(), "an overlong segment was left as damage");
-    assert_eq!(std::fs::metadata(hdr_path(&s, 1)).unwrap().len(), HDR_SEG_BYTES);
+    assert!(
+        rep.integrity.is_clean(),
+        "an overlong segment was left as damage"
+    );
+    assert_eq!(
+        std::fs::metadata(hdr_path(&s, 1)).unwrap().len(),
+        HDR_SEG_BYTES
+    );
     assert_eq!(r.header_at(8_000).unwrap().unwrap(), bs[8_000].header);
     drop(c);
 }
@@ -485,7 +558,10 @@ fn lost_sidecar_rebuilt_from_segment() {
         "a derived sidecar was left as permanent damage: {:?}",
         rep.integrity
     );
-    assert!(rep.bidx_rebuilt_segments.contains(&1), "the rebuild was not reported");
+    assert!(
+        rep.bidx_rebuilt_segments.contains(&1),
+        "the rebuild was not reported"
+    );
     assert!(!r.is_degraded());
     let mut buf = Vec::new();
     for h in [SEG, SEG + 1_234, 2 * SEG - 1] {
@@ -515,8 +591,15 @@ fn wrong_gen_body_caught_by_frame() {
     let len = std::fs::metadata(bseg_path(&s, 1)).unwrap().len();
     std::fs::write(bseg_path(&s, 1), vec![0u8; len as usize]).unwrap();
     let (c, _r, rep) = open(cfg_of(&s)).expect("open");
-    assert_eq!(rep.integrity.body_damage.len(), 1, "a zero-filled segment passed");
-    assert_eq!(rep.integrity.body_damage[0].reason, DamageKind::FrameMismatch);
+    assert_eq!(
+        rep.integrity.body_damage.len(),
+        1,
+        "a zero-filled segment passed"
+    );
+    assert_eq!(
+        rep.integrity.body_damage[0].reason,
+        DamageKind::FrameMismatch
+    );
     drop(c);
 }
 
@@ -527,7 +610,10 @@ fn broken_boundary_caught() {
 
     {
         use std::io::{Seek, SeekFrom, Write};
-        let mut f = std::fs::OpenOptions::new().write(true).open(hdr_path(&s, 1)).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(hdr_path(&s, 1))
+            .unwrap();
         f.seek(SeekFrom::Start(0)).unwrap();
         let mut h = [7u8; HEADER_BYTES];
         h[12..44].copy_from_slice(&[9u8; 32]);
@@ -535,9 +621,15 @@ fn broken_boundary_caught() {
         f.sync_all().unwrap();
     }
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
-    assert_eq!(std::fs::metadata(hdr_path(&s, 1)).unwrap().len(), HDR_SEG_BYTES);
+    assert_eq!(
+        std::fs::metadata(hdr_path(&s, 1)).unwrap().len(),
+        HDR_SEG_BYTES
+    );
     assert_eq!(rep.integrity.header_damage.len(), 1, "{:?}", rep.integrity);
-    assert_eq!(rep.integrity.header_damage[0].reason, DamageKind::LinkBroken);
+    assert_eq!(
+        rep.integrity.header_damage[0].reason,
+        DamageKind::LinkBroken
+    );
     assert_eq!(rep.integrity.header_damage[0].first_height, SEG);
     assert!(r.header_at(SEG).is_err());
     drop(c);

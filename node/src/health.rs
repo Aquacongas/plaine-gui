@@ -78,7 +78,8 @@ impl RepairStuckFlag {
     }
 
     pub fn tick(&self, unix_now: u64) {
-        self.now.store(unix_now, std::sync::atomic::Ordering::Relaxed);
+        self.now
+            .store(unix_now, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn report(&self) -> Option<TransportRepairStuck> {
@@ -93,7 +94,11 @@ impl RepairStuckFlag {
             height: self.height.load(Relaxed),
             our_tip: self.our_tip.load(Relaxed),
             repeats: self.repeats.load(Relaxed),
-            why: self.why.lock().expect("repair why").unwrap_or("reason not carried"),
+            why: self
+                .why
+                .lock()
+                .expect("repair why")
+                .unwrap_or("reason not carried"),
         })
     }
 }
@@ -106,8 +111,7 @@ pub struct Verdict {
 
 pub fn thresholds_line() -> String {
     let per_day = (86_400.0 / HEARTBEAT_SYNCED_SECS as f64)
-        * (-(QUIET_STALL_AFTER_SECS as f64)
-            / plaine_consensus::constants::BLOCK_TIME_SECS as f64)
+        * (-(QUIET_STALL_AFTER_SECS as f64) / plaine_consensus::constants::BLOCK_TIME_SECS as f64)
             .exp();
     format!(
         "stall thresholds  {}s when a second symptom corroborates the clock, {}s ({} block \
@@ -144,7 +148,11 @@ impl Latched {
         // live. The rpc verdict is never staler than the last beat.
         let elapsed = self.at.elapsed().as_secs();
         let mut o = self.obs;
-        o.idle_secs = if live.height == o.height { o.idle_secs.saturating_add(elapsed) } else { 0 };
+        o.idle_secs = if live.height == o.height {
+            o.idle_secs.saturating_add(elapsed)
+        } else {
+            0
+        };
         o.height = live.height;
         o.tip_age_secs = live.tip_age_secs;
         o.peers = live.peers;
@@ -175,7 +183,10 @@ pub fn best_known(peers: usize, backed: u64, ours: u64) -> Option<u64> {
 // which fires on absence alone, is last.
 pub fn assess(o: &Observation) -> Verdict {
     if !o.started {
-        return Verdict { status: SyncStatus::Starting, reason: None };
+        return Verdict {
+            status: SyncStatus::Starting,
+            reason: None,
+        };
     }
 
     if o.peers == 0 {
@@ -272,7 +283,10 @@ pub fn assess(o: &Observation) -> Verdict {
                 )),
             };
         }
-        return Verdict { status: SyncStatus::Syncing, reason: None };
+        return Verdict {
+            status: SyncStatus::Syncing,
+            reason: None,
+        };
     }
 
     if let Some(b) = o.branch {
@@ -319,7 +333,10 @@ pub fn assess(o: &Observation) -> Verdict {
             )),
         };
     }
-    Verdict { status: SyncStatus::Synced, reason: None }
+    Verdict {
+        status: SyncStatus::Synced,
+        reason: None,
+    }
 }
 
 fn word(status: SyncStatus) -> &'static str {
@@ -491,7 +508,11 @@ mod tests {
     use super::*;
 
     fn base() -> Observation {
-        Observation { started: true, peers: 8, ..Default::default() }
+        Observation {
+            started: true,
+            peers: 8,
+            ..Default::default()
+        }
     }
 
     fn latched(o: Observation, ago: u64) -> Latched {
@@ -504,7 +525,12 @@ mod tests {
     }
 
     fn live(height: u64, tip_age_secs: u64, peers: usize) -> Live {
-        Live { height, tip_age_secs, peers, best_known_height: Some(height) }
+        Live {
+            height,
+            tip_age_secs,
+            peers,
+            best_known_height: Some(height),
+        }
     }
 
     #[test]
@@ -676,7 +702,11 @@ mod tests {
             peers: 5,
             ..base()
         };
-        assert_eq!(assess(&latched_at_3285).status, SyncStatus::Synced, "the control");
+        assert_eq!(
+            assess(&latched_at_3285).status,
+            SyncStatus::Synced,
+            "the control"
+        );
 
         let v = latched(latched_at_3285, 20).refreshed(live(3_290, 4, 5));
         assert_eq!(
@@ -698,7 +728,11 @@ mod tests {
             peers: 5,
             ..base()
         };
-        assert_eq!(assess(&level).status, SyncStatus::Synced, "the control: we were level");
+        assert_eq!(
+            assess(&level).status,
+            SyncStatus::Synced,
+            "the control: we were level"
+        );
 
         let v = latched(level, 20).refreshed(Live {
             height: 3_285,
@@ -834,7 +868,11 @@ mod tests {
         f.tick(1_000);
         assert_eq!(f.report(), None, "an untouched flag reported a wedge");
         f.note(1_000, r);
-        assert_eq!(f.report(), Some(r), "the flag dropped the report it was just given");
+        assert_eq!(
+            f.report(),
+            Some(r),
+            "the flag dropped the report it was just given"
+        );
         f.tick(1_000 + super::REPAIR_STUCK_HOLD_SECS - 1);
         assert_eq!(f.report(), Some(r), "the flag expired inside its own hold");
         f.tick(1_000 + super::REPAIR_STUCK_HOLD_SECS);
@@ -845,9 +883,12 @@ mod tests {
         );
     }
 
-    fn report(tip: u64, best: u64, fork: u64, verdict: plaine_chain::BranchVerdict)
-        -> plaine_chain::BranchReport
-    {
+    fn report(
+        tip: u64,
+        best: u64,
+        fork: u64,
+        verdict: plaine_chain::BranchVerdict,
+    ) -> plaine_chain::BranchReport {
         plaine_chain::BranchReport {
             tip,
             best,
@@ -880,8 +921,14 @@ mod tests {
             !r.contains("may be quiet"),
             "the quiet sentence was printed to a node holding 1,279 headers: {r}"
         );
-        assert!(r.contains("1,279"), "the missing-body count is the actionable number: {r}");
-        assert!(r.contains("2,965"), "the height it is holding headers to: {r}");
+        assert!(
+            r.contains("1,279"),
+            "the missing-body count is the actionable number: {r}"
+        );
+        assert!(
+            r.contains("2,965"),
+            "the height it is holding headers to: {r}"
+        );
     }
 
     #[test]
@@ -974,7 +1021,11 @@ mod tests {
 
     #[test]
     fn synced_needs_peer_comparison() {
-        let o = Observation { height: 512, best_known_height: None, ..base() };
+        let o = Observation {
+            height: 512,
+            best_known_height: None,
+            ..base()
+        };
         let v = assess(&o);
         assert_eq!(
             v.status,
@@ -1069,7 +1120,11 @@ mod tests {
         assert_eq!(t.gap_idle_secs(0), 0);
 
         t.observe_gap(20, 10);
-        assert_eq!(t.gap_idle_secs(30), 20, "closing the gap must restart the clock");
+        assert_eq!(
+            t.gap_idle_secs(30),
+            20,
+            "closing the gap must restart the clock"
+        );
 
         t.observe_gap(35, 40);
         t.observe_gap(20, 50);
@@ -1192,7 +1247,10 @@ mod tests {
     #[test]
     fn only_quiet_arm_waits_longer() {
         let idle = STALL_AFTER_SECS;
-        assert!(idle < QUIET_STALL_AFTER_SECS, "the split must be a real gap");
+        assert!(
+            idle < QUIET_STALL_AFTER_SECS,
+            "the split must be a real gap"
+        );
 
         let behind = Observation {
             height: 100,
@@ -1307,7 +1365,10 @@ mod tests {
         assert!(line.starts_with("SYNCING"));
         assert!(line.contains("12.4%"), "{line}");
         assert!(line.contains("65,231 / 525,960"));
-        assert!(line.contains("eta 6m11s") || line.contains("eta 6m12s"), "{line}");
+        assert!(
+            line.contains("eta 6m11s") || line.contains("eta 6m12s"),
+            "{line}"
+        );
         assert_eq!(heartbeat_interval(v.status), 10);
     }
 
@@ -1328,7 +1389,11 @@ mod tests {
 
     #[test]
     fn zero_peers_is_root_cause() {
-        let o = Observation { peers: 0, height: 0, ..base() };
+        let o = Observation {
+            peers: 0,
+            height: 0,
+            ..base()
+        };
         let v = assess(&o);
         assert_eq!(v.status, SyncStatus::Stalled);
         let reason = v.reason.unwrap();
@@ -1355,7 +1420,10 @@ mod tests {
         assert_eq!(v.status, SyncStatus::Stalled);
         let r = v.reason.unwrap();
         assert!(r.contains("no new block for 9m04s"), "{r}");
-        assert!(r.contains("every 60s"), "the baseline must be in the message");
+        assert!(
+            r.contains("every 60s"),
+            "the baseline must be in the message"
+        );
         assert!(r.contains("fork nobody else is extending"));
     }
 
@@ -1368,14 +1436,21 @@ mod tests {
             ..base()
         };
         assert_eq!(assess(&almost).status, SyncStatus::Synced);
-        let over = Observation { idle_secs: QUIET_STALL_AFTER_SECS, ..almost };
+        let over = Observation {
+            idle_secs: QUIET_STALL_AFTER_SECS,
+            ..almost
+        };
         assert_eq!(assess(&over).status, SyncStatus::Stalled);
     }
 
     #[test]
     fn idle_clock_resets_with_height() {
         let mut t = Tracker::new(3_285, 0);
-        assert_eq!(t.idle_secs_at(3_285, 301), 301, "genuine quiet must still read");
+        assert_eq!(
+            t.idle_secs_at(3_285, 301),
+            301,
+            "genuine quiet must still read"
+        );
         assert_eq!(
             t.idle_secs_at(3_287, 302),
             0,
@@ -1401,9 +1476,19 @@ mod tests {
     #[test]
     fn verdict_word_leads_line() {
         for (o, expect) in [
-            (Observation { started: false, ..base() }, "STARTING"),
             (
-                Observation { height: 1, best_known_height: Some(1), ..base() },
+                Observation {
+                    started: false,
+                    ..base()
+                },
+                "STARTING",
+            ),
+            (
+                Observation {
+                    height: 1,
+                    best_known_height: Some(1),
+                    ..base()
+                },
                 "SYNCED",
             ),
             (Observation { peers: 0, ..base() }, "STALLED"),
@@ -1420,7 +1505,11 @@ mod tests {
             t.observe(s * 100, s);
         }
         assert_eq!(t.idle_secs(20), 0);
-        assert!((t.blocks_per_sec(20) - 100.0).abs() < 1.0, "{}", t.blocks_per_sec(20));
+        assert!(
+            (t.blocks_per_sec(20) - 100.0).abs() < 1.0,
+            "{}",
+            t.blocks_per_sec(20)
+        );
 
         t.observe(2000, 320);
         assert_eq!(t.idle_secs(320), 300);
@@ -1443,7 +1532,10 @@ mod n1_stranded_reproduction {
     type Cm = ChainManager<MemStore, MemStore, CountingPow, MockClock>;
 
     fn two_forked_nodes(cap: u64) -> (Cm, Vec<[u8; HEADER_BYTES]>) {
-        let p = ChainParams { max_reorg_depth: cap, ..ChainParams::default() };
+        let p = ChainParams {
+            max_reorg_depth: cap,
+            ..ChainParams::default()
+        };
         let root = Scenario::genesis(&p, T0);
 
         let winner = root.clone().spacing(30).extend(WINNER);
@@ -1459,7 +1551,6 @@ mod n1_stranded_reproduction {
             store.clone(),
             store.clone(),
             Arc::new(CountingPow::new(PowMode::AlwaysOk)),
-
             Arc::new(MockClock::new(
                 winner.tip().time.max(loser.tip().time).max(T0),
             )),
@@ -1473,10 +1564,15 @@ mod n1_stranded_reproduction {
             cm.submit_headers_solicited(1, part).expect("own headers");
         }
         for b in loser.blocks.iter().skip(1) {
-            cm.submit_block(&b.rec.hash, b.body.clone()).expect("own body");
+            cm.submit_block(&b.rec.hash, b.body.clone())
+                .expect("own body");
         }
         while let Ok(plaine_chain::Progress::Advanced { .. }) = cm.advance() {}
-        assert_eq!(cm.tip().height, LOSER, "the loser must be on its own branch");
+        assert_eq!(
+            cm.tip().height,
+            LOSER,
+            "the loser must be on its own branch"
+        );
 
         let rival: Vec<_> = winner.blocks.iter().skip(1).map(|b| b.rec.raw).collect();
         (cm, rival)
@@ -1503,8 +1599,7 @@ mod n1_stranded_reproduction {
         }
         let _ = cm.advance();
 
-        let fork_too_deep =
-            plaine_chain::error::Reject::ForkTooDeep { depth: 0, cap: 0 }.why();
+        let fork_too_deep = plaine_chain::error::Reject::ForkTooDeep { depth: 0, cap: 0 }.why();
         assert_eq!(
             why,
             Some(fork_too_deep),

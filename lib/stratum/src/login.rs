@@ -57,7 +57,9 @@ pub fn parse_login(s: &str, expected_hrp: &str) -> Result<Login, LoginError> {
             if suffix.is_empty() || !suffix.bytes().all(|c| c.is_ascii_digit()) {
                 return Err(LoginError::BadPinnedDifficulty);
             }
-            let v: u64 = suffix.parse().map_err(|_| LoginError::BadPinnedDifficulty)?;
+            let v: u64 = suffix
+                .parse()
+                .map_err(|_| LoginError::BadPinnedDifficulty)?;
             (&s[..i], Some(v))
         }
         None => (s, None),
@@ -230,7 +232,14 @@ mod tests {
     #[test]
     fn never_panics_on_arbitrary_bytes() {
         let samples = [
-            "\u{1F600}", "..", "++", ".+", "+.", "plne1", "PLNE1QQQ", "plne1qqqqq.rig+1+2",
+            "\u{1F600}",
+            "..",
+            "++",
+            ".+",
+            "+.",
+            "plne1",
+            "PLNE1QQQ",
+            "plne1qqqqq.rig+1+2",
         ];
         for s in samples {
             let _ = parse_login(s, ADDRESS_HRP);
@@ -274,13 +283,12 @@ mod tests {
         assert_ne!(upper, a, "the fixture must actually differ in case");
 
         let l = parse_login(&upper, ADDRESS_HRP).expect("uppercase bech32m is valid input");
-        assert_eq!(
-            l.address, a,
-            "the payout key must be canonical lowercase"
-        );
+        assert_eq!(l.address, a, "the payout key must be canonical lowercase");
         assert_eq!(
             l.address_bytes,
-            parse_login(&a, ADDRESS_HRP).expect("lowercase").address_bytes,
+            parse_login(&a, ADDRESS_HRP)
+                .expect("lowercase")
+                .address_bytes,
             "and both spellings must decode to the same twenty bytes"
         );
         assert_eq!(l.worker_id(), a, "worker_id carries the same key into logs");

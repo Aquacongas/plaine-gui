@@ -40,10 +40,16 @@ impl core::fmt::Display for Bech32Error {
                 write!(f, "human-readable part is {len} chars, max {MAX_HRP_LEN}")
             }
             Bech32Error::HrpChar { index, byte } => {
-                write!(f, "byte {byte:#04x} at index {index} is outside ASCII 33..=126")
+                write!(
+                    f,
+                    "byte {byte:#04x} at index {index} is outside ASCII 33..=126"
+                )
             }
             Bech32Error::DataChar { index, byte } => {
-                write!(f, "byte {byte:#04x} at index {index} is not in the bech32 charset")
+                write!(
+                    f,
+                    "byte {byte:#04x} at index {index} is not in the bech32 charset"
+                )
             }
             Bech32Error::BadChecksum => write!(f, "bech32m checksum does not verify"),
             Bech32Error::Padding => write!(f, "non-canonical padding bits"),
@@ -209,7 +215,10 @@ pub fn decode_fes(s: &str) -> Result<(String, Vec<u8>), Bech32Error> {
         let idx = CHARSET
             .iter()
             .position(|x| *x == byte)
-            .ok_or(Bech32Error::DataChar { index: pos + 1 + offset, byte })?;
+            .ok_or(Bech32Error::DataChar {
+                index: pos + 1 + offset,
+                byte,
+            })?;
         data5.push(idx as u8);
     }
 
@@ -293,7 +302,11 @@ mod tests {
 
     #[test]
     fn bech32_and_bech32m_cross_reject() {
-        for s in ["A12UEL5L", "a12uel5l", "abcdef1qpzry9x8gf2tvdw0s3jn54khce6mua7lmqqqxw"] {
+        for s in [
+            "A12UEL5L",
+            "a12uel5l",
+            "abcdef1qpzry9x8gf2tvdw0s3jn54khce6mua7lmqqqxw",
+        ] {
             assert_eq!(decode_fes(s), Err(Bech32Error::BadChecksum), "{s:?}");
         }
 
@@ -303,8 +316,7 @@ mod tests {
         assert_ne!(m, non_m);
         assert_eq!(decode_fes(&non_m), Err(Bech32Error::BadChecksum));
 
-        let payload =
-            hex::decode("bcff11daf7dbb8c789b7bcc4e45298041666f92f").unwrap();
+        let payload = hex::decode("bcff11daf7dbb8c789b7bcc4e45298041666f92f").unwrap();
         assert_eq!(
             encode_fes_bech32("plne", &convert_8_to_5(&payload)).unwrap(),
             "plne1hnl3rkhhmwuv0zdhhnzwg55cqstxd7f08d9fp2"
@@ -350,7 +362,10 @@ mod tests {
 
         assert_eq!(convert_5_to_8(&[0, 0, 0, 0, 0]).unwrap(), vec![0, 0, 0]);
 
-        assert_eq!(convert_5_to_8(&[0, 1, 2, 3, 4, 5, 6, 31]).unwrap(), vec![0, 68, 50, 20, 223]);
+        assert_eq!(
+            convert_5_to_8(&[0, 1, 2, 3, 4, 5, 6, 31]).unwrap(),
+            vec![0, 68, 50, 20, 223]
+        );
     }
 
     #[test]
@@ -399,7 +414,10 @@ mod tests {
                 let mut v = bytes.to_vec();
                 v[i] = *c;
                 let corrupt = String::from_utf8(v).unwrap();
-                assert!(decode_bytes(&corrupt).is_err(), "undetected substitution at {i}");
+                assert!(
+                    decode_bytes(&corrupt).is_err(),
+                    "undetected substitution at {i}"
+                );
             }
         }
     }
@@ -407,10 +425,22 @@ mod tests {
     #[test]
     fn encoder_rejects_invalid_input() {
         assert_eq!(encode_fes("", &[]), Err(Bech32Error::EmptyHrp));
-        assert_eq!(encode_fes("PLNE", &[]), Err(Bech32Error::HrpChar { index: 0, byte: b'P' }));
-        assert_eq!(encode_fes("plne", &[32]), Err(Bech32Error::DataChar { index: 0, byte: 32 }));
+        assert_eq!(
+            encode_fes("PLNE", &[]),
+            Err(Bech32Error::HrpChar {
+                index: 0,
+                byte: b'P'
+            })
+        );
+        assert_eq!(
+            encode_fes("plne", &[32]),
+            Err(Bech32Error::DataChar { index: 0, byte: 32 })
+        );
         let hrp = "a".repeat(MAX_HRP_LEN + 1);
-        assert_eq!(encode_fes(&hrp, &[]), Err(Bech32Error::HrpTooLong { len: 84 }));
+        assert_eq!(
+            encode_fes(&hrp, &[]),
+            Err(Bech32Error::HrpTooLong { len: 84 })
+        );
 
         assert_eq!(
             encode_bytes("plne", &[0u8; 60]),

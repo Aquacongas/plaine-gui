@@ -51,7 +51,10 @@ fn sibling_flood_one_call_per_source() {
     assert_eq!(r.pow.calls(), 1, "one failed call, then the quota");
     assert!(r.observed(|c| matches!(
         c,
-        Condition::BudgetExhausted { source: 9, class: BudgetClass::ChildQuota }
+        Condition::BudgetExhausted {
+            source: 9,
+            class: BudgetClass::ChildQuota
+        }
     )));
 }
 
@@ -97,7 +100,11 @@ fn quota_rolls_on_tip_advance() {
     for raw in &children_of_tip(&grown, 4) {
         let _ = r.cm.submit_headers(9, std::slice::from_ref(raw));
     }
-    assert_eq!(r.pow.calls(), 1, "a new epoch buys exactly one more first call");
+    assert_eq!(
+        r.pow.calls(),
+        1,
+        "a new epoch buys exactly one more first call"
+    );
 }
 
 #[test]
@@ -110,13 +117,23 @@ fn honest_headers_never_consume_the_child_quota() {
     let raws = children_of_tip(&honest, 8);
     let mut connected = 0u64;
     for raw in &raws {
-        connected += r.cm.submit_headers(9, std::slice::from_ref(raw)).expect("ok").connected;
+        connected +=
+            r.cm.submit_headers(9, std::slice::from_ref(raw))
+                .expect("ok")
+                .connected;
     }
     assert_eq!(connected, 8, "every honest header connects");
-    assert_eq!(r.pow.calls(), 8, "each cost exactly one call, quota untouched");
+    assert_eq!(
+        r.pow.calls(),
+        8,
+        "each cost exactly one call, quota untouched"
+    );
     assert!(!r.observed(|c| matches!(
         c,
-        Condition::BudgetExhausted { class: BudgetClass::ChildQuota, .. }
+        Condition::BudgetExhausted {
+            class: BudgetClass::ChildQuota,
+            ..
+        }
     )));
 }
 
@@ -130,13 +147,20 @@ fn honest_sibling_accepted_promptly() {
 
     let other_miner = addr_of(&user_key(0x71));
     let rival = tie_break_winning_sibling(&honest, other_miner, r.tip_hash());
-    let a = r.cm.submit_headers(42, &[rival.rec.raw]).expect("not halted");
+    let a =
+        r.cm.submit_headers(42, &[rival.rec.raw])
+            .expect("not halted");
     assert_eq!(a.connected, 1, "the rival block is verified on arrival");
     assert_eq!(r.pow.calls(), 1, "one call, the same as any honest header");
 
-    r.cm.submit_block(&rival.rec.hash, rival.body.clone()).expect("body admissible");
+    r.cm.submit_block(&rival.rec.hash, rival.body.clone())
+        .expect("body admissible");
     assert!(matches!(r.cm.advance(), Ok(Progress::Advanced { .. })));
-    assert_eq!(r.tip_hash(), rival.rec.hash, "the lower-hash sibling wins the tie");
+    assert_eq!(
+        r.tip_hash(),
+        rival.rec.hash,
+        "the lower-hash sibling wins the tie"
+    );
 }
 
 #[test]
@@ -153,7 +177,8 @@ fn class_budget_holds_at_128_sources() {
     let mut i = 0usize;
     for s in 0..SOURCES {
         for _ in 0..EACH {
-            let _ = r.cm.submit_headers(2_000 + s as u32, std::slice::from_ref(&raws[i]));
+            let _ =
+                r.cm.submit_headers(2_000 + s as u32, std::slice::from_ref(&raws[i]));
             i += 1;
         }
     }
@@ -163,8 +188,8 @@ fn class_budget_holds_at_128_sources() {
 
     assert_eq!(calls, 339, "83 shared + 2 reserved + 127 x 2 reserved");
 
-    let burst_cap = p.class_shared_burst_micros()
-        + p.class_reserve_burst_micros(cost) * p.max_peers as u64;
+    let burst_cap =
+        p.class_shared_burst_micros() + p.class_reserve_burst_micros(cost) * p.max_peers as u64;
     assert_eq!(burst_cap, 1_018_000, "250 ms shared + 128 x 6 ms reserved");
     assert!(
         calls * cost <= burst_cap,
@@ -179,7 +204,8 @@ fn class_budget_holds_at_128_sources() {
     r.clock.advance_ms(1_000);
     let more = children_of_tip(&honest, SOURCES);
     for (s, raw) in more.iter().enumerate() {
-        let _ = r.cm.submit_headers(2_000 + s as u32, std::slice::from_ref(raw));
+        let _ =
+            r.cm.submit_headers(2_000 + s as u32, std::slice::from_ref(raw));
     }
     let sustained = r.pow.calls() * cost;
     assert!(
@@ -208,7 +234,8 @@ fn honest_peer_keeps_reserve_under_flood() {
     for one_per_second in &mine {
         for _ in 0..PER_SEC {
             for h in 0..HOSTILE {
-                let _ = r.cm.submit_headers(3_000 + h as u32, std::slice::from_ref(&flood[i]));
+                let _ =
+                    r.cm.submit_headers(3_000 + h as u32, std::slice::from_ref(&flood[i]));
                 i += 1;
             }
         }
@@ -227,7 +254,10 @@ fn honest_peer_keeps_reserve_under_flood() {
     assert!(
         r.observed(|c| matches!(
             c,
-            Condition::BudgetExhausted { class: BudgetClass::Interpreter, .. }
+            Condition::BudgetExhausted {
+                class: BudgetClass::Interpreter,
+                ..
+            }
         )),
         "the flood must actually have exhausted the shared budget"
     );
@@ -237,17 +267,21 @@ fn honest_peer_keeps_reserve_under_flood() {
 fn boot_invariant_refuses_starving_config() {
     let chain = Scenario::genesis(&params(), T0).extend(1);
     let edge = 2_500usize;
-    let ok = ChainParams { max_peers: edge, ..params() };
+    let ok = ChainParams {
+        max_peers: edge,
+        ..params()
+    };
     assert!(ok.class_reserve_is_survivable(3_000));
     let _ = Rig::new(&chain, ok);
 
-    let bad = ChainParams { max_peers: edge + 1, ..params() };
+    let bad = ChainParams {
+        max_peers: edge + 1,
+        ..params()
+    };
     assert!(!bad.class_reserve_is_survivable(3_000));
     let g = chain.blocks[0].clone();
     let store = std::sync::Arc::new(plaine_chain::mock::MemStore::with_genesis(
-        g.rec,
-        g.body,
-        &bad,
+        g.rec, g.body, &bad,
     ));
     let pow = std::sync::Arc::new(plaine_chain::mock::CountingPow::new(PowMode::AlwaysOk));
     let clock = std::sync::Arc::new(plaine_chain::mock::MockClock::new(T0));
@@ -269,9 +303,16 @@ fn duplicate_header_in_batch_connects_once() {
     let raw = children_of_tip(&honest, 1)[0];
     let a = r.cm.submit_headers(9, &[raw, raw]).expect("not halted");
     assert_eq!(a.connected, 1, "one header, one connection");
-    assert_eq!(a.duplicates, 1, "the echo is a duplicate, not a second header");
+    assert_eq!(
+        a.duplicates, 1,
+        "the echo is a duplicate, not a second header"
+    );
     assert_eq!(r.pow.calls(), 1, "it costs exactly one interpreter call");
-    assert_eq!(r.cm.index().len(), arena_before + 1, "the arena grew by exactly one node");
+    assert_eq!(
+        r.cm.index().len(),
+        arena_before + 1,
+        "the arena grew by exactly one node"
+    );
 
     r.pow.reset();
     let raw2 = children_of_tip(&honest, 2)[1];
@@ -304,7 +345,10 @@ fn one_shot_sources_dont_grow_map() {
 
 #[test]
 fn owing_source_not_evicted_for_newcomer() {
-    let p = ChainParams { max_sources: 4, ..params() };
+    let p = ChainParams {
+        max_sources: 4,
+        ..params()
+    };
     let honest = Scenario::genesis(&p, T0).extend(20);
     let mut r = Rig::with_mode(&honest, p.clone(), PowMode::AlwaysOk);
     r.sync(&honest, 1);
@@ -353,16 +397,21 @@ fn mempool_ingress_binds_globally() {
         }
     }
 
-    assert_eq!(past, 1_156, "1,000 shared + the reserves of the sources that reached them");
+    assert_eq!(
+        past, 1_156,
+        "1,000 shared + the reserves of the sources that reached them"
+    );
     assert_eq!(refused, 2_560 - 1_156);
-    let cap = (p.mempool.ingress_global as u64) / 2
-        + 2 * p.max_peers as u64;
+    let cap = (p.mempool.ingress_global as u64) / 2 + 2 * p.max_peers as u64;
     assert!(past as u64 <= cap, "{past} against a burst cap of {cap}");
 
     let fresh = plaine_chain::mock::unsigned_transfer([0xC7; 32], to, 1, 1, 0);
     assert_eq!(
         r.cm.submit_tx(TxOrigin::Peer(900), fresh),
-        Err(Reject::TooManySources { source: 900, cap: p.max_sources })
+        Err(Reject::TooManySources {
+            source: 900,
+            cap: p.max_sources
+        })
     );
 
     r.clock.advance_ms(1_000);
@@ -391,14 +440,20 @@ fn ingress_budget_refills_at_rate() {
         let mut past = 0;
         for i in 0..n {
             let tx = plaine_chain::mock::unsigned_transfer([0x5B; 32], to, 1, 1, i);
-            if matches!(r.cm.submit_tx(TxOrigin::Peer(5), tx), Err(Reject::BelowRelayFloor { .. }))
-            {
+            if matches!(
+                r.cm.submit_tx(TxOrigin::Peer(5), tx),
+                Err(Reject::BelowRelayFloor { .. })
+            ) {
                 past += 1;
             }
         }
         past
     };
-    assert_eq!(spend(&mut r, 150), 100, "the burst is one second of the rate");
+    assert_eq!(
+        spend(&mut r, 150),
+        100,
+        "the burst is one second of the rate"
+    );
     assert_eq!(spend(&mut r, 10), 0, "it is empty");
     r.clock.advance_ms(1_000);
     assert_eq!(spend(&mut r, 150), 100, "one second buys 100 back");
@@ -412,7 +467,13 @@ fn failed_replacement_keeps_incumbent() {
     r.sync(&honest, 1);
     let victim = user_key(0x61);
     let to = addr_of(&user_key(0x62));
-    r.store.set_account(addr_of(&victim), Account { balance: 100_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&victim),
+        Account {
+            balance: 100_000_000,
+            nonce: 0,
+        },
+    );
 
     let good = signed_transfer(&victim, to, 1, 2_000_000, 0);
     let admitted = r.cm.submit_tx(TxOrigin::Local, good).expect("valid");
@@ -426,15 +487,26 @@ fn failed_replacement_keeps_incumbent() {
         Err(Reject::BadTransferSignature { .. })
     ));
 
-    assert_eq!(r.cm.mempool().len(), 1, "the pool still holds exactly one transaction");
+    assert_eq!(
+        r.cm.mempool().len(),
+        1,
+        "the pool still holds exactly one transaction"
+    );
     assert!(
         r.cm.mempool().get(&admitted.txid).is_some(),
         "it is the victim's, with its original txid"
     );
-    assert!(r.cm.mempool().get(&admitted.txid).expect("present").executable);
+    assert!(
+        r.cm.mempool()
+            .get(&admitted.txid)
+            .expect("present")
+            .executable
+    );
 
     let honest_bump = signed_transfer(&victim, to, 1, 2_600_000, 0);
-    let second = r.cm.submit_tx(TxOrigin::Local, honest_bump).expect("valid replacement");
+    let second =
+        r.cm.submit_tx(TxOrigin::Local, honest_bump)
+            .expect("valid replacement");
     assert_eq!(second.removed, vec![admitted.txid]);
     assert_eq!(r.cm.mempool().len(), 1);
 }
@@ -462,20 +534,40 @@ fn refused_submission_no_residue() {
     );
 
     let victim = user_key(0x67);
-    r.store.set_account(addr_of(&victim), Account { balance: 100_000_000, nonce: 0 });
-    let admitted = r
-        .cm
-        .submit_tx(TxOrigin::Local, signed_transfer(&victim, to, 1, 2_000_000, 0))
+    r.store.set_account(
+        addr_of(&victim),
+        Account {
+            balance: 100_000_000,
+            nonce: 0,
+        },
+    );
+    let admitted =
+        r.cm.submit_tx(
+            TxOrigin::Local,
+            signed_transfer(&victim, to, 1, 2_000_000, 0),
+        )
         .expect("valid");
     assert_eq!(r.cm.mempool().tracked_senders(), 1);
     assert!(r.cm.mempool().get(&admitted.txid).is_some());
 
     r.clock.set_unix(T0 + 48 * 3_600);
     let other = user_key(0x68);
-    r.store.set_account(addr_of(&other), Account { balance: 100_000_000, nonce: 0 });
-    r.cm.submit_tx(TxOrigin::Local, signed_transfer(&other, to, 1, 2_000_000, 0))
-        .expect("valid");
-    assert!(r.cm.mempool().get(&admitted.txid).is_none(), "the TTL sweep ran");
+    r.store.set_account(
+        addr_of(&other),
+        Account {
+            balance: 100_000_000,
+            nonce: 0,
+        },
+    );
+    r.cm.submit_tx(
+        TxOrigin::Local,
+        signed_transfer(&other, to, 1, 2_000_000, 0),
+    )
+    .expect("valid");
+    assert!(
+        r.cm.mempool().get(&admitted.txid).is_none(),
+        "the TTL sweep ran"
+    );
     assert_eq!(
         r.cm.mempool().tracked_senders(),
         1,

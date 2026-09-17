@@ -60,7 +60,8 @@ fn hello_ack_alone_in_burst() {
 
     let (mut s, _) = listener.accept().expect("accept");
     s.set_nodelay(true).expect("nodelay");
-    s.set_read_timeout(Some(Duration::from_millis(50))).expect("timeout");
+    s.set_read_timeout(Some(Duration::from_millis(50)))
+        .expect("timeout");
 
     let ours = Msg::Hello(Hello {
         proto_ver: PROTO_VER,
@@ -75,12 +76,8 @@ fn hello_ack_alone_in_burst() {
         listen_port: addr.port(),
         user_agent: b"raw/1".to_vec(),
     });
-    s.write_all(&encode_frame(
-        &cfg_magic(),
-        ours.cmd(),
-        &encode(&ours),
-    ))
-    .expect("hello");
+    s.write_all(&encode_frame(&cfg_magic(), ours.cmd(), &encode(&ours)))
+        .expect("hello");
 
     let mut fr = FrameReader::new(cfg_magic());
     let mut buf = vec![0u8; 8192];
@@ -145,7 +142,14 @@ fn released_slot_body_still_requested() {
     let mut b = BodyTrack::new(0);
     let peer = PeerId(1);
     let wanted = [(1u64, h(1))];
-    let acts = b.schedule(&wanted, &[Supplier { id: peer, horizon: 10 }], now);
+    let acts = b.schedule(
+        &wanted,
+        &[Supplier {
+            id: peer,
+            horizon: 10,
+        }],
+        now,
+    );
     assert!(
         matches!(acts.first(), Some(BodyAction::Request { .. })),
         "fixture: nothing was requested, so this test cannot see the defence"
@@ -179,7 +183,14 @@ fn tail_forgives_only_requested() {
 
     let mut b = BodyTrack::new(0);
     let peer = PeerId(1);
-    b.schedule(&[(1u64, h(1))], &[Supplier { id: peer, horizon: 10 }], now);
+    b.schedule(
+        &[(1u64, h(1))],
+        &[Supplier {
+            id: peer,
+            horizon: 10,
+        }],
+        now,
+    );
     b.release_peer(peer, now);
     let late = Mono(now.0 + BODY_INFLIGHT_TAIL_MS + 1);
     assert!(
@@ -258,7 +269,8 @@ fn no_repeat_designation() {
     );
     for w in designated.windows(2) {
         assert_ne!(
-            w[0], w[1],
+            w[0],
+            w[1],
             "peer {:?} was designated twice in a row out of {} designations. \
              The role flags the action sets are already set, so the repeat \
              changes nothing except calling BodyTrack::release_peer again.",

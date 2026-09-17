@@ -18,12 +18,18 @@ fn cfg_of(s: &Scratch) -> StoreConfig {
 }
 
 fn hseg(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 
 fn flip_bit(p: &Path, off: u64, bit: u8) {
     use std::io::{Read, Seek, SeekFrom, Write};
-    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(p).unwrap();
+    let mut f = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(p)
+        .unwrap();
     let mut b = [0u8; 1];
     f.seek(SeekFrom::Start(off)).unwrap();
     f.read_exact(&mut b).unwrap();
@@ -37,7 +43,10 @@ fn flip_bit(p: &Path, off: u64, bit: u8) {
     let mut v = [0u8; 1];
     g.seek(SeekFrom::Start(off)).unwrap();
     g.read_exact(&mut v).unwrap();
-    assert_ne!(before, v[0], "the flip at offset {off} did not reach the file");
+    assert_ne!(
+        before, v[0],
+        "the flip at offset {off} did not reach the file"
+    );
 }
 
 fn seed_two_sealed(name: &str) -> Scratch {
@@ -93,17 +102,31 @@ fn reorg_into_sealed_queues_segment() {
 
     let old_tip = r.tip().height;
     assert_eq!(old_tip, SEG + 9);
-    assert_eq!(r.verify_segment_headers(0).unwrap(), Some(SEG), "segment 0 must start sealed");
-    assert!(r.header_sweep_targets().is_empty(), "nothing has reorged yet");
+    assert_eq!(
+        r.verify_segment_headers(0).unwrap(),
+        Some(SEG),
+        "segment 0 must start sealed"
+    );
+    assert!(
+        r.header_sweep_targets().is_empty(),
+        "nothing has reorged yet"
+    );
 
     let fork = old_tip - 20;
-    assert!(fork < SEG, "the fork must land inside sealed segment 0, not above it: {fork}");
+    assert!(
+        fork < SEG,
+        "the fork must land inside sealed segment 0, not above it: {fork}"
+    );
     chain.rewind(&main, fork, main[fork as usize].hash);
     let alt = chain.build(25, 7);
     let rollback: Vec<u64> = (fork + 1..=old_tip).rev().collect();
     let cs = common::commits(&alt);
-    c.reorg(&ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs })
-        .expect("reorg into the sealed header segment");
+    c.reorg(&ReorgPlan {
+        fork_height: fork,
+        rollback: &rollback,
+        apply: &cs,
+    })
+    .expect("reorg into the sealed header segment");
     drop(cs);
 
     let wm = r.hdr_watermark();
@@ -145,13 +168,20 @@ fn reorg_in_live_segment_queues_nothing() {
     let main = chain.build(2 * SEG + 10, 1);
     let old_tip = r.tip().height;
     let fork = old_tip - 5;
-    assert!(fork > 2 * SEG, "the fork must be inside the live segment: {fork}");
+    assert!(
+        fork > 2 * SEG,
+        "the fork must be inside the live segment: {fork}"
+    );
     chain.rewind(&main, fork, main[fork as usize].hash);
     let alt = chain.build(9, 11);
     let rollback: Vec<u64> = (fork + 1..=old_tip).rev().collect();
     let cs = common::commits(&alt);
-    c.reorg(&ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs })
-        .expect("live-tail reorg");
+    c.reorg(&ReorgPlan {
+        fork_height: fork,
+        rollback: &rollback,
+        apply: &cs,
+    })
+    .expect("live-tail reorg");
     drop(cs);
     assert!(
         r.header_sweep_targets().is_empty(),
@@ -182,13 +212,20 @@ fn sweeper_finds_named_damage() {
         let alt = chain.build(25, 7);
         let rollback: Vec<u64> = (fork + 1..=old_tip).rev().collect();
         let cs = common::commits(&alt);
-        c.reorg(&ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs })
-            .expect("reorg into the sealed header segment");
+        c.reorg(&ReorgPlan {
+            fork_height: fork,
+            rollback: &rollback,
+            apply: &cs,
+        })
+        .expect("reorg into the sealed header segment");
         drop(cs);
         assert_eq!(r.header_sweep_targets(), vec![0]);
 
         let victim = fork + 3;
-        assert!(victim < SEG - 1, "the victim must be an interior header of segment 0");
+        assert!(
+            victim < SEG - 1,
+            "the victim must be an interior header of segment 0"
+        );
         flip_bit(&hseg(&s, 0), victim * 132 + 60, 3);
 
         let mut sw = HeaderSweeper::new(1);
@@ -207,7 +244,10 @@ fn sweeper_finds_named_damage() {
                  same as never."
             ),
         }
-        assert!(!rep.is_clean(), "a report naming a break claimed to be clean");
+        assert!(
+            !rep.is_clean(),
+            "a report naming a break claimed to be clean"
+        );
         drop(c);
         drop(r);
     }
@@ -228,25 +268,39 @@ fn queued_segment_walked_first() {
         let old_tip = r.tip().height;
 
         let fork = 2 * SEG - 11;
-        assert!(fork > SEG && fork < 2 * SEG - 1, "the fork must be inside sealed segment 1");
+        assert!(
+            fork > SEG && fork < 2 * SEG - 1,
+            "the fork must be inside sealed segment 1"
+        );
         chain.rewind(&main, fork, main[fork as usize].hash);
         let alt = chain.build(25, 7);
         let rollback: Vec<u64> = (fork + 1..=old_tip).rev().collect();
         let cs = common::commits(&alt);
-        c.reorg(&ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs })
-            .expect("reorg into sealed segment 1");
+        c.reorg(&ReorgPlan {
+            fork_height: fork,
+            rollback: &rollback,
+            apply: &cs,
+        })
+        .expect("reorg into sealed segment 1");
         drop(cs);
         assert_eq!(
             r.header_sweep_targets(),
             vec![1],
             "the reorg queued the wrong segment, or none"
         );
-        assert!(r.hdr_watermark() >= 2 * SEG, "segment 1 is no longer sealed");
+        assert!(
+            r.hdr_watermark() >= 2 * SEG,
+            "segment 1 is no longer sealed"
+        );
         victim = fork + 3;
         flip_bit(&hseg(&s, 1), (victim - SEG) * 132 + 60, 2);
 
         let mut sw = HeaderSweeper::new(1);
-        assert_eq!(sw.cursor(), 0, "the cursor must start where the damage is not");
+        assert_eq!(
+            sw.cursor(),
+            0,
+            "the cursor must start where the damage is not"
+        );
         let rep = sw.step(&r);
         println!("  {}", rep.line());
         match rep.verdict() {
@@ -257,7 +311,10 @@ fn queued_segment_walked_first() {
                  on a real store."
             ),
         }
-        assert!(rep.attempted.contains(&0), "the budgeted round-robin step did not also run");
+        assert!(
+            rep.attempted.contains(&0),
+            "the budgeted round-robin step did not also run"
+        );
         drop(c);
         drop(r);
     }
@@ -283,7 +340,11 @@ fn torn_reorg_seeds_queue() {
         let cs = common::commits(&alt);
         tear_reorg_mid_overwrite(
             &mut c,
-            &ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs },
+            &ReorgPlan {
+                fork_height: fork,
+                rollback: &rollback,
+                apply: &cs,
+            },
         );
         c.abandon();
         drop(cs);
@@ -305,8 +366,14 @@ fn torn_reorg_seeds_queue() {
     let mut sw = HeaderSweeper::new(1);
     let st = sw.step(&r);
     println!("  {}", st.line());
-    assert!(st.judged.contains(&0), "the seeded target was not walked on the first step");
-    assert!(st.is_clean(), "recovery left segment 0 holding a mix of two branches");
+    assert!(
+        st.judged.contains(&0),
+        "the seeded target was not walked on the first step"
+    );
+    assert!(
+        st.is_clean(),
+        "recovery left segment 0 holding a mix of two branches"
+    );
     drop(c);
     drop(r);
 }
@@ -317,14 +384,20 @@ fn periodic_sweeper_reaches_damage() {
     let s = seed_two_sealed("sweepsched-cursor");
     flip_bit(&hseg(&s, 1), 1_000 * 132 + 60, 5);
     let (c, r, _) = open(cfg_of(&s)).expect("open");
-    assert!(r.header_sweep_targets().is_empty(), "nothing queued this; the cursor must find it");
+    assert!(
+        r.header_sweep_targets().is_empty(),
+        "nothing queued this; the cursor must find it"
+    );
 
     let mut sw = HeaderSweeper::new(1);
     let s0 = sw.step(&r);
     println!("  step 1: {}", s0.line());
     assert_eq!(
         s0.verdict(),
-        SweepVerdict::Clean { segments: 1, links: SEG },
+        SweepVerdict::Clean {
+            segments: 1,
+            links: SEG
+        },
         "step one should have walked exactly sealed segment 0"
     );
     assert_eq!(sw.cursor(), 1, "the cursor did not advance");
@@ -334,7 +407,11 @@ fn periodic_sweeper_reaches_damage() {
     println!("  step 2: {}", s1.line());
     match s1.verdict() {
         SweepVerdict::Broken(b) => {
-            assert_eq!(b, vec![(1u32, 2 * SEG - (SEG - 1_001))], "wrong height named")
+            assert_eq!(
+                b,
+                vec![(1u32, 2 * SEG - (SEG - 1_001))],
+                "wrong height named"
+            )
         }
         other => panic!("step two over the damaged segment answered {other:?}"),
     }
@@ -360,7 +437,12 @@ fn zero_budget_sweeper_advances() {
     let (c, r, _) = open(cfg_of(&s)).expect("open");
     let mut sw = HeaderSweeper::new(0);
     let rep = sw.step(&r);
-    assert_eq!(rep.attempted.len(), 1, "a zero budget attempted {:?}", rep.attempted);
+    assert_eq!(
+        rep.attempted.len(),
+        1,
+        "a zero budget attempted {:?}",
+        rep.attempted
+    );
     assert_eq!(sw.cursor(), 1);
     assert!(rep.is_clean());
     drop(c);
@@ -393,7 +475,10 @@ fn nothing_judged_is_not_clean() {
         "the operator's line does not say a null result happened: {}",
         rep.line()
     );
-    assert!(rep.unjudged >= 1, "the attempted segment was not counted as unjudged");
+    assert!(
+        rep.unjudged >= 1,
+        "the attempted segment was not counted as unjudged"
+    );
     drop(c);
     drop(r);
 }
@@ -408,7 +493,10 @@ fn full_sweep_names_broken_link() {
     println!("  {}", rep.line());
 
     assert_eq!(rep.verdict(), SweepVerdict::Broken(vec![(0, 2_000)]));
-    assert!(rep.bytes_read >= plaine_storage::HDR_SEG_BYTES, "the cost was not accounted");
+    assert!(
+        rep.bytes_read >= plaine_storage::HDR_SEG_BYTES,
+        "the cost was not accounted"
+    );
 
     assert_eq!(
         rep.judged,
@@ -442,7 +530,11 @@ fn torn_reorg_reopens_linked() {
 
         tear_reorg_mid_overwrite(
             &mut c,
-            &ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs },
+            &ReorgPlan {
+                fork_height: fork,
+                rollback: &rollback,
+                apply: &cs,
+            },
         );
         c.abandon();
         drop(cs);
@@ -465,7 +557,10 @@ fn torn_reorg_reopens_linked() {
 
     assert_eq!(
         sw.verdict(),
-        SweepVerdict::Clean { segments: 1, links: SEG },
+        SweepVerdict::Clean {
+            segments: 1,
+            links: SEG
+        },
         "a reorg torn inside a SEALED header segment reopened holding a header stream that \
          does not link. `replay_hdr_undo` put back a mix of two branches."
     );
@@ -546,7 +641,9 @@ fn measure_l3h_against_l2_on_one_sealed_segment() {
     let hsz = std::fs::metadata(s.0.join("segments").join("hdr").join("000000.hseg"))
         .expect("header segment 0")
         .len();
-    println!("MEASURE  fixture: header segment {hsz} B, body segment {bsz} B, {segs} segment(s) written");
+    println!(
+        "MEASURE  fixture: header segment {hsz} B, body segment {bsz} B, {segs} segment(s) written"
+    );
 
     if segs >= 8 {
         let t = std::time::Instant::now();
@@ -555,7 +652,10 @@ fn measure_l3h_against_l2_on_one_sealed_segment() {
         let t = std::time::Instant::now();
         assert_eq!(r.verify_segment_frames(0).expect("L2 cold"), Some(true));
         let bb = t.elapsed().as_secs_f64() * 1e3;
-        println!("MEASURE  COLD fixture: {} MB of body written after segment 0", segs * 80);
+        println!(
+            "MEASURE  COLD fixture: {} MB of body written after segment 0",
+            segs * 80
+        );
         println!("MEASURE  COLD L3-H one sealed segment: {a:.3} ms  (first touch)");
         println!("MEASURE  COLD L2   one sealed segment: {bb:.3} ms  (first touch)");
         println!("MEASURE  COLD ratio L2/L3-H = {:.2}x", bb / a.max(1e-9));
@@ -572,7 +672,10 @@ fn measure_l3h_against_l2_on_one_sealed_segment() {
         );
     }
 
-    assert_eq!(r.verify_segment_headers(0).expect("L3-H verdict"), Some(SEG));
+    assert_eq!(
+        r.verify_segment_headers(0).expect("L3-H verdict"),
+        Some(SEG)
+    );
     assert_eq!(r.verify_segment_frames(0).expect("L2 verdict"), Some(true));
     let mut l3h = std::time::Duration::from_secs(3_600);
     let mut l2 = std::time::Duration::from_secs(3_600);
@@ -588,8 +691,13 @@ fn measure_l3h_against_l2_on_one_sealed_segment() {
     let l3h_ms = l3h.as_secs_f64() * 1e3;
     let l2_ms = l2.as_secs_f64() * 1e3;
     println!("MEASURE  WARM L3-H one sealed segment: {l3h_ms:.3} ms  (one sequential read + {SEG} BLAKE3)");
-    println!("MEASURE  WARM L2   one sealed segment: {l2_ms:.3} ms  ({SEG} scattered 8-byte reads)");
-    println!("MEASURE  WARM ratio L2/L3-H = {:.2}x", l2_ms / l3h_ms.max(1e-9));
+    println!(
+        "MEASURE  WARM L2   one sealed segment: {l2_ms:.3} ms  ({SEG} scattered 8-byte reads)"
+    );
+    println!(
+        "MEASURE  WARM ratio L2/L3-H = {:.2}x",
+        l2_ms / l3h_ms.max(1e-9)
+    );
     println!(
         "MEASURE  WARM whole-store at height 1,000,000: L3-H {:.0} ms, L2 {:.0} ms, over {} segments",
         l3h_ms * (1_000_000.0 / SEG as f64),

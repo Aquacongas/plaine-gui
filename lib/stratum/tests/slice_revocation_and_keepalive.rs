@@ -6,7 +6,9 @@ use plaine_stratum::abuse::{BanTable, DiffCache, TokenBucket};
 use plaine_stratum::limits::{Caps, Mode, IDLE_EVICT, LINE_BURST};
 use plaine_stratum::metrics::Metrics;
 use plaine_stratum::mock::{InlineVerifier, MockJobSource, MockPow};
-use plaine_stratum::nonce::{assemble_header, nonce_to_hex, slice_fixed, E1Allocator, SliceSource, E1};
+use plaine_stratum::nonce::{
+    assemble_header, nonce_to_hex, slice_fixed, E1Allocator, SliceSource, E1,
+};
 use plaine_stratum::session::{Action, CloseReason, ServerConfig, Session, Shared};
 use plaine_stratum::target::Target;
 use plaine_stratum::verify::{PowHasher, ResultSink, ShareVerifier, VerifyResult};
@@ -293,7 +295,11 @@ fn revoked_slice_submit_refused() {
         "the pool sealed a block it could not present"
     );
     assert_eq!(closed(&s), Some(CloseReason::SliceRevoked));
-    assert_eq!(score(&h, 1, 1_000), 0, "a lost slice is never the rig's fault");
+    assert_eq!(
+        score(&h, 1, 1_000),
+        0,
+        "a lost slice is never the rig's fault"
+    );
 }
 
 #[test]
@@ -311,7 +317,11 @@ fn revoked_session_releases_and_resumes() {
     assert_eq!(closed(&s), Some(CloseReason::SliceRevoked));
 
     s.release(2_000, &h.sh);
-    assert_eq!(src.live(), 0, "a hung-up session must not keep its sub-slice");
+    assert_eq!(
+        src.live(),
+        0,
+        "a hung-up session must not keep its sub-slice"
+    );
 
     let mut s2 = session(&h, 1, 3_000);
     let out = subscribe_and_authorize(&mut s2, &h, 1, 3_000);
@@ -412,7 +422,14 @@ fn revoked_submit_costs_no_token_or_dedup() {
     let mut s = session(&h, 1, 0);
     let job = notify_job_id(&subscribe_and_authorize(&mut s, &h, 1, 0));
     let prefix = prefix_of(&h, 1);
-    let n = mine_in_sub(&prefix, E1(0x0001b5), 0, 8, &Target::from_difficulty(60_000), 0);
+    let n = mine_in_sub(
+        &prefix,
+        E1(0x0001b5),
+        0,
+        8,
+        &Target::from_difficulty(60_000),
+        0,
+    );
     src.down();
 
     let before = Metrics::get(&h.sh.metrics.rej_throttled);
@@ -565,7 +582,12 @@ fn keepalive_moves_no_regulator() {
     let before = s.difficulty();
     let retargets = Metrics::get(&h.sh.metrics.retargets);
     for i in 1..=20u64 {
-        feed(&mut s, &h, r#"{"id":9,"method":"mining.keepalive"}"#, i * 1_000);
+        feed(
+            &mut s,
+            &h,
+            r#"{"id":9,"method":"mining.keepalive"}"#,
+            i * 1_000,
+        );
     }
     assert_eq!(s.accepted_shares, 0);
     assert_eq!(s.accepted_difficulty, 0);

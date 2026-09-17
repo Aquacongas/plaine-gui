@@ -170,7 +170,10 @@ fn assert_consistent(r: &plaine_storage::StoreReader) {
     assert_eq!(r.hdr_watermark(), tip.height + 1);
     let mut prev: Option<[u8; 132]> = None;
     for h in 0..=tip.height {
-        let cur = r.header_at(h).unwrap().unwrap_or_else(|| panic!("hole at {h}"));
+        let cur = r
+            .header_at(h)
+            .unwrap()
+            .unwrap_or_else(|| panic!("hole at {h}"));
         if let Some(p) = prev {
             assert_eq!(&cur[12..44], &header_hash(&p)[..], "linkage broken at {h}");
         }
@@ -211,7 +214,11 @@ fn kill9_at_every_tip_commit_boundary() {
         if point == "AfterRedbCommit" {
             assert_eq!(tip, WARM, "the commit was durable, the block must be there");
         } else {
-            assert_eq!(tip, WARM - 1, "{point}: an uncommitted block became visible");
+            assert_eq!(
+                tip,
+                WARM - 1,
+                "{point}: an uncommitted block became visible"
+            );
         }
         assert_consistent(&r);
         println!(
@@ -310,7 +317,11 @@ fn kill9_segment_seal_leaves_scratch() {
     assert_eq!(code, 9, "the child never reached the seal");
 
     let (c, r, rep) = open(cfg_for(&s.0)).expect("reopen after a kill mid-seal");
-    assert_eq!(r.tip().height, SEG - 1, "an uncommitted block became visible");
+    assert_eq!(
+        r.tip().height,
+        SEG - 1,
+        "an uncommitted block became visible"
+    );
     assert_eq!(r.hdr_watermark(), SEG);
     assert!(
         rep.integrity.is_clean(),
@@ -319,11 +330,17 @@ fn kill9_segment_seal_leaves_scratch() {
     );
     assert!(!r.is_degraded());
     assert!(
-        !s.0.join("segments").join("hdr").join("000001.hseg").exists(),
+        !s.0.join("segments")
+            .join("hdr")
+            .join("000001.hseg")
+            .exists(),
         "the empty successor segment was left behind"
     );
 
-    assert!(r.body_anchor(0).unwrap().is_some(), "the sealed segment lost its anchor");
+    assert!(
+        r.body_anchor(0).unwrap().is_some(),
+        "the sealed segment lost its anchor"
+    );
     assert!(r.body_anchor(1).unwrap().is_none(), "scratch was anchored");
     assert_eq!(rep.anchors_verified, 1);
     assert!(r.vouches_for_all_bodies(), "{:?}", r.body_vouch());
@@ -401,9 +418,18 @@ fn kill9_at_anchor_boundary_commit() {
             "{point}: a boundary-commit crash was reported as damage: {:?}",
             rep.integrity
         );
-        assert!(!r.is_degraded(), "{point}: a crash quarantined a healthy store");
-        assert!(rep.anchor_floor_raised.is_none(), "{point}: the floor moved");
-        assert_eq!(rep.anchors_dropped, 0, "{point}: an anchor was left above the watermark");
+        assert!(
+            !r.is_degraded(),
+            "{point}: a crash quarantined a healthy store"
+        );
+        assert!(
+            rep.anchor_floor_raised.is_none(),
+            "{point}: the floor moved"
+        );
+        assert_eq!(
+            rep.anchors_dropped, 0,
+            "{point}: an anchor was left above the watermark"
+        );
 
         if point == "AfterBoundaryCommit" {
             assert_eq!(r.tip().height, SEG - 1);
@@ -412,11 +438,21 @@ fn kill9_at_anchor_boundary_commit() {
             assert_eq!(rep.anchors_verified, 1);
             assert!(r.vouches_for_all_bodies());
         } else {
-            assert_eq!(r.tip().height, SEG - 2, "an uncommitted block became visible");
+            assert_eq!(
+                r.tip().height,
+                SEG - 2,
+                "an uncommitted block became visible"
+            );
             assert_eq!(r.body_watermark(), SEG - 1);
-            assert!(r.body_anchor(0).unwrap().is_none(), "an unsealed segment was anchored");
+            assert!(
+                r.body_anchor(0).unwrap().is_none(),
+                "an unsealed segment was anchored"
+            );
             assert_eq!(rep.anchors_verified, 0);
-            assert_eq!(rep.integrity.anchor_bytes_read, 0, "nothing was owed, nothing read");
+            assert_eq!(
+                rep.integrity.anchor_bytes_read, 0,
+                "nothing was owed, nothing read"
+            );
             let mut buf = Vec::new();
             assert!(body(&r, SEG - 2, &mut buf) > 0);
 
@@ -436,7 +472,11 @@ fn kill9_at_anchor_boundary_commit() {
             "KILL -9 @{point}: tip {}, watermark {}, anchor {}",
             r.tip().height,
             r.body_watermark(),
-            if r.body_anchor(0).unwrap().is_some() { "durable" } else { "not owed" }
+            if r.body_anchor(0).unwrap().is_some() {
+                "durable"
+            } else {
+                "not owed"
+            }
         );
         drop(c);
         drop(r);
@@ -460,7 +500,12 @@ fn kill9_prune_leaves_stale_files() {
         assert_eq!(r.prune_floor(), SEG, "{point}: the floor is not durable");
         assert!(!r.is_degraded());
 
-        assert!(!s.0.join("segments").join("body").join("000000.bseg").exists());
+        assert!(!s
+            .0
+            .join("segments")
+            .join("body")
+            .join("000000.bseg")
+            .exists());
 
         assert!(
             r.body_anchor(0).unwrap().is_none(),
@@ -532,7 +577,10 @@ fn torn_tail_truncated_not_parsed() {
             rep.hdr_scratch_discarded >= garbage as u64,
             "{case}: the header tail was not discarded"
         );
-        assert!(rep.headers_truncated_to.is_none(), "{case}: committed data was lost");
+        assert!(
+            rep.headers_truncated_to.is_none(),
+            "{case}: committed data was lost"
+        );
         println!(
             "TORN TAIL [{case}]: discarded {} header + {} body scratch bytes, tip unchanged at {}",
             rep.hdr_scratch_discarded, rep.body_scratch_discarded, tip.height

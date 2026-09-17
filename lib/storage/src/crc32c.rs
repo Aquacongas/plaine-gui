@@ -9,7 +9,11 @@ const fn build() -> [[u32; 256]; 8] {
         let mut crc = i as u32;
         let mut k = 0;
         while k < 8 {
-            crc = if crc & 1 != 0 { (crc >> 1) ^ POLY } else { crc >> 1 };
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ POLY
+            } else {
+                crc >> 1
+            };
             k += 1;
         }
         t[0][i] = crc;

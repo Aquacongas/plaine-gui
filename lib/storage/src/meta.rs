@@ -114,7 +114,9 @@ pub fn load(db: &redb::Database) -> Result<Option<Meta>, StoreError> {
     let get = |k: &str| -> Result<Option<Vec<u8>>, StoreError> {
         Ok(t.get(k)?.map(|v| v.value().to_vec()))
     };
-    let Some(schema) = get(K_SCHEMA)? else { return Ok(None) };
+    let Some(schema) = get(K_SCHEMA)? else {
+        return Ok(None);
+    };
     let mut network = [0u8; 4];
     if let Some(n) = get(K_NETWORK)? {
         network.copy_from_slice(fixed(K_NETWORK, &n, 4)?);
@@ -172,7 +174,9 @@ pub fn load(db: &redb::Database) -> Result<Option<Meta>, StoreError> {
         index_state,
         stale_index_count: get(K_STALE_INDEX)?.map(|v| u64_of(&v)).unwrap_or(0),
         txindex_from: get(K_TXINDEX_FROM)?.map(|v| u64_of(&v)),
-        ibd_batch_blocks: get(K_IBD_BATCH)?.map(|v| u64_of(&v) as u32).unwrap_or(8_192),
+        ibd_batch_blocks: get(K_IBD_BATCH)?
+            .map(|v| u64_of(&v) as u32)
+            .unwrap_or(8_192),
         bidx_sealed_through,
         hash_index_full_rows: get(K_FULLIDX_ROWS)?.map(|v| u64_of(&v)).unwrap_or(0),
         invalid_next_seq: get(K_INVALID_SEQ)?.map(|v| u64_of(&v)).unwrap_or(0),
@@ -208,7 +212,10 @@ pub fn store(txn: &redb::WriteTransaction, m: &Meta) -> Result<(), StoreError> {
         put(K_TXINDEX_FROM, &f.to_le_bytes())?;
     }
     put(K_IBD_BATCH, &(m.ibd_batch_blocks as u64).to_le_bytes())?;
-    put(K_BIDX_SEALED, &((m.bidx_sealed_through + 1) as u64).to_le_bytes())?;
+    put(
+        K_BIDX_SEALED,
+        &((m.bidx_sealed_through + 1) as u64).to_le_bytes(),
+    )?;
     put(K_FULLIDX_ROWS, &m.hash_index_full_rows.to_le_bytes())?;
     put(K_INVALID_SEQ, &m.invalid_next_seq.to_le_bytes())?;
     put(K_INVALID_ROWS, &m.invalid_rows.to_le_bytes())?;

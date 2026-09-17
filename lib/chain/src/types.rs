@@ -1,5 +1,5 @@
-use plaine_consensus::constants::Network;
 use plaine_consensus::asert::Target;
+use plaine_consensus::constants::Network;
 use plaine_consensus::constants::{
     ASERT_ANCHOR_INTERVAL, BLOCK_TIME_SECS, HEADER_BYTES, MAX_MEMPOOL_NONCE_GAP, MAX_MEMPOOL_TXS,
     MAX_MEMPOOL_TXS_PER_SENDER, MAX_REORG_DEPTH, SYNC_WINDOW_SECS,

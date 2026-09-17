@@ -62,8 +62,16 @@ pub fn machine_note(scenario: &str) {
         std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(0),
-        if quiet() { "1 (operator asserts the box is idle)" } else { "unset - figures below are LOWER BOUNDS" },
-        if cfg!(debug_assertions) { "debug" } else { "release" }
+        if quiet() {
+            "1 (operator asserts the box is idle)"
+        } else {
+            "unset - figures below are LOWER BOUNDS"
+        },
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        }
     );
 }
 
@@ -71,7 +79,8 @@ pub struct Scratch(pub PathBuf);
 
 impl Scratch {
     pub fn new(name: &str) -> Self {
-        let p = std::env::temp_dir().join(format!("plaine-storage-{}-{}", std::process::id(), name));
+        let p =
+            std::env::temp_dir().join(format!("plaine-storage-{}-{}", std::process::id(), name));
         let _ = std::fs::remove_dir_all(&p);
         std::fs::create_dir_all(&p).expect("scratch dir");
         Self(p)

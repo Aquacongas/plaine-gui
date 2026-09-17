@@ -99,7 +99,11 @@ fn window_holds_only_reachable() {
             );
         }
     }
-    assert_eq!(sim.engine.body.applied(), N, "fixture never finished syncing");
+    assert_eq!(
+        sim.engine.body.applied(),
+        N,
+        "fixture never finished syncing"
+    );
 }
 
 #[test]
@@ -110,7 +114,11 @@ fn window_bound_holds_while_sliding() {
         sim.step(1_000);
         peak = peak.max(sim.engine.wanted_len());
     }
-    assert_eq!(sim.engine.body.applied(), N, "fixture never finished syncing");
+    assert_eq!(
+        sim.engine.body.applied(),
+        N,
+        "fixture never finished syncing"
+    );
     assert!(
         peak <= WANTED_MAX,
         "`wanted` peaked at {peak} entries against its bound of {WANTED_MAX}"
@@ -147,7 +155,10 @@ fn repeat_offer_keeps_window() {
         again.height
     );
     let (_, top_after) = sim.engine.wanted_span().expect("a span");
-    assert_eq!(top_after, top_before, "the highest wanted height was evicted for a duplicate");
+    assert_eq!(
+        top_after, top_before,
+        "the highest wanted height was evicted for a duplicate"
+    );
 }
 
 #[test]

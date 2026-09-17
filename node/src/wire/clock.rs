@@ -12,7 +12,9 @@ impl Default for SysClock {
 
 impl SysClock {
     pub fn new() -> SysClock {
-        SysClock { start: Instant::now() }
+        SysClock {
+            start: Instant::now(),
+        }
     }
 
     pub fn unix(&self) -> u64 {

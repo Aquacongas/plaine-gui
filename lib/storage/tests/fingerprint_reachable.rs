@@ -20,7 +20,8 @@ fn seed(name: &str) -> Scratch {
     let bs = chain.build(200, 1);
     c.extend(&common::commits(&bs)).unwrap();
     c.flush().unwrap();
-    r.verify_state_fingerprint().expect("a fresh store must verify");
+    r.verify_state_fingerprint()
+        .expect("a fresh store must verify");
     drop(c);
     drop(r);
     s
@@ -98,12 +99,19 @@ fn mismatch_has_one_construction_site() {
             if line.contains("StoreError::StateFingerprint {")
                 || line.contains("Err(StoreError::StateFingerprint")
             {
-                sites.push(format!("{}:{}", p.file_name().unwrap().to_string_lossy(), n + 1));
+                sites.push(format!(
+                    "{}:{}",
+                    p.file_name().unwrap().to_string_lossy(),
+                    n + 1
+                ));
             }
         }
     }
 
-    assert!(files >= 10, "the scan read only {files} source files; it did not run");
+    assert!(
+        files >= 10,
+        "the scan read only {files} source files; it did not run"
+    );
     assert_eq!(
         sites.len(),
         1,
@@ -116,5 +124,8 @@ fn mismatch_has_one_construction_site() {
         sites[0].starts_with("reader.rs:"),
         "the one construction site moved out of reader.rs: {sites:?}"
     );
-    println!("  StoreError::StateFingerprint constructed at exactly one site: {}", sites[0]);
+    println!(
+        "  StoreError::StateFingerprint constructed at exactly one site: {}",
+        sites[0]
+    );
 }

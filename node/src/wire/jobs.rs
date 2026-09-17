@@ -58,10 +58,7 @@ impl JobSource for Templates {
         let epoch = self.tip.get().epoch;
         {
             let c = self.cache.lock().expect("template cache");
-            if let Some((_, _, t)) = c
-                .iter()
-                .find(|(a, e, _)| a == recipient && *e == epoch)
-            {
+            if let Some((_, _, t)) = c.iter().find(|(a, e, _)| a == recipient && *e == epoch) {
                 return Ok(Arc::clone(t));
             }
         }
@@ -100,7 +97,11 @@ impl TemplateBody for NodeBody {
         let (reply, rx) = std::sync::mpsc::sync_channel(1);
         if self
             .tx
-            .try_send(Cmd::Seal { header, body: self.plan.body.clone(), reply })
+            .try_send(Cmd::Seal {
+                header,
+                body: self.plan.body.clone(),
+                reply,
+            })
             .is_err()
         {
             return SealOutcome::Obsolete;
@@ -122,7 +123,10 @@ mod tests {
     fn moved_tip_seal_is_obsolete_no_msg() {
         let (tx, rx) = tokio::sync::mpsc::channel::<Cmd>(4);
         let tip = TipCell::default();
-        tip.publish(crate::wire::tip::TipView { hash: [9u8; 32], ..Default::default() });
+        tip.publish(crate::wire::tip::TipView {
+            hash: [9u8; 32],
+            ..Default::default()
+        });
         let b = NodeBody {
             tx,
             tip,
@@ -135,7 +139,10 @@ mod tests {
             },
         };
         assert_eq!(b.seal(7), SealOutcome::Obsolete);
-        assert!(rx.is_empty(), "an obsolete template must not cost the validator a message");
+        assert!(
+            rx.is_empty(),
+            "an obsolete template must not cost the validator a message"
+        );
     }
 
     #[test]
@@ -155,6 +162,9 @@ mod tests {
         };
         let t0 = std::time::Instant::now();
         assert_eq!(b.seal(7), SealOutcome::Obsolete);
-        assert!(t0.elapsed() < SEAL_DEADLINE * 3, "the seal must not wait indefinitely");
+        assert!(
+            t0.elapsed() < SEAL_DEADLINE * 3,
+            "the seal must not wait indefinitely"
+        );
     }
 }

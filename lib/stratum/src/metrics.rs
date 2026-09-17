@@ -74,7 +74,10 @@ impl Metrics {
             ("shares_submitted", Self::get(&self.shares_submitted)),
             ("shares_verified", Self::get(&self.shares_verified)),
             ("shares_accepted", Self::get(&self.shares_accepted)),
-            ("shares_accepted_difficulty", Self::get(&self.shares_accepted_difficulty)),
+            (
+                "shares_accepted_difficulty",
+                Self::get(&self.shares_accepted_difficulty),
+            ),
             ("blocks_found", Self::get(&self.blocks_found)),
             ("rej_unknown_job", Self::get(&self.rej_unknown_job)),
             ("rej_stale", Self::get(&self.rej_stale)),
@@ -90,10 +93,16 @@ impl Metrics {
             ("closed_idle", Self::get(&self.closed_idle)),
             ("closed_auth_timeout", Self::get(&self.closed_auth_timeout)),
             ("closed_line_flood", Self::get(&self.closed_line_flood)),
-            ("closed_slice_revoked", Self::get(&self.closed_slice_revoked)),
+            (
+                "closed_slice_revoked",
+                Self::get(&self.closed_slice_revoked),
+            ),
             ("keepalives", Self::get(&self.keepalives)),
             ("bans", Self::get(&self.bans)),
-            ("verify_internal_errors", Self::get(&self.verify_internal_errors)),
+            (
+                "verify_internal_errors",
+                Self::get(&self.verify_internal_errors),
+            ),
         ]
     }
 }

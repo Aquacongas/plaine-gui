@@ -110,8 +110,7 @@ fn prepare(a: &args::Args, write_default: bool) -> Result<(Config, Paths), u8> {
         }
     };
 
-    let final_paths =
-        Paths::resolve(&cfg.data_dir, a.config.as_deref());
+    let final_paths = Paths::resolve(&cfg.data_dir, a.config.as_deref());
 
     if write_default && !existed && a.config.is_none() {
         write_default_config(&final_paths, cfg.network);
@@ -121,7 +120,10 @@ fn prepare(a: &args::Args, write_default: bool) -> Result<(Config, Paths), u8> {
 
 fn write_default_config(paths: &Paths, network: Network) {
     if let Err(e) = std::fs::create_dir_all(&paths.data_dir) {
-        log::warn("config", format!("cannot create {}: {e}", paths.data_dir.display()));
+        log::warn(
+            "config",
+            format!("cannot create {}: {e}", paths.data_dir.display()),
+        );
         return;
     }
     let text = config::default_config_text(network);
@@ -136,7 +138,10 @@ fn write_default_config(paths: &Paths, network: Network) {
         ),
         Err(e) => log::warn(
             "config",
-            format!("could not write {}: {e} (continuing with defaults)", paths.config_file.display()),
+            format!(
+                "could not write {}: {e} (continuing with defaults)",
+                paths.config_file.display()
+            ),
         ),
     }
 }
@@ -174,7 +179,10 @@ fn run(cfg: Config, paths: Paths) -> ExitCode {
     };
 
     if let Err(e) = std::fs::create_dir_all(&paths.chain_dir) {
-        log::error("startup", format!("cannot create {}: {e}", paths.chain_dir.display()));
+        log::error(
+            "startup",
+            format!("cannot create {}: {e}", paths.chain_dir.display()),
+        );
         return ExitCode::FAILURE;
     }
     write_pid_file(&paths);
@@ -196,10 +204,16 @@ fn run(cfg: Config, paths: Paths) -> ExitCode {
     };
 
     if shutdown.is_triggered() {
-        log::info("shutdown", "a stop was requested during startup; RPC will not be bound");
+        log::info(
+            "shutdown",
+            "a stop was requested during startup; RPC will not be bound",
+        );
         let height = node.tip.height();
         node.shutdown();
-        log::info("shutdown", format!("clean stop at height {height}, durable"));
+        log::info(
+            "shutdown",
+            format!("clean stop at height {height}, durable"),
+        );
         let _ = std::fs::remove_file(&paths.lock_file);
         return ExitCode::SUCCESS;
     }
@@ -259,7 +273,10 @@ fn run(cfg: Config, paths: Paths) -> ExitCode {
 
     let height = node.tip.height();
     node.shutdown();
-    log::info("shutdown", format!("clean stop at height {height}, durable"));
+    log::info(
+        "shutdown",
+        format!("clean stop at height {height}, durable"),
+    );
 
     let _ = std::fs::remove_file(&paths.lock_file);
     log::info("shutdown", "clean exit");
@@ -272,7 +289,6 @@ fn write_pid_file(paths: &Paths) {
         std::process::id(),
         log::timestamp(),
         env!("CARGO_PKG_VERSION"),
-
         env!("PLAINE_BUILD_LINE")
     );
     if let Ok(mut f) = std::fs::File::create(&paths.lock_file) {
@@ -289,20 +305,28 @@ fn banner(cfg: &Config, paths: &Paths, bound: std::net::SocketAddr) {
             env!("CARGO_PKG_VERSION"),
             cfg.network.as_str(),
             k::TICKER,
-
             String::from_utf8_lossy(&cfg.network.to_consensus().chain_id()).into_owned()
         ),
     );
 
     log::info("node", env!("PLAINE_BUILD_LINE").to_string());
-    log::info("node", format!("data dir     {}", paths.chain_dir.display()));
-    log::info("node", format!("config       {}", paths.config_file.display()));
+    log::info(
+        "node",
+        format!("data dir     {}", paths.chain_dir.display()),
+    );
+    log::info(
+        "node",
+        format!("config       {}", paths.config_file.display()),
+    );
     log::info(
         "node",
         format!(
             "storage      {}  txindex {}",
             if cfg.prune {
-                format!("pruned, keeping {} block bodies", log::thousands(k::BLOCKS_PER_YEAR))
+                format!(
+                    "pruned, keeping {} block bodies",
+                    log::thousands(k::BLOCKS_PER_YEAR)
+                )
             } else {
                 "archive, keeping every block body".to_string()
             },
@@ -330,8 +354,16 @@ fn banner(cfg: &Config, paths: &Paths, bound: std::net::SocketAddr) {
                 plaine_rpc::views::KeySource::Config => "from config",
             },
             plaine_consensus::hex::encode(&cfg.author_pubkey[..4]),
-            if cfg.author_key_placeholder { ", PLACEHOLDER" } else { "" },
-            if cfg.author_show_in_log { "shown" } else { "not shown" }
+            if cfg.author_key_placeholder {
+                ", PLACEHOLDER"
+            } else {
+                ""
+            },
+            if cfg.author_show_in_log {
+                "shown"
+            } else {
+                "not shown"
+            }
         ),
     );
     log::info(
@@ -365,7 +397,10 @@ fn install_signal_handler(shutdown: &Shutdown) {
     std::thread::Builder::new()
         .name("plaine-signal".into())
         .spawn(move || {
-            let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
                 Ok(rt) => rt,
                 Err(e) => {
                     log::security(
@@ -425,10 +460,15 @@ async fn wait_for_stop_signal() -> &'static str {
         );
     }
 
-    let mut brk = windows::ctrl_break().map_err(|e| unavailable("Ctrl+Break", e)).ok();
-    let mut close = windows::ctrl_close().map_err(|e| unavailable("the console close event", e)).ok();
-    let mut down =
-        windows::ctrl_shutdown().map_err(|e| unavailable("the system shutdown event", e)).ok();
+    let mut brk = windows::ctrl_break()
+        .map_err(|e| unavailable("Ctrl+Break", e))
+        .ok();
+    let mut close = windows::ctrl_close()
+        .map_err(|e| unavailable("the console close event", e))
+        .ok();
+    let mut down = windows::ctrl_shutdown()
+        .map_err(|e| unavailable("the system shutdown event", e))
+        .ok();
 
     macro_rules! arm {
         ($src:expr) => {
@@ -464,8 +504,8 @@ fn heartbeat_loop(shutdown: &Shutdown, node: &node::Node) {
         if started.elapsed() >= next_beat {
             let verdict = node.beat(&mut tracker, started.elapsed().as_secs());
             node.sweep_headers(&mut sweeper);
-            next_beat = started.elapsed()
-                + Duration::from_secs(health::heartbeat_interval(verdict.status));
+            next_beat =
+                started.elapsed() + Duration::from_secs(health::heartbeat_interval(verdict.status));
         }
         // poll every 200ms so a stop is noticed quickly; only emit a heartbeat
         // when next_beat actually falls due.
@@ -494,7 +534,10 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("temp dir");
         let cfg_path = dir.join("bad.toml");
         std::fs::write(&cfg_path, "[p2p]\nmax_peer = 5\n").expect("write");
-        let a = args::Args { config: Some(cfg_path.clone()), ..Default::default() };
+        let a = args::Args {
+            config: Some(cfg_path.clone()),
+            ..Default::default()
+        };
         assert_eq!(prepare(&a, false).err(), Some(EXIT_CONFIG));
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -503,11 +546,21 @@ mod tests {
     fn absent_config_uses_embedded_keys() {
         let dir = std::env::temp_dir().join(format!("plaine-absent-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let a = args::Args { data_dir: Some(dir.clone()), write_config: false, ..Default::default() };
+        let a = args::Args {
+            data_dir: Some(dir.clone()),
+            write_config: false,
+            ..Default::default()
+        };
         let (cfg, paths) = prepare(&a, false).expect("defaults must always load");
-        assert!(matches!(cfg.checkpoints, config::CheckpointPolicy::Embedded { .. }));
+        assert!(matches!(
+            cfg.checkpoints,
+            config::CheckpointPolicy::Embedded { .. }
+        ));
         assert_eq!(cfg.author_pubkey, embedded::AUTHOR_KEY.bytes);
-        assert!(!paths.config_file.exists(), "--check-config must not touch the disk");
+        assert!(
+            !paths.config_file.exists(),
+            "--check-config must not touch the disk"
+        );
 
         let views = plaine_rpc::mock::MockNode::synced()
             .with_network(cfg.network.to_rpc())
@@ -546,7 +599,9 @@ mod tests {
             ..Default::default()
         };
         let (tcfg, _) = prepare(&a, false).expect("defaults must load");
-        let tviews = plaine_rpc::mock::MockNode::synced().with_network(tcfg.network.to_rpc()).into_node();
+        let tviews = plaine_rpc::mock::MockNode::synced()
+            .with_network(tcfg.network.to_rpc())
+            .into_node();
         assert_eq!(tviews.chain.info().network, plaine_rpc::Network::Main);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -555,9 +610,15 @@ mod tests {
     fn first_run_config_roundtrips() {
         let dir = std::env::temp_dir().join(format!("plaine-first-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let a = args::Args { data_dir: Some(dir.clone()), ..Default::default() };
+        let a = args::Args {
+            data_dir: Some(dir.clone()),
+            ..Default::default()
+        };
         let (cfg, paths) = prepare(&a, true).expect("prepare");
-        assert!(paths.config_file.exists(), "first run should write noded.toml");
+        assert!(
+            paths.config_file.exists(),
+            "first run should write noded.toml"
+        );
 
         let (again, _) = prepare(&a, true).expect("second run");
         assert_eq!(again.rpc_listen, cfg.rpc_listen);

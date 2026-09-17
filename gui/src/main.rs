@@ -1,5 +1,7 @@
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
-
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 #![forbid(unsafe_code)]
 
 mod chain_history;
@@ -12,12 +14,27 @@ use std::time::{Duration, Instant};
 
 use eframe::egui;
 
+fn load_app_icon() -> Option<egui::IconData> {
+    let bytes = include_bytes!("../assets/icon.png");
+
+    let image = image::load_from_memory(bytes).ok()?.into_rgba8();
+
+    let (width, height) = image.dimensions();
+
+    Some(egui::IconData {
+        rgba: image.into_raw(),
+        width,
+        height,
+    })
+}
+
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Pla(i)n[e] Wallet")
             .with_inner_size([1120.0, 720.0])
-            .with_min_inner_size([900.0, 600.0]),
+            .with_min_inner_size([900.0, 600.0])
+            .with_icon(load_app_icon().unwrap_or_default()),
         ..Default::default()
     };
 

@@ -15,10 +15,15 @@ fn reject_of(chain: &Scenario, bad: &Scenario) -> Reject {
     let before = r.tip_hash();
     r.offer(3, &blocks_above(bad, chain.height()));
 
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
     assert_eq!(r.tip_hash(), before, "an invalid block never moves the tip");
     assert!(r.store.is_invalid(&bad.tip().hash), "the failure is sticky");
-    r.cm.last_branch_failure().cloned().expect("the branch failed for a reason")
+    r.cm.last_branch_failure()
+        .cloned()
+        .expect("the branch failed for a reason")
 }
 
 fn cause_of(r: Reject) -> Reject {
@@ -32,7 +37,9 @@ fn cause_of(r: Reject) -> Reject {
 fn non_author_announcement_invalidates_block() {
     let p = params();
     let author = author_key();
-    let chain = Scenario::genesis(&p, T0).with_miner(addr_of(&author)).extend(5);
+    let chain = Scenario::genesis(&p, T0)
+        .with_miner(addr_of(&author))
+        .extend(5);
 
     let impostor = impostor_key();
     let mut bad = chain.clone();
@@ -42,7 +49,13 @@ fn non_author_announcement_invalidates_block() {
 
     let err = cause_of(reject_of(&chain, &bad));
     assert!(
-        matches!(err, Reject::Tx { index: 1, err: TxError::NotAuthorKey }),
+        matches!(
+            err,
+            Reject::Tx {
+                index: 1,
+                err: TxError::NotAuthorKey
+            }
+        ),
         "the block must die on rule 1, got {err:?}"
     );
 }
@@ -54,7 +67,13 @@ fn author_announcement_accepted_pays_fee() {
     let a_addr = addr_of(&author);
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(a_addr, Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        a_addr,
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut good = chain.clone();
@@ -63,13 +82,20 @@ fn author_announcement_accepted_pays_fee() {
     good.push_body(Scenario::encode_body(&[&cb, &ann]));
 
     r.offer(3, &blocks_above(&good, 5));
-    match r.cm.advance().expect("a correctly keyed announcement is a normal transaction") {
+    match r
+        .cm
+        .advance()
+        .expect("a correctly keyed announcement is a normal transaction")
+    {
         Progress::Advanced { tip, .. } => assert_eq!(tip.hash, good.tip().hash),
         other => panic!("expected adoption, got {other:?}"),
     }
     let after = r.store.account(&a_addr);
     assert_eq!(after.balance, 1_000_000 - 7, "the fee is really paid");
-    assert_eq!(after.nonce, 1, "replay protection is the ordinary account nonce");
+    assert_eq!(
+        after.nonce, 1,
+        "replay protection is the ordinary account nonce"
+    );
 }
 
 #[test]
@@ -78,7 +104,13 @@ fn duplicate_announcement_in_block_rejected() {
     let author = author_key();
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&author), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&author),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
     let before = r.tip_hash();
 
@@ -88,10 +120,26 @@ fn duplicate_announcement_in_block_rejected() {
     bad.push_body(Scenario::encode_body(&[&cb, &ann, &ann]));
 
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("the second copy replays nonce 0"));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    let err = cause_of(
+        r.cm.last_branch_failure()
+            .cloned()
+            .expect("the second copy replays nonce 0"),
+    );
     assert!(
-        matches!(err, Reject::Tx { index: 2, err: TxError::BadNonce { expected: 1, got: 0 } }),
+        matches!(
+            err,
+            Reject::Tx {
+                index: 2,
+                err: TxError::BadNonce {
+                    expected: 1,
+                    got: 0
+                }
+            }
+        ),
         "got {err:?}"
     );
     assert_eq!(r.tip_hash(), before);
@@ -103,7 +151,13 @@ fn bad_sig_announcement_invalidates_block() {
     let author = author_key();
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&author), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&author),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut ann = signed_announcement(&author, b"tampered", 7, 0);
@@ -114,9 +168,25 @@ fn bad_sig_announcement_invalidates_block() {
     bad.push_body(Scenario::encode_body(&[&cb, &ann]));
 
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("verify_strict said no"));
-    assert!(matches!(err, Reject::Tx { index: 1, err: TxError::BadSignature }), "got {err:?}");
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    let err = cause_of(
+        r.cm.last_branch_failure()
+            .cloned()
+            .expect("verify_strict said no"),
+    );
+    assert!(
+        matches!(
+            err,
+            Reject::Tx {
+                index: 1,
+                err: TxError::BadSignature
+            }
+        ),
+        "got {err:?}"
+    );
 }
 
 fn chain_with_coinbase(
@@ -153,7 +223,13 @@ fn coinbase_wrong_height_rejected() {
     assert!(
         matches!(
             err,
-            Reject::Tx { index: 0, err: TxError::CoinbaseHeightMismatch { header: 6, coinbase: 99 } }
+            Reject::Tx {
+                index: 0,
+                err: TxError::CoinbaseHeightMismatch {
+                    header: 6,
+                    coinbase: 99
+                }
+            }
         ),
         "got {err:?}"
     );
@@ -163,11 +239,23 @@ fn coinbase_wrong_height_rejected() {
 fn coinbase_over_reward_rejected() {
     let p = params();
     let chain = Scenario::genesis(&p, T0).extend(5);
-    let bad =
-        chain_with_coinbase(&chain, 6, emission::block_reward(6) + 1, 0, Vec::new(), None);
+    let bad = chain_with_coinbase(
+        &chain,
+        6,
+        emission::block_reward(6) + 1,
+        0,
+        Vec::new(),
+        None,
+    );
     let err = cause_of(reject_of(&chain, &bad));
     assert!(
-        matches!(err, Reject::Tx { index: 0, err: TxError::CoinbaseRewardMismatch { .. } }),
+        matches!(
+            err,
+            Reject::Tx {
+                index: 0,
+                err: TxError::CoinbaseRewardMismatch { .. }
+            }
+        ),
         "got {err:?}"
     );
 }
@@ -176,11 +264,23 @@ fn coinbase_over_reward_rejected() {
 fn coinbase_under_reward_rejected() {
     let p = params();
     let chain = Scenario::genesis(&p, T0).extend(5);
-    let bad =
-        chain_with_coinbase(&chain, 6, emission::block_reward(6) - 1, 0, Vec::new(), None);
+    let bad = chain_with_coinbase(
+        &chain,
+        6,
+        emission::block_reward(6) - 1,
+        0,
+        Vec::new(),
+        None,
+    );
     let err = cause_of(reject_of(&chain, &bad));
     assert!(
-        matches!(err, Reject::Tx { index: 0, err: TxError::CoinbaseRewardMismatch { .. } }),
+        matches!(
+            err,
+            Reject::Tx {
+                index: 0,
+                err: TxError::CoinbaseRewardMismatch { .. }
+            }
+        ),
         "got {err:?}"
     );
 }
@@ -194,7 +294,13 @@ fn coinbase_phantom_fees_rejected() {
     assert!(
         matches!(
             err,
-            Reject::Tx { index: 0, err: TxError::CoinbaseFeesMismatch { expected: 0, got: 1 } }
+            Reject::Tx {
+                index: 0,
+                err: TxError::CoinbaseFeesMismatch {
+                    expected: 0,
+                    got: 1
+                }
+            }
         ),
         "got {err:?}"
     );
@@ -216,7 +322,13 @@ fn note_len_header_mismatch_rejected() {
     assert!(
         matches!(
             err,
-            Reject::Tx { index: 0, err: TxError::AuthorNoteLenMismatch { header: 4, coinbase: 5 } }
+            Reject::Tx {
+                index: 0,
+                err: TxError::AuthorNoteLenMismatch {
+                    header: 4,
+                    coinbase: 5
+                }
+            }
         ),
         "got {err:?}"
     );
@@ -238,7 +350,10 @@ fn note_257_rejected_256_ok() {
     let mut r = Rig::new(&chain, params());
     r.sync(&chain, 1);
     r.offer(3, &blocks_above(&ok, 5));
-    assert!(matches!(r.cm.advance().expect("256 is legal"), Progress::Advanced { .. }));
+    assert!(matches!(
+        r.cm.advance().expect("256 is legal"),
+        Progress::Advanced { .. }
+    ));
 
     let bad = chain_with_coinbase(
         &chain,
@@ -269,10 +384,20 @@ fn body_root_mismatch_rejected() {
     r.sync(&chain, 1);
     let before = r.tip_hash();
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("the body does not match the header"));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    let err = cause_of(
+        r.cm.last_branch_failure()
+            .cloned()
+            .expect("the body does not match the header"),
+    );
     assert!(
-        matches!(err, Reject::TxRootMismatch | Reject::Tx { .. } | Reject::BodyStructure { .. }),
+        matches!(
+            err,
+            Reject::TxRootMismatch | Reject::Tx { .. } | Reject::BodyStructure { .. }
+        ),
         "got {err:?}"
     );
     assert_eq!(r.tip_hash(), before);
@@ -284,16 +409,34 @@ fn missing_coinbase_rejected() {
     let user = user_key(0x40);
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&user),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut bad = chain.clone();
     let t = signed_transfer(&user, [0xEE; 20], 1, 1, 0);
     bad.push_body(Scenario::encode_body(&[&t]));
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
     let err = cause_of(r.cm.last_branch_failure().cloned().expect("no coinbase"));
-    assert!(matches!(err, Reject::Tx { err: TxError::MissingCoinbase, .. }), "got {err:?}");
+    assert!(
+        matches!(
+            err,
+            Reject::Tx {
+                err: TxError::MissingCoinbase,
+                ..
+            }
+        ),
+        "got {err:?}"
+    );
 }
 
 #[test]
@@ -305,7 +448,9 @@ fn coinbase_spendable_only_at_maturity() {
 
     let cb_height = 1u64;
     let first_spend = cb_height + maturity;
-    let chain = Scenario::genesis(&p, T0).with_miner(miner_addr).extend(first_spend - 1);
+    let chain = Scenario::genesis(&p, T0)
+        .with_miner(miner_addr)
+        .extend(first_spend - 1);
     let reward1 = emission::block_reward(cb_height);
     assert!(reward1 > 10, "the fixture needs a spendable reward");
 
@@ -316,7 +461,14 @@ fn coinbase_spendable_only_at_maturity() {
     early.push_body(Scenario::encode_body(&[&cb, &t]));
     let err = cause_of(reject_of(&chain.fork_at(one_short - 1), &early));
     assert!(
-        matches!(err, Reject::InsufficientBalance { index: 1, need: 2, have: 0 }),
+        matches!(
+            err,
+            Reject::InsufficientBalance {
+                index: 1,
+                need: 2,
+                have: 0
+            }
+        ),
         "one block short of maturity the reward is still immature, got {err:?}"
     );
 
@@ -345,7 +497,9 @@ fn maturity_makes_every_reorgable_coinbase_unspendable() {
     let tip_height = COINBASE_MATURITY + MAX_REORG_DEPTH;
     let spend_height = tip_height + 1;
     let deepest_reorgable = tip_height - MAX_REORG_DEPTH;
-    let chain = Scenario::genesis(&p, T0).with_miner(miner_addr).extend(tip_height);
+    let chain = Scenario::genesis(&p, T0)
+        .with_miner(miner_addr)
+        .extend(tip_height);
 
     assert!(
         spend_height - deepest_reorgable < COINBASE_MATURITY,
@@ -368,7 +522,8 @@ fn maturity_makes_every_reorgable_coinbase_unspendable() {
         total
     };
     r.offer(3, &blocks_above(&spend, tip_height));
-    r.cm.advance().expect("the spend is funded by matured rewards only");
+    r.cm.advance()
+        .expect("the spend is funded by matured rewards only");
     let acct = r.store.account(&miner_addr);
     assert!(acct.balance > 0);
     assert!(
@@ -393,7 +548,13 @@ fn bad_sig_transfer_invalidates_block() {
     let user = user_key(0x60);
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&user),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut t = signed_transfer(&user, [0xEE; 20], 1, 1, 0);
@@ -403,9 +564,19 @@ fn bad_sig_transfer_invalidates_block() {
     let cb = bad.normal_coinbase(6, 1);
     bad.push_body(Scenario::encode_body(&[&cb, &t]));
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("verify_strict said no"));
-    assert!(matches!(err, Reject::BadTransferSignature { index: 1 }), "got {err:?}");
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    let err = cause_of(
+        r.cm.last_branch_failure()
+            .cloned()
+            .expect("verify_strict said no"),
+    );
+    assert!(
+        matches!(err, Reject::BadTransferSignature { index: 1 }),
+        "got {err:?}"
+    );
 }
 
 #[test]
@@ -414,7 +585,13 @@ fn transfer_wrong_nonce_rejected() {
     let user = user_key(0x61);
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&user),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut bad = chain.clone();
@@ -422,10 +599,24 @@ fn transfer_wrong_nonce_rejected() {
     let cb = bad.normal_coinbase(6, 1);
     bad.push_body(Scenario::encode_body(&[&cb, &t]));
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("nonce 5 is not next"));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    let err = cause_of(
+        r.cm.last_branch_failure()
+            .cloned()
+            .expect("nonce 5 is not next"),
+    );
     assert!(
-        matches!(err, Reject::BadNonce { index: 1, expected: 0, got: 5 }),
+        matches!(
+            err,
+            Reject::BadNonce {
+                index: 1,
+                expected: 0,
+                got: 5
+            }
+        ),
         "got {err:?}"
     );
 }
@@ -441,29 +632,54 @@ fn two_transfers_run_in_body_order() {
 
     {
         let mut r = Rig::new(&chain, params());
-        r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+        r.store.set_account(
+            addr_of(&user),
+            Account {
+                balance: 1_000_000,
+                nonce: 0,
+            },
+        );
         r.sync(&chain, 1);
         let mut good = chain.clone();
         let cb = good.normal_coinbase(6, 2);
         good.push_body(Scenario::encode_body(&[&cb, &t0, &t1]));
         r.offer(3, &blocks_above(&good, 5));
-        assert!(matches!(r.cm.advance().expect("in order"), Progress::Advanced { .. }));
+        assert!(matches!(
+            r.cm.advance().expect("in order"),
+            Progress::Advanced { .. }
+        ));
         let a = r.store.account(&addr_of(&user));
         assert_eq!(a.nonce, 2);
         assert_eq!(a.balance, 1_000_000 - 4);
     }
     {
         let mut r = Rig::new(&chain, params());
-        r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+        r.store.set_account(
+            addr_of(&user),
+            Account {
+                balance: 1_000_000,
+                nonce: 0,
+            },
+        );
         r.sync(&chain, 1);
         let mut bad = chain.clone();
         let cb = bad.normal_coinbase(6, 2);
         bad.push_body(Scenario::encode_body(&[&cb, &t1, &t0]));
         r.offer(3, &blocks_above(&bad, 5));
-        assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    let err = cause_of(r.cm.last_branch_failure().cloned().expect("out of order"));
+        assert!(matches!(
+            r.cm.advance().expect("not halted"),
+            Progress::NoChange
+        ));
+        let err = cause_of(r.cm.last_branch_failure().cloned().expect("out of order"));
         assert!(
-            matches!(err, Reject::BadNonce { index: 1, expected: 0, got: 1 }),
+            matches!(
+                err,
+                Reject::BadNonce {
+                    index: 1,
+                    expected: 0,
+                    got: 1
+                }
+            ),
             "got {err:?}"
         );
     }
@@ -475,7 +691,13 @@ fn transfer_below_fee_floor_rejected() {
     let user = user_key(0x63);
     let chain = Scenario::genesis(&p, T0).extend(5);
     let mut r = Rig::new(&chain, p.clone());
-    r.store.set_account(addr_of(&user), Account { balance: 1_000_000, nonce: 0 });
+    r.store.set_account(
+        addr_of(&user),
+        Account {
+            balance: 1_000_000,
+            nonce: 0,
+        },
+    );
     r.sync(&chain, 1);
 
     let mut bad = chain.clone();
@@ -483,9 +705,15 @@ fn transfer_below_fee_floor_rejected() {
     let cb = bad.normal_coinbase(6, 0);
     bad.push_body(Scenario::encode_body(&[&cb, &t]));
     r.offer(3, &blocks_above(&bad, 5));
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
     let err = cause_of(r.cm.last_branch_failure().cloned().expect("zero fee"));
-    assert!(matches!(err, Reject::FeeBelowFloor { index: 1 }), "got {err:?}");
+    assert!(
+        matches!(err, Reject::FeeBelowFloor { index: 1 }),
+        "got {err:?}"
+    );
 }
 
 #[test]
@@ -498,7 +726,13 @@ fn reserved_tx_type_rejected() {
     bad.push_body(Scenario::encode_body(&[&cb, &reserved]));
     let err = cause_of(reject_of(&chain, &bad));
     assert!(
-        matches!(err, Reject::Tx { index: 1, err: TxError::RecordDoesNotDecode { .. } }),
+        matches!(
+            err,
+            Reject::Tx {
+                index: 1,
+                err: TxError::RecordDoesNotDecode { .. }
+            }
+        ),
         "got {err:?}"
     );
 }

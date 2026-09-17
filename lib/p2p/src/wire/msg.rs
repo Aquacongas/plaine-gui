@@ -72,10 +72,7 @@ pub enum Msg {
     GetData(Vec<InvItem>),
     NotFound(Vec<InvItem>),
 
-    GetHeaders {
-        locator: Vec<Hash32>,
-        stop: Hash32,
-    },
+    GetHeaders { locator: Vec<Hash32>, stop: Hash32 },
     Headers(Vec<[u8; HEADER_BYTES]>),
     Block(Vec<u8>),
     Tx(Vec<u8>),

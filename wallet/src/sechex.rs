@@ -159,8 +159,14 @@ mod tests {
     fn error_message_never_quotes_the_input() {
         let err = decode("00112233445566778899aabbccddeeffzz").unwrap_err();
         let text = err.to_string();
-        assert!(!text.contains("0011"), "error text leaked the input: {text}");
-        assert!(!text.contains('z'), "error text named the character: {text}");
+        assert!(
+            !text.contains("0011"),
+            "error text leaked the input: {text}"
+        );
+        assert!(
+            !text.contains('z'),
+            "error text named the character: {text}"
+        );
     }
 
     #[test]
@@ -204,7 +210,10 @@ mod tests {
             "\u{00e9}".repeat(34),
         ] {
             let e = decode_backup(&bad).unwrap_err();
-            assert!(!e.to_string().contains(&bad) || bad.is_empty(), "echoed: {e}");
+            assert!(
+                !e.to_string().contains(&bad) || bad.is_empty(),
+                "echoed: {e}"
+            );
         }
     }
 

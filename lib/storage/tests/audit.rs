@@ -134,8 +134,14 @@ fn audit_bytes_on_disk() {
         let (a, _ka) = build_store(&format!("aud-a-{txs}"), n1, 2_000, txs, 0, false);
         let (b, _kb) = build_store(&format!("aud-b-{txs}"), n2, 2_000, txs, 0, false);
         println!("\n=== MARGINAL COST, {label} (state universe saturated) ===");
-        println!("  n1={} bytes: hdr {} bseg {} bidx {} redb {} total {}", n1, a.hdr, a.bseg, a.bidx, a.redb, a.total);
-        println!("  n2={} bytes: hdr {} bseg {} bidx {} redb {} total {}", n2, b.hdr, b.bseg, b.bidx, b.redb, b.total);
+        println!(
+            "  n1={} bytes: hdr {} bseg {} bidx {} redb {} total {}",
+            n1, a.hdr, a.bseg, a.bidx, a.redb, a.total
+        );
+        println!(
+            "  n2={} bytes: hdr {} bseg {} bidx {} redb {} total {}",
+            n2, b.hdr, b.bseg, b.bidx, b.redb, b.total
+        );
         let mh = (b.hdr - a.hdr) as f64 / dn;
         let mb = (b.bseg - a.bseg) as f64 / dn;
         let mx = (b.bidx - a.bidx) as f64 / dn;
@@ -146,16 +152,32 @@ fn audit_bytes_on_disk() {
         line("body sidecar    B/block", mx);
         line("redb            B/block", md);
         line("WHOLE STORE     B/block", mt);
-        line("  of which per TRANSACTION (B/tx)", if txs > 0 { (mb - 128.0) / txs as f64 } else { 0.0 });
+        line(
+            "  of which per TRANSACTION (B/tx)",
+            if txs > 0 {
+                (mb - 128.0) / txs as f64
+            } else {
+                0.0
+            },
+        );
         println!("  --- extrapolated ---");
         line("headers  MB/year (segments)", mh * BLOCKS_PER_YEAR / MB);
-        line("headers  MB/5yr  (segments)", mh * BLOCKS_PER_YEAR * 5.0 / MB);
+        line(
+            "headers  MB/5yr  (segments)",
+            mh * BLOCKS_PER_YEAR * 5.0 / MB,
+        );
         line("redb     MB/year (index+ring)", md * BLOCKS_PER_YEAR / MB);
         line("redb     MB/5yr", md * BLOCKS_PER_YEAR * 5.0 / MB);
         line("bodies   GB/year", mb * BLOCKS_PER_YEAR / (MB * 1000.0));
-        line("HEADER-SIDE MB/year (hdr+redb)", (mh + md) * BLOCKS_PER_YEAR / MB);
+        line(
+            "HEADER-SIDE MB/year (hdr+redb)",
+            (mh + md) * BLOCKS_PER_YEAR / MB,
+        );
         line("headers-in-redb MB/year", 254.0 * BLOCKS_PER_YEAR / MB);
-        line("raw header bytes MB/year (132 B)", 132.0 * BLOCKS_PER_YEAR / MB);
+        line(
+            "raw header bytes MB/year (132 B)",
+            132.0 * BLOCKS_PER_YEAR / MB,
+        );
         line("ratio vs B/record", 254.0 / (mh + md));
     }
 }
@@ -185,7 +207,10 @@ fn audit_state_and_txindex_rows() {
             sz.redb,
             sz.redb as i64 - prev as i64
         );
-        line("redb B per account (gross)", sz.redb as f64 / accounts as f64);
+        line(
+            "redb B per account (gross)",
+            sz.redb as f64 / accounts as f64,
+        );
         line("raw B per account (20+24)", 44.0);
         prev = sz.redb;
     }
@@ -204,7 +229,10 @@ fn audit_state_and_txindex_rows() {
     line("redb B/block with txindex", with);
     line("redb B/block without", without);
     line("=> B per txindex ROW", (with - without) / txs as f64);
-    line("GB/year at 20 tx/block", (with - without) * BLOCKS_PER_YEAR / (MB * 1000.0));
+    line(
+        "GB/year at 20 tx/block",
+        (with - without) * BLOCKS_PER_YEAR / (MB * 1000.0),
+    );
     line("claim B/row", 42.0);
     line("claim GB/year", 0.9);
 }
@@ -239,7 +267,11 @@ fn audit_redb_growth_vs_batch_and_length() {
     println!("\n=== REDB FILE vs IBD BATCH (16,384 blocks, 64 tx/block, 2,000 accounts) ===");
     for batch in [512u32, 2_048, 8_192, 32_768] {
         let (redb, _n, _s) = build_batch(&format!("aud-bat-{batch}"), 16_384, 2_000, 64, batch);
-        println!("  batch {batch:>6}: chain.redb {:>12} B  ({:.1} MiB)", redb, redb as f64 / 1048576.0);
+        println!(
+            "  batch {batch:>6}: chain.redb {:>12} B  ({:.1} MiB)",
+            redb,
+            redb as f64 / 1048576.0
+        );
     }
     println!("\n=== REDB FILE vs CHAIN LENGTH (batch 4,096, 64 tx/block) ===");
     let mut prev = (0u64, 0u64);
@@ -304,7 +336,12 @@ fn audit_full_scale_one_and_five_years() {
     for (label, n, txs, prune) in [
         ("1 YEAR, 2 tx/block, archive", 525_960u64, 2usize, false),
         ("5 YEARS, 2 tx/block, PRUNED full node", 2_629_800, 2, true),
-        ("5 YEARS, coinbase only, PRUNED full node", 2_629_800, 0, true),
+        (
+            "5 YEARS, coinbase only, PRUNED full node",
+            2_629_800,
+            0,
+            true,
+        ),
     ] {
         let s = Scratch::new(&format!("aud-scale-{n}-{txs}-{prune}"));
         let mut cfg = s.cfg();
@@ -364,7 +401,10 @@ fn audit_full_scale_one_and_five_years() {
         line("TOTAL     GB", total as f64 / MB / 1000.0);
         line("reopen (open_micros) ms", reopen_us as f64 / 1000.0);
         line("redb B per block", redb as f64 / n as f64);
-        line("header-side MB/year (hdr + redb)", (hdr + redb) as f64 / MB / (n as f64 / BLOCKS_PER_YEAR));
+        line(
+            "header-side MB/year (hdr + redb)",
+            (hdr + redb) as f64 / MB / (n as f64 / BLOCKS_PER_YEAR),
+        );
         line("headers-in-redb MB/year", 133.6);
     }
 }
@@ -383,12 +423,18 @@ fn audit_import_throughput() {
     ] {
         let (ibd, _k) = build_store(&format!("aud-tp-{txs}"), n, 4_000, txs, 0, false);
         let bps = ibd.blocks as f64 / ibd.extend_secs;
-        println!("\n  {label}: {} blocks in {:.3} s", ibd.blocks, ibd.extend_secs);
+        println!(
+            "\n  {label}: {} blocks in {:.3} s",
+            ibd.blocks, ibd.extend_secs
+        );
         line("IBD blocks/s", bps);
         line("IBD MB/s written", ibd.total as f64 / MB / ibd.extend_secs);
         line("storage us/block", 1e6 / bps);
         line("x faster than the 3 ms PoW worst case", bps / 333.0);
-        line("years of chain per minute of storage time", bps * 60.0 / BLOCKS_PER_YEAR);
+        line(
+            "years of chain per minute of storage time",
+            bps * 60.0 / BLOCKS_PER_YEAR,
+        );
     }
 
     let s = Scratch::new("aud-tip");
@@ -447,9 +493,19 @@ fn audit_corrupt_truncate_tip_header_segment() {
             println!("\n=== TRUNCATED LIVE HEADER SEGMENT (-10 headers) ===");
             println!("  open SUCCEEDED. tip {} (was 2999)", r.tip().height);
             println!("  headers_truncated_to {:?}", rep.headers_truncated_to);
-            println!("  hdr_watermark {} body_watermark {}", r.hdr_watermark(), r.body_watermark());
-            println!("  state fingerprint check: {:?}", r.verify_state_fingerprint().is_ok());
-            println!("  header_at(2989) present: {}", r.header_at(2989).unwrap().is_some());
+            println!(
+                "  hdr_watermark {} body_watermark {}",
+                r.hdr_watermark(),
+                r.body_watermark()
+            );
+            println!(
+                "  state fingerprint check: {:?}",
+                r.verify_state_fingerprint().is_ok()
+            );
+            println!(
+                "  header_at(2989) present: {}",
+                r.header_at(2989).unwrap().is_some()
+            );
             drop(c);
             drop(r);
         }
@@ -468,11 +524,26 @@ fn audit_corrupt_truncate_old_header_segment() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== TRUNCATED SEALED HEADER SEGMENT 0 (-50 headers, depth ~8k) ===");
-            println!("  open SUCCEEDED (this is the finding). tip {}", r.tip().height);
-            println!("  headers_truncated_to {:?}  index_rebuilt {}", rep.headers_truncated_to, rep.index_rebuilt);
-            println!("  header_at(4045) -> {:?}", r.header_at(4_045).unwrap().map(|_| "present"));
-            println!("  header_at(4000) -> {:?}", r.header_at(4_000).unwrap().map(|_| "present"));
-            println!("  hash_at(4045) -> {:?}", r.hash_at(4_045).unwrap().is_some());
+            println!(
+                "  open SUCCEEDED (this is the finding). tip {}",
+                r.tip().height
+            );
+            println!(
+                "  headers_truncated_to {:?}  index_rebuilt {}",
+                rep.headers_truncated_to, rep.index_rebuilt
+            );
+            println!(
+                "  header_at(4045) -> {:?}",
+                r.header_at(4_045).unwrap().map(|_| "present")
+            );
+            println!(
+                "  header_at(4000) -> {:?}",
+                r.header_at(4_000).unwrap().map(|_| "present")
+            );
+            println!(
+                "  hash_at(4045) -> {:?}",
+                r.hash_at(4_045).unwrap().is_some()
+            );
             let mut out = Vec::new();
 
             match r.headers_range(4_040, 20, &mut out) {
@@ -504,13 +575,26 @@ fn audit_corrupt_delete_body_segment() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== DELETED BODY SEGMENT 1 of 3 (prune floor 0) ===");
-            println!("  open SUCCEEDED. tip {}  body_watermark {}", r.tip().height, r.body_watermark());
-            println!("  bodies_truncated_to {:?}  segments_unlinked {}", rep.bodies_truncated_to, rep.segments_unlinked);
+            println!(
+                "  open SUCCEEDED. tip {}  body_watermark {}",
+                r.tip().height,
+                r.body_watermark()
+            );
+            println!(
+                "  bodies_truncated_to {:?}  segments_unlinked {}",
+                rep.bodies_truncated_to, rep.segments_unlinked
+            );
             println!("  prune_floor reported to caller: {}", r.prune_floor());
             println!("  damage: {:?}", rep.integrity.body_damage);
             let mut buf = Vec::new();
-            println!("  body_at(5000) -> {:?}", r.body_at(5_000, &mut buf).map_err(|e| e.to_string()));
-            println!("  body_availability(5000) -> {:?}", r.body_availability(5_000));
+            println!(
+                "  body_at(5000) -> {:?}",
+                r.body_at(5_000, &mut buf).map_err(|e| e.to_string())
+            );
+            println!(
+                "  body_availability(5000) -> {:?}",
+                r.body_availability(5_000)
+            );
             println!("  body_at(1000) -> {:?}", r.body_at(1_000, &mut buf));
             println!("  body_at(9000) -> {:?}", r.body_at(9_000, &mut buf));
             drop(c);
@@ -530,20 +614,30 @@ fn audit_corrupt_delete_header_segment() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== DELETED HEADER SEGMENT 1 of 3 (heights 4096..8191) ===");
-            println!("  open SUCCEEDED. tip {} hdr_watermark {}", r.tip().height, r.hdr_watermark());
-            println!("  headers_truncated_to {:?} index_rebuilt {}", rep.headers_truncated_to, rep.index_rebuilt);
+            println!(
+                "  open SUCCEEDED. tip {} hdr_watermark {}",
+                r.tip().height,
+                r.hdr_watermark()
+            );
+            println!(
+                "  headers_truncated_to {:?} index_rebuilt {}",
+                rep.headers_truncated_to, rep.index_rebuilt
+            );
             println!("  damage: {:?}", rep.integrity.header_damage);
             for h in [4_000u64, 4_096, 6_000, 8_191, 8_192, 12_000] {
                 println!(
                     "    header_at({h}) -> {:?}   availability {:?}",
-                    r.header_at(h).map(|o| o.is_some()).map_err(|e| e.to_string()),
+                    r.header_at(h)
+                        .map(|o| o.is_some())
+                        .map_err(|e| e.to_string()),
                     r.header_availability(h)
                 );
             }
             let mut out = Vec::new();
             println!(
                 "  headers_range(4090, 200) -> {:?}",
-                r.headers_range(4_090, 200, &mut out).map_err(|e| e.to_string())
+                r.headers_range(4_090, 200, &mut out)
+                    .map_err(|e| e.to_string())
             );
             let mut loc = [[0u8; 32]; 32];
             println!(
@@ -551,7 +645,10 @@ fn audit_corrupt_delete_header_segment() {
                 r.locator(&mut loc).unwrap(),
                 r.intact_header_floor()
             );
-            println!("  state fingerprint still verifies: {}", r.verify_state_fingerprint().is_ok());
+            println!(
+                "  state fingerprint still verifies: {}",
+                r.verify_state_fingerprint().is_ok()
+            );
             drop(c);
             drop(r);
         }
@@ -570,12 +667,23 @@ fn audit_corrupt_truncate_body_segment_midfile() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== BODY SEGMENT TRUNCATED IN HALF ===");
-            println!("  open SUCCEEDED. hdr_wm {} body_wm {}", r.hdr_watermark(), r.body_watermark());
+            println!(
+                "  open SUCCEEDED. hdr_wm {} body_wm {}",
+                r.hdr_watermark(),
+                r.body_watermark()
+            );
             println!("  bodies_truncated_to {:?}", rep.bodies_truncated_to);
             let mut buf = Vec::new();
-            let last_ok = (0..3_000u64).rev().find(|h| r.body_at(*h, &mut buf).map(|n| n.is_some()).unwrap_or(false));
+            let last_ok = (0..3_000u64).rev().find(|h| {
+                r.body_at(*h, &mut buf)
+                    .map(|n| n.is_some())
+                    .unwrap_or(false)
+            });
             println!("  deepest readable body: {last_ok:?}");
-            println!("  headers intact: {}", r.header_at(2_999).unwrap().is_some());
+            println!(
+                "  headers intact: {}",
+                r.header_at(2_999).unwrap().is_some()
+            );
             drop(c);
             drop(r);
         }
@@ -601,12 +709,21 @@ fn audit_corrupt_truncate_the_index() {
         match res {
             Ok(Ok((c, r, _))) => {
                 println!("\n=== REDB TRUNCATED BY {cut} B (of {before}) ===");
-                println!("  !!! open SUCCEEDED. tip {} watermark {}", r.tip().height, r.hdr_watermark());
-                println!("  fingerprint: {:?}", r.verify_state_fingerprint().map_err(|e| e.to_string()));
+                println!(
+                    "  !!! open SUCCEEDED. tip {} watermark {}",
+                    r.tip().height,
+                    r.hdr_watermark()
+                );
+                println!(
+                    "  fingerprint: {:?}",
+                    r.verify_state_fingerprint().map_err(|e| e.to_string())
+                );
                 drop(c);
                 drop(r);
             }
-            Ok(Err(e)) => println!("\n=== REDB TRUNCATED BY {cut} B (of {before}): open REFUSED -> {e}"),
+            Ok(Err(e)) => {
+                println!("\n=== REDB TRUNCATED BY {cut} B (of {before}): open REFUSED -> {e}")
+            }
             Err(_) => println!("\n=== REDB TRUNCATED BY {cut} B (of {before}): open PANICKED"),
         }
     }
@@ -621,9 +738,19 @@ fn audit_corrupt_delete_the_index_entirely() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== chain.redb DELETED, segments intact ===");
-            println!("  open SUCCEEDED. tip {} hdr_wm {}", r.tip().height, r.hdr_watermark());
-            println!("  headers_truncated_to {:?} segments_unlinked {}", rep.headers_truncated_to, rep.segments_unlinked);
-            println!("  hseg still on disk: {} B", common::file_bytes(&s.0.join("segments").join("hdr").join("000000.hseg")));
+            println!(
+                "  open SUCCEEDED. tip {} hdr_wm {}",
+                r.tip().height,
+                r.hdr_watermark()
+            );
+            println!(
+                "  headers_truncated_to {:?} segments_unlinked {}",
+                rep.headers_truncated_to, rep.segments_unlinked
+            );
+            println!(
+                "  hseg still on disk: {} B",
+                common::file_bytes(&s.0.join("segments").join("hdr").join("000000.hseg"))
+            );
             drop(c);
             drop(r);
         }
@@ -647,7 +774,11 @@ fn audit_corrupt_flip_a_header_byte_deep() {
     match open(s.cfg()) {
         Ok((c, r, rep)) => {
             println!("\n=== ONE FLIPPED BYTE IN HEADER 1000 (depth ~11k) ===");
-            println!("  open SUCCEEDED. tip {} truncated_to {:?}", r.tip().height, rep.headers_truncated_to);
+            println!(
+                "  open SUCCEEDED. tip {} truncated_to {:?}",
+                r.tip().height,
+                rep.headers_truncated_to
+            );
             let h1000 = r.header_at(1_000).unwrap().unwrap();
             let h1001 = r.header_at(1_001).unwrap().unwrap();
             let links = h1001[12..44] == plaine_consensus::crypto::header_hash(&h1000)[..];
@@ -655,8 +786,13 @@ fn audit_corrupt_flip_a_header_byte_deep() {
             println!("  THE RESIDUAL, stated: interior bit rot inside ONE segment is still not");
             println!("  detected. The boundary check shrinks the undetected span from the whole");
             println!("  chain to at most 4,094 headers; closing it costs an O(height) walk.");
-            let e = r.header_by_hash(&plaine_consensus::crypto::header_hash(&h1000)).unwrap();
-            println!("  header_by_hash(corrupted hash) -> {:?}", e.map(|(h, _)| h));
+            let e = r
+                .header_by_hash(&plaine_consensus::crypto::header_hash(&h1000))
+                .unwrap();
+            println!(
+                "  header_by_hash(corrupted hash) -> {:?}",
+                e.map(|(h, _)| h)
+            );
             drop(c);
             drop(r);
         }
@@ -707,19 +843,26 @@ fn audit_hole_in_the_middle_of_the_header_range() {
     truncate(&seg, 132 * 50);
     let (c, r, rep) = open(s.cfg()).expect("open");
     println!("\n=== HOLE AT 4046..4095, CHAIN CONTINUES AT 4096, TIP 12287 ===");
-    println!("  open OK, truncated_to {:?}, tip {}", rep.headers_truncated_to, r.tip().height);
+    println!(
+        "  open OK, truncated_to {:?}, tip {}",
+        rep.headers_truncated_to,
+        r.tip().height
+    );
     println!("  damage: {:?}", rep.integrity.header_damage);
     for h in [4_045u64, 4_046, 4_050, 4_095, 4_096, 5_000] {
         println!(
             "    header_at({h}) -> {:?}   availability {:?}",
-            r.header_at(h).map(|o| o.is_some()).map_err(|e| e.to_string()),
+            r.header_at(h)
+                .map(|o| o.is_some())
+                .map_err(|e| e.to_string()),
             r.header_availability(h)
         );
     }
     let mut out = Vec::new();
     println!(
         "  headers_range(4040, 100) -> {:?} (asked 100; it used to answer 12 and never recover)",
-        r.headers_range(4_040, 100, &mut out).map_err(|e| e.to_string())
+        r.headers_range(4_040, 100, &mut out)
+            .map_err(|e| e.to_string())
     );
     let mut loc = [[0u8; 32]; 32];
     println!(
@@ -833,7 +976,10 @@ fn audit_redb_file_and_bytes_per_header() {
     line("ratio 254 / here", 254.0 / here);
     line("MB/year here", here * BLOCKS_PER_YEAR / MB);
     line("MB/5yr here", here * BLOCKS_PER_YEAR * 5.0 / MB);
-    line("GB over TEN years saved vs 254 B", (254.0 - here) * BLOCKS_PER_YEAR * 10.0 / (MB * 1000.0));
+    line(
+        "GB over TEN years saved vs 254 B",
+        (254.0 - here) * BLOCKS_PER_YEAR * 10.0 / (MB * 1000.0),
+    );
 
     println!("{t}  --- (ii) the FILE-DELTA method, which measures the allocator ---");
     line("header segment B/block (must be 132.00)", mh);
@@ -844,7 +990,8 @@ fn audit_redb_file_and_bytes_per_header() {
 
     let n = 131_072u64;
     let acc = 200_000u64;
-    let default_keep = plaine_storage::StoreConfig::new(".", plaine_storage::Network::Main).state_ckpt_keep;
+    let default_keep =
+        plaine_storage::StoreConfig::new(".", plaine_storage::Network::Main).state_ckpt_keep;
     let (off, koff) = build_tuned("c1-off", n, acc, 41, 256, 4_096, 0, default_keep);
     let (on, kon) = build_tuned("c1-on", n, acc, 41, 256, 4_096, 4_096, default_keep);
     let (old, kold) = build_tuned("c1-old", n, acc, 41, 256, 4_096, 4_096, 4);
@@ -858,15 +1005,33 @@ fn audit_redb_file_and_bytes_per_header() {
     );
     println!("{t}  (the shipped default is keep {default_keep}; keep 4 was the default this run changed)");
     line("chain.redb MB, state checkpoints OFF", off.redb as f64 / MB);
-    line("chain.redb MB, SHIPPED DEFAULT (4,096 / keep 2)", on.redb as f64 / MB);
-    line("chain.redb MB, OLD default (4,096 / keep 4)", old.redb as f64 / MB);
-    line("inflation of the shipped default (FILE)", on.redb as f64 / off.redb.max(1) as f64);
-    line("inflation of the old default (FILE)", old.redb as f64 / off.redb.max(1) as f64);
+    line(
+        "chain.redb MB, SHIPPED DEFAULT (4,096 / keep 2)",
+        on.redb as f64 / MB,
+    );
+    line(
+        "chain.redb MB, OLD default (4,096 / keep 4)",
+        old.redb as f64 / MB,
+    );
+    line(
+        "inflation of the shipped default (FILE)",
+        on.redb as f64 / off.redb.max(1) as f64,
+    );
+    line(
+        "inflation of the old default (FILE)",
+        old.redb as f64 / off.redb.max(1) as f64,
+    );
     line("live pages MB, OFF", alloc_off as f64 / MB);
     line("live pages MB, SHIPPED DEFAULT", alloc_on as f64 / MB);
     line("live pages MB, OLD default", alloc_old as f64 / MB);
-    line("inflation, shipped default (LIVE, quantisation-free)", alloc_on as f64 / alloc_off.max(1) as f64);
-    line("inflation, old default (LIVE)", alloc_old as f64 / alloc_off.max(1) as f64);
+    line(
+        "inflation, shipped default (LIVE, quantisation-free)",
+        alloc_on as f64 / alloc_off.max(1) as f64,
+    );
+    line(
+        "inflation, old default (LIVE)",
+        alloc_old as f64 / alloc_off.max(1) as f64,
+    );
     line("the RETRACTED claim, 121.5 MiB, in MB", 127.40);
     line("  x that claim, OFF", off.redb as f64 / MB / 127.40);
     line("  x that claim, ON", on.redb as f64 / MB / 127.40);
@@ -895,7 +1060,16 @@ fn audit_checkpoint_cost_vs_length_and_keep() {
             "\n{t}=== {accounts} accounts (whole state tree dirtied every {sat_blocks:.0} blocks) ==="
         );
         for n in [24_576u64, 98_304] {
-            let (off, koff) = build_tuned(&format!("c3-off-{accounts}-{n}"), n, accounts, 41, 256, 4_096, 0, 4);
+            let (off, koff) = build_tuned(
+                &format!("c3-off-{accounts}-{n}"),
+                n,
+                accounts,
+                41,
+                256,
+                4_096,
+                0,
+                4,
+            );
             let (alloc_off, _, _) = weigh(&koff);
             println!(
                 "{t}  {n:>6} blocks (tree dirtied {:>5.1}x): OFF file {:>7.1} MB, live {:>7.1} MB",
@@ -904,8 +1078,16 @@ fn audit_checkpoint_cost_vs_length_and_keep() {
                 alloc_off as f64 / MB
             );
             for keep in [1u32, 2, 4] {
-                let (on, kon) =
-                    build_tuned(&format!("c3-on-{accounts}-{n}-{keep}"), n, accounts, 41, 256, 4_096, 4_096, keep);
+                let (on, kon) = build_tuned(
+                    &format!("c3-on-{accounts}-{n}-{keep}"),
+                    n,
+                    accounts,
+                    41,
+                    256,
+                    4_096,
+                    4_096,
+                    keep,
+                );
                 let (alloc_on, _, _) = weigh(&kon);
                 println!(
                     "{t}      keep {keep}: file {:>7.1} MB ({:>5.3}x)  live {:>7.1} MB ({:>5.3}x)",
@@ -939,17 +1121,31 @@ fn audit_state_table_attribution() {
         let q = st.page_bytes(ps) as f64 / accounts as f64;
         let file = run.redb as f64;
         let s_gross = file / accounts as f64;
-        println!("\n{t}=== {accounts} accounts, {n} blocks, 41 writes/block, batch 4,096, ckpt OFF ===");
-        println!("{t}  chain.redb {} B, page size {ps}, allocated pages {}", run.redb, db.allocated_pages);
+        println!(
+            "\n{t}=== {accounts} accounts, {n} blocks, 41 writes/block, batch 4,096, ckpt OFF ==="
+        );
+        println!(
+            "{t}  chain.redb {} B, page size {ps}, allocated pages {}",
+            run.redb, db.allocated_pages
+        );
         line("P  state payload      B/account (must be ~44)", p);
         line("Q  state table pages  B/account  <-- THE NUMBER", q);
         line("   Q - P = redb page slack + branch keys (INHERENT)", q - p);
         line("S  whole file / accounts (what `du` shows)", s_gross);
-        line("   S - Q = other tables + free pages (NOT this line's)", s_gross - q);
+        line(
+            "   S - Q = other tables + free pages (NOT this line's)",
+            s_gross - q,
+        );
         let table_pages: u64 = tables.iter().map(|f| f.page_bytes(ps)).sum();
         let allocated = db.allocated_pages * ps;
-        line("R  allocated - sum(table pages), MB (TRANSIENT)", (allocated as f64 - table_pages as f64) / MB);
-        line("   file - allocated pages, MB", (file - allocated as f64) / MB);
+        line(
+            "R  allocated - sum(table pages), MB (TRANSIENT)",
+            (allocated as f64 - table_pages as f64) / MB,
+        );
+        line(
+            "   file - allocated pages, MB",
+            (file - allocated as f64) / MB,
+        );
         println!("{t}  --- every table, pages x {ps} B ---");
         for f in &tables {
             if f.rows == 0 {
@@ -982,7 +1178,16 @@ fn audit_state_table_attribution() {
 
     println!("\n{t}=== S - Q: accounts, or the IBD batch high-water mark? (200,000 accounts) ===");
     for batch in [512u32, 4_096, 32_768] {
-        let (run, s2) = build_tuned(&format!("c4-batch-{batch}"), n, 200_000, 41, 256, batch, 0, 4);
+        let (run, s2) = build_tuned(
+            &format!("c4-batch-{batch}"),
+            n,
+            200_000,
+            41,
+            256,
+            batch,
+            0,
+            4,
+        );
         let (mut c2, r2, _) = open(s2.cfg()).expect("reopen");
         let tables = r2.table_footprints().unwrap();
         let db = c2.db_footprint().unwrap();
@@ -1003,7 +1208,10 @@ fn audit_state_table_attribution() {
 
     println!("\n{t}REGRESSION of chain.redb on account count, at constant {n} blocks:");
     line("slope  B per marginal account", slope);
-    line("intercept MB (everything that is not accounts)", intercept / MB);
+    line(
+        "intercept MB (everything that is not accounts)",
+        intercept / MB,
+    );
     line("the retracted figure, whole-file/accounts", 235.8);
     line("raw payload B/account (20 + 24)", 44.0);
     println!("{t}NOTE: an 18 B value (a 1e24-mile balance ceiling needs 10 B, not 16) would cut the 44 B payload");
@@ -1017,12 +1225,19 @@ fn audit_ibd_vs_pow_capacity() {
     let _g = serial();
     common::machine_note("C5: storage throughput against verification capacity");
     let t = common::tag();
-    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
     println!("{t}cores available: {cores}. The committer is a SINGLE WRITER by construction, so");
     println!("{t}the storage column does not scale with P while the verification column does.");
 
     let mut storage: Vec<(usize, f64)> = Vec::new();
-    for (txs, n) in [(2usize, 49_152u64), (20, 24_576), (64, 16_384), (127, 8_192)] {
+    for (txs, n) in [
+        (2usize, 49_152u64),
+        (20, 24_576),
+        (64, 16_384),
+        (127, 8_192),
+    ] {
         let (run, _k) = build_tuned(
             &format!("c5-{txs}"),
             n,
@@ -1057,10 +1272,17 @@ fn audit_ibd_vs_pow_capacity() {
     }
     let per_hash = t0.elapsed().as_secs_f64() / 200_000.0;
     println!("{t}  (sink {sink})");
-    line("measured header_hash us (the PoW check itself)", per_hash * 1e6);
+    line(
+        "measured header_hash us (the PoW check itself)",
+        per_hash * 1e6,
+    );
     println!("\n{t}PoW capacity, from the cited 1.3-3.0 ms/header band (P threads):");
     for p in [1usize, 2, 4, 8, 16] {
-        println!("{t}  P={p:<3} {:>8.0} - {:<8.0} blocks/s", p as f64 / 3.0e-3, p as f64 / 1.3e-3);
+        println!(
+            "{t}  P={p:<3} {:>8.0} - {:<8.0} blocks/s",
+            p as f64 / 3.0e-3,
+            p as f64 / 1.3e-3
+        );
     }
     println!("\n{t}CROSSOVER: the thread count P* at which verification catches storage.");
     println!("{t}  P* = storage_blocks_per_s x seconds_per_header_verified. Below P*, PoW binds");
@@ -1114,7 +1336,10 @@ fn audit_ibd_vs_pow_capacity() {
             &format!("  at {txs} tx/block: us/block now -> best case"),
             now - saving_us_per_block,
         );
-        line("     => best-case blocks/s", 1e6 / (now - saving_us_per_block).max(0.001));
+        line(
+            "     => best-case blocks/s",
+            1e6 / (now - saving_us_per_block).max(0.001),
+        );
     }
 }
 
@@ -1127,7 +1352,9 @@ fn audit_open_guard_after_a_failed_open() {
     let mut bad = s.cfg();
     bad.network = plaine_storage::Network::Main;
     match open(bad) {
-        Err(StoreError::NetworkMismatch { .. }) => println!("\n=== network mismatch refused, as designed"),
+        Err(StoreError::NetworkMismatch { .. }) => {
+            println!("\n=== network mismatch refused, as designed")
+        }
         Err(e) => println!("\n=== refused for another reason: {e}"),
         Ok(_) => println!("\n=== !!! network mismatch ACCEPTED"),
     }
@@ -1164,7 +1391,10 @@ fn audit_side_header_scan_at_the_row_cap() {
         }
     };
 
-    for (label, upto) in [("4,096 rows", 4_096u64), ("16,384 rows (the cap)", 16_384u64)] {
+    for (label, upto) in [
+        ("4,096 rows", 4_096u64),
+        ("16,384 rows (the cap)", 16_384u64),
+    ] {
         make(0, upto);
 
         let n0 = r.side_headers_from(0, 100_000).unwrap().len();

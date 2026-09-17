@@ -166,9 +166,16 @@ mod tests {
         let t = Target::from_compact(bits).expect("share target");
 
         assert_eq!(t.0[0..8], ct.0[3].to_be_bytes(), "top limb is not first");
-        assert_eq!(t.0[24..32], ct.0[0].to_be_bytes(), "bottom limb is not last");
+        assert_eq!(
+            t.0[24..32],
+            ct.0[0].to_be_bytes(),
+            "bottom limb is not last"
+        );
 
-        assert_ne!(ct.0[3], ct.0[0], "this constant is limb-palindromic: pick another");
+        assert_ne!(
+            ct.0[3], ct.0[0],
+            "this constant is limb-palindromic: pick another"
+        );
     }
 
     #[test]
@@ -182,6 +189,8 @@ mod tests {
     fn hex_is_64_lowercase_chars() {
         let h = Target::from_difficulty(60_000).to_hex();
         assert_eq!(h.len(), 64);
-        assert!(h.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(h
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
     }
 }

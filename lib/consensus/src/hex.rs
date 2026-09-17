@@ -44,8 +44,14 @@ pub fn decode(s: &str) -> Result<Vec<u8>, HexError> {
     }
     let mut out = Vec::with_capacity(b.len() / 2);
     for i in (0..b.len()).step_by(2) {
-        let hi = nibble(b[i]).ok_or(HexError::InvalidChar { index: i, byte: b[i] })?;
-        let lo = nibble(b[i + 1]).ok_or(HexError::InvalidChar { index: i + 1, byte: b[i + 1] })?;
+        let hi = nibble(b[i]).ok_or(HexError::InvalidChar {
+            index: i,
+            byte: b[i],
+        })?;
+        let lo = nibble(b[i + 1]).ok_or(HexError::InvalidChar {
+            index: i + 1,
+            byte: b[i + 1],
+        })?;
         out.push((hi << 4) | lo);
     }
     Ok(out)
@@ -62,7 +68,10 @@ mod tests {
         assert_eq!(encode(&[]), "");
 
         let s = encode(&(0u8..=255).collect::<Vec<u8>>());
-        assert!(s.chars().all(|c| !c.is_ascii_uppercase()), "encode must be lowercase");
+        assert!(
+            s.chars().all(|c| !c.is_ascii_uppercase()),
+            "encode must be lowercase"
+        );
         assert_eq!(s.len(), 512);
     }
 
@@ -92,11 +101,32 @@ mod tests {
     #[test]
     fn decode_rejects_odd_length_and_bad_chars() {
         assert_eq!(decode("abc"), Err(HexError::OddLength { len: 3 }));
-        assert_eq!(decode("zz"), Err(HexError::InvalidChar { index: 0, byte: b'z' }));
-        assert_eq!(decode("az"), Err(HexError::InvalidChar { index: 1, byte: b'z' }));
-        assert_eq!(decode("00ff0g"), Err(HexError::InvalidChar { index: 5, byte: b'g' }));
+        assert_eq!(
+            decode("zz"),
+            Err(HexError::InvalidChar {
+                index: 0,
+                byte: b'z'
+            })
+        );
+        assert_eq!(
+            decode("az"),
+            Err(HexError::InvalidChar {
+                index: 1,
+                byte: b'z'
+            })
+        );
+        assert_eq!(
+            decode("00ff0g"),
+            Err(HexError::InvalidChar {
+                index: 5,
+                byte: b'g'
+            })
+        );
 
-        assert!(matches!(decode("00\u{e9}"), Err(HexError::InvalidChar { index: 2, .. })));
+        assert!(matches!(
+            decode("00\u{e9}"),
+            Err(HexError::InvalidChar { index: 2, .. })
+        ));
     }
 
     #[test]

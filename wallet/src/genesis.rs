@@ -2,8 +2,7 @@ use crate::error::{Result, WalletError};
 use plaine_consensus::asert::{Target, POW_LIMIT};
 use plaine_consensus::codec::{AuthorNote, BlockBody, CoinbaseTx, Header};
 use plaine_consensus::constants::{
-    ASERT_HALF_LIFE_SECS,
-    AUTHOR_NOTE_MAX_BYTES, CHAIN_ID, GENESIS_BITS, HEADER_BYTES, VERSION_BASE,
+    ASERT_HALF_LIFE_SECS, AUTHOR_NOTE_MAX_BYTES, CHAIN_ID, GENESIS_BITS, HEADER_BYTES, VERSION_BASE,
 };
 use plaine_consensus::{crypto, emission, merkle, tx};
 
@@ -120,9 +119,9 @@ pub fn parse_input(text: &str) -> Result<GenesisInput> {
             .expect("presence checked above")
     };
     let num_u64 = |k: &str| -> Result<u64> {
-        get(k)
-            .parse::<u64>()
-            .map_err(|_| WalletError::format(format!("genesis input: {k} must be a decimal integer")))
+        get(k).parse::<u64>().map_err(|_| {
+            WalletError::format(format!("genesis input: {k} must be a decimal integer"))
+        })
     };
     let num_u32 = |k: &str| -> Result<u32> {
         let v = get(k);
@@ -172,7 +171,10 @@ pub fn parse_input(text: &str) -> Result<GenesisInput> {
         coinbase_to: get("coinbase_to").to_string(),
         note_encoding,
         note_text_file: get("note_text_file").to_string(),
-        author_pubkey: bytes("author_pubkey", 32)?.as_slice().try_into().expect("32"),
+        author_pubkey: bytes("author_pubkey", 32)?
+            .as_slice()
+            .try_into()
+            .expect("32"),
         checkpoint_pubkey: bytes("checkpoint_pubkey", 32)?
             .as_slice()
             .try_into()
@@ -234,7 +236,9 @@ pub fn build(input: &GenesisInput, note: &[u8]) -> Result<Genesis> {
         )));
     }
     let to = crypto::decode_address(&input.coinbase_to).map_err(|e| {
-        WalletError::format(format!("genesis input: coinbase_to is not a valid address: {e}"))
+        WalletError::format(format!(
+            "genesis input: coinbase_to is not a valid address: {e}"
+        ))
     })?;
 
     let note_record = AuthorNote {
@@ -285,13 +289,9 @@ pub fn build(input: &GenesisInput, note: &[u8]) -> Result<Genesis> {
 pub enum LaunchWindow {
     InWindow,
 
-    TooEarly {
-        by_secs: u64,
-    },
+    TooEarly { by_secs: u64 },
 
-    TooLate {
-        by_secs: u64,
-    },
+    TooLate { by_secs: u64 },
 }
 
 impl LaunchWindow {
@@ -323,9 +323,13 @@ impl LaunchWindow {
 pub fn launch_window(time: u64, now: u64) -> LaunchWindow {
     let half = ASERT_HALF_LIFE_SECS as u64;
     if time + half < now {
-        LaunchWindow::TooEarly { by_secs: now - time }
+        LaunchWindow::TooEarly {
+            by_secs: now - time,
+        }
     } else if time > now + half {
-        LaunchWindow::TooLate { by_secs: time - now }
+        LaunchWindow::TooLate {
+            by_secs: time - now,
+        }
     } else {
         LaunchWindow::InWindow
     }
@@ -350,11 +354,7 @@ impl PowVerifier {
     }
 }
 
-pub fn check_launch_refusals_by(
-    input: &GenesisInput,
-    note: &[u8],
-    pow: PowVerifier,
-) -> Result<()> {
+pub fn check_launch_refusals_by(input: &GenesisInput, note: &[u8], pow: PowVerifier) -> Result<()> {
     if input.chain_id == [0, 0, 0, 0] {
         return Err(WalletError::refused(format!(
             "chain_id is the all-zero placeholder. CHAIN_ID is frozen to the \
@@ -446,10 +446,15 @@ pub fn verify(g: &Genesis) -> Result<()> {
     let header = Header::decode(&g.header_bytes)
         .map_err(|e| fail(format!("header does not decode: {e}")))?;
     if header != g.header {
-        return Err(fail("header does not round-trip through its wire form".into()));
+        return Err(fail(
+            "header does not round-trip through its wire form".into(),
+        ));
     }
     if header.height != 0 {
-        return Err(fail(format!("genesis height is {}, must be 0", header.height)));
+        return Err(fail(format!(
+            "genesis height is {}, must be 0",
+            header.height
+        )));
     }
     if header.prev_hash != [0u8; 32] {
         return Err(fail("genesis prev_hash must be all zero".into()));
@@ -489,11 +494,12 @@ pub fn verify(g: &Genesis) -> Result<()> {
         )));
     }
     if body.tx_root() != header.tx_root {
-        return Err(fail("body tx_root does not equal the header tx_root".into()));
+        return Err(fail(
+            "body tx_root does not equal the header tx_root".into(),
+        ));
     }
     let txs = tx::decode_body(&body).map_err(|e| fail(format!("body record: {e}")))?;
-    let cb = tx::check_body_structure(&txs)
-        .map_err(|e| fail(format!("body structure: {e}")))?;
+    let cb = tx::check_body_structure(&txs).map_err(|e| fail(format!("body structure: {e}")))?;
 
     tx::check_coinbase(cb, 0, header.author_note_len, 0)
         .map_err(|e| fail(format!("check_coinbase rejected the genesis coinbase: {e}")))?;
@@ -510,13 +516,19 @@ pub fn verify(g: &Genesis) -> Result<()> {
         )));
     }
     if cb.note.payload != g.note_payload {
-        return Err(fail("the decoded note is not the note that was supplied".into()));
+        return Err(fail(
+            "the decoded note is not the note that was supplied".into(),
+        ));
     }
     if header.author_note_len as usize != g.note_payload.len() {
-        return Err(fail("author_note_len does not equal the note length".into()));
+        return Err(fail(
+            "author_note_len does not equal the note length".into(),
+        ));
     }
     if g.block_hash != crypto::header_hash(&g.header_bytes) {
-        return Err(fail("the published block hash is not the hash of the header bytes".into()));
+        return Err(fail(
+            "the published block hash is not the hash of the header bytes".into(),
+        ));
     }
     Ok(())
 }
@@ -565,12 +577,29 @@ mod tests {
     #[test]
     fn input_parser_is_strict() {
         let base = input_text("504c4e45");
-        assert!(parse_input(&base.replace("nonce             = 0\n", "")).is_err(), "missing key");
-        assert!(parse_input(&format!("{base}nonce = 1\n")).is_err(), "duplicate key");
-        assert!(parse_input(&format!("{base}extra = 1\n")).is_err(), "unknown key");
-        assert!(parse_input(&base.replace("time              = 1765432100", "time =")).is_err(), "empty value");
-        assert!(parse_input(&base.replace("format            = 1", "format            = 2")).is_err());
-        assert!(parse_input(&base.replace("chain_id          = 504c4e45", "chain_id          = 504c")).is_err());
+        assert!(
+            parse_input(&base.replace("nonce             = 0\n", "")).is_err(),
+            "missing key"
+        );
+        assert!(
+            parse_input(&format!("{base}nonce = 1\n")).is_err(),
+            "duplicate key"
+        );
+        assert!(
+            parse_input(&format!("{base}extra = 1\n")).is_err(),
+            "unknown key"
+        );
+        assert!(
+            parse_input(&base.replace("time              = 1765432100", "time =")).is_err(),
+            "empty value"
+        );
+        assert!(
+            parse_input(&base.replace("format            = 1", "format            = 2")).is_err()
+        );
+        assert!(parse_input(
+            &base.replace("chain_id          = 504c4e45", "chain_id          = 504c")
+        )
+        .is_err());
     }
 
     #[test]
@@ -599,8 +628,16 @@ mod tests {
         let i = parse_input(&base).unwrap();
         let g = build(&i, b"the note").unwrap();
 
-        let t = parse_input(&base.replace("time              = 1765432100", "time              = 1765432101")).unwrap();
-        assert_ne!(build(&t, b"the note").unwrap().block_hash, g.block_hash, "time");
+        let t = parse_input(&base.replace(
+            "time              = 1765432100",
+            "time              = 1765432101",
+        ))
+        .unwrap();
+        assert_ne!(
+            build(&t, b"the note").unwrap().block_hash,
+            g.block_hash,
+            "time"
+        );
 
         let n = build(&i, b"the notf").unwrap();
         assert_ne!(n.block_hash, g.block_hash, "one note byte");
@@ -609,7 +646,11 @@ mod tests {
         assert_ne!(nl.block_hash, g.block_hash, "trailing newline");
         assert_eq!(nl.header.author_note_len, 9);
 
-        let b = parse_input(&base.replace("bits              = 0x1f00ffff", "bits              = 0x1f00fffe")).unwrap();
+        let b = parse_input(&base.replace(
+            "bits              = 0x1f00ffff",
+            "bits              = 0x1f00fffe",
+        ))
+        .unwrap();
         let err = build(&b, b"the note").unwrap_err();
         assert!(err.to_string().contains("bits"), "{err}");
     }
@@ -624,7 +665,10 @@ mod tests {
         let wrong = parse_input(&input_text("504c4e46")).unwrap();
         let err = check_launch_refusals(&wrong, b"real note").unwrap_err();
         assert!(err.to_string().contains("504c4e46"), "{err}");
-        assert!(err.to_string().contains("504c4e45"), "must name the expected value: {err}");
+        assert!(
+            err.to_string().contains("504c4e45"),
+            "must name the expected value: {err}"
+        );
 
         let good = parse_input(&input_text("504c4e45")).unwrap();
         let err = check_launch_refusals(&good, b"PLACEHOLDER - replace me").unwrap_err();
@@ -650,8 +694,14 @@ mod tests {
             assert!(check_launch_refusals(&main, note).is_ok());
         } else {
             let err = check_launch_refusals(&main, note).unwrap_err();
-            assert!(err.to_string().contains("`pow` feature"), "must name the feature: {err}");
-            assert!(err.to_string().contains("nonce"), "must name what is unchecked: {err}");
+            assert!(
+                err.to_string().contains("`pow` feature"),
+                "must name the feature: {err}"
+            );
+            assert!(
+                err.to_string().contains("nonce"),
+                "must name what is unchecked: {err}"
+            );
             assert!(
                 err.to_string().contains("height-0 exemption")
                     || err.to_string().contains("no height-0"),
@@ -686,7 +736,9 @@ mod tests {
             &input_text("504c4e45").replace("note_encoding     = 01", "note_encoding     = 00"),
         )
         .unwrap();
-        let err = check_launch_refusals(&bad_enc, frozen).unwrap_err().to_string();
+        let err = check_launch_refusals(&bad_enc, frozen)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("note_encoding"), "{err}");
 
         let r = check_launch_refusals(&main, frozen);
@@ -718,8 +770,10 @@ mod tests {
             let err = check_bits(bad).unwrap_err();
             assert!(err.to_string().contains("bits"), "{why}: {err}");
 
-            let text = input_text("504c4e45")
-                .replace("bits              = 0x1f00ffff", &format!("bits              = 0x{bad:08x}"));
+            let text = input_text("504c4e45").replace(
+                "bits              = 0x1f00ffff",
+                &format!("bits              = 0x{bad:08x}"),
+            );
             let i = parse_input(&text).unwrap();
             assert!(build(&i, b"the note").is_err(), "{why} must fail build");
         }
@@ -752,9 +806,16 @@ mod tests {
         let g = build(&i, b"the note").unwrap();
         verify(&g).unwrap();
 
-        for (field, name) in ["height", "prev_hash", "ext_root", "tx_root", "author_note_len", "version_top_bits"]
-            .into_iter()
-            .enumerate()
+        for (field, name) in [
+            "height",
+            "prev_hash",
+            "ext_root",
+            "tx_root",
+            "author_note_len",
+            "version_top_bits",
+        ]
+        .into_iter()
+        .enumerate()
         {
             let mut t = g.clone();
             match field {

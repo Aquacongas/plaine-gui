@@ -62,7 +62,9 @@ pub fn parse(args: &[String], spec: &Spec) -> Result<Parsed> {
             None => (arg.clone(), None),
         };
         if let Some((_, why)) = BANNED.iter().find(|(b, _)| *b == name_with_dashes) {
-            return Err(WalletError::usage(format!("{name_with_dashes} is refused: {why}")));
+            return Err(WalletError::usage(format!(
+                "{name_with_dashes} is refused: {why}"
+            )));
         }
 
         let Some(stripped) = name_with_dashes.strip_prefix("--") else {
@@ -77,9 +79,7 @@ pub fn parse(args: &[String], spec: &Spec) -> Result<Parsed> {
 
         if spec.switches.contains(&name.as_str()) {
             if inline.is_some() {
-                return Err(WalletError::usage(format!(
-                    "--{name} takes no value"
-                )));
+                return Err(WalletError::usage(format!("--{name} takes no value")));
             }
             if out.switches.contains(&name) {
                 return Err(WalletError::usage(format!("--{name} given more than once")));
@@ -90,9 +90,7 @@ pub fn parse(args: &[String], spec: &Spec) -> Result<Parsed> {
         }
         if spec.values.contains(&name.as_str()) {
             if out.values.iter().any(|(k, _)| *k == name) {
-                return Err(WalletError::usage(format!(
-                    "--{name} given more than once"
-                )));
+                return Err(WalletError::usage(format!("--{name} given more than once")));
             }
             let value = match inline {
                 Some(v) => v,
@@ -189,7 +187,10 @@ mod tests {
     fn unknown_flags_are_errors() {
         let err = parse(&a(&["--feee", "1"]), &SPEC).unwrap_err();
         assert!(err.to_string().contains("unknown option --feee"));
-        assert!(err.to_string().contains("--fee <value>"), "must list the real flags");
+        assert!(
+            err.to_string().contains("--fee <value>"),
+            "must list the real flags"
+        );
     }
 
     #[test]
@@ -221,7 +222,10 @@ mod tests {
             );
         }
 
-        assert_eq!(parse(&a(&["--fee", "1"]), &SPEC).unwrap().get("fee"), Some("1"));
+        assert_eq!(
+            parse(&a(&["--fee", "1"]), &SPEC).unwrap().get("fee"),
+            Some("1")
+        );
     }
 
     #[test]
@@ -232,7 +236,13 @@ mod tests {
 
     #[test]
     fn passphrase_on_argv_is_refused_by_name() {
-        for bad in ["--passphrase", "--pass", "--password", "--seed", "--seed-hex"] {
+        for bad in [
+            "--passphrase",
+            "--pass",
+            "--password",
+            "--seed",
+            "--seed-hex",
+        ] {
             let err = parse(&a(&[bad, "hunter2"]), &SPEC).unwrap_err();
             assert!(
                 err.to_string().contains("is refused"),
@@ -248,7 +258,10 @@ mod tests {
         let err = parse(&a(&["--allow-placeholder-chain-id"]), &SPEC).unwrap_err();
         assert_eq!(err.kind(), "usage", "usage errors exit 2");
         assert!(err.to_string().contains("was removed"), "{err}");
-        assert!(err.to_string().contains("PLNE"), "must name the frozen value: {err}");
+        assert!(
+            err.to_string().contains("PLNE"),
+            "must name the frozen value: {err}"
+        );
 
         assert!(parse(&a(&["--allow-placeholder-chain-id=1"]), &SPEC).is_err());
     }
@@ -262,8 +275,14 @@ mod tests {
 
     #[test]
     fn number_parsers_name_the_flag() {
-        assert!(parse_u64("nonce", "x").unwrap_err().to_string().contains("--nonce"));
-        assert_eq!(parse_u32_flexible("bits", "0x2000ffff").unwrap(), 0x2000_ffff);
+        assert!(parse_u64("nonce", "x")
+            .unwrap_err()
+            .to_string()
+            .contains("--nonce"));
+        assert_eq!(
+            parse_u32_flexible("bits", "0x2000ffff").unwrap(),
+            0x2000_ffff
+        );
         assert_eq!(parse_u32_flexible("bits", "17").unwrap(), 17);
         assert!(parse_u32_flexible("bits", "zz").is_err());
         assert!(parse_pubkey("author-pubkey", "00").is_err());

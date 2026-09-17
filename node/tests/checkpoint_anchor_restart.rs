@@ -21,7 +21,10 @@ fn record(sk: &SigningKey, height: u64, hash: [u8; 32]) -> String {
     let cp = SignedCheckpoint {
         height,
         hash,
-        sigs: vec![CheckpointSig { pubkey: sk.verifying_key().to_bytes(), sig }],
+        sigs: vec![CheckpointSig {
+            pubkey: sk.verifying_key().to_bytes(),
+            sig,
+        }],
     };
     plaine_consensus::hex::encode(&checkpoint_record::encode(&cp))
 }
@@ -50,11 +53,14 @@ fn raw_rpc(port: u16, method: &str, params: &str) -> String {
         body.len()
     );
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).expect("rpc connect");
-    s.set_read_timeout(Some(Duration::from_secs(10))).expect("timeout");
+    s.set_read_timeout(Some(Duration::from_secs(10)))
+        .expect("timeout");
     s.write_all(req.as_bytes()).expect("rpc write");
     let mut out = String::new();
     let _ = s.read_to_string(&mut out);
-    out.split_once("\r\n\r\n").map(|(_, j)| j.to_string()).unwrap_or(out)
+    out.split_once("\r\n\r\n")
+        .map(|(_, j)| j.to_string())
+        .unwrap_or(out)
 }
 
 fn status(port: u16) -> String {
@@ -89,7 +95,10 @@ fn anchor_survives_hard_kill() {
     let hash = [0x11u8; 32];
     let rec = record(&sk, 5_000, hash);
     let r = raw_rpc(RPC, "checkpoint_submit", &format!("[\"{rec}\"]"));
-    assert!(r.contains("\"result\":\"advanced\""), "submit was refused: {r}");
+    assert!(
+        r.contains("\"result\":\"advanced\""),
+        "submit was refused: {r}"
+    );
     assert!(r.contains("\"anchorAdvanced\":true"), "{r}");
     assert!(
         r.contains("\"enforcing\":false"),
@@ -97,7 +106,11 @@ fn anchor_survives_hard_kill() {
     );
 
     let s = status(RPC);
-    assert_eq!(num(&s, "height"), Some(5_000), "the anchor is not live: {s}");
+    assert_eq!(
+        num(&s, "height"),
+        Some(5_000),
+        "the anchor is not live: {s}"
+    );
 
     hard_kill(&mut n);
     let n2 = start("second", &dir, &cfg, P2P, RPC, STRATUM);
@@ -116,7 +129,10 @@ fn anchor_survives_hard_kill() {
     );
 
     let r = raw_rpc(RPC, "checkpoint_submit", &format!("[\"{rec}\"]"));
-    assert!(r.contains("\"result\":\"unchanged\""), "a replay claimed an advance: {r}");
+    assert!(
+        r.contains("\"result\":\"unchanged\""),
+        "a replay claimed an advance: {r}"
+    );
     assert!(r.contains("\"anchorAdvanced\":false"), "{r}");
 
     let mut n2 = n2;
@@ -148,7 +164,10 @@ fn wrong_key_record_refused() {
     let other = SigningKey::from_bytes(&[0x9Au8; 32]);
     let forged = record(&other, 9_000, [0x33u8; 32]);
     let r = raw_rpc(rpc_port, "checkpoint_submit", &format!("[\"{forged}\"]"));
-    assert!(r.contains("\"error\""), "an unsigned-by-us record was accepted: {r}");
+    assert!(
+        r.contains("\"error\""),
+        "an unsigned-by-us record was accepted: {r}"
+    );
     assert!(r.contains("\"reason\":\"unverified\""), "{r}");
 
     let genesis = record(&sk, 0, [0x44u8; 32]);
@@ -159,10 +178,18 @@ fn wrong_key_record_refused() {
     assert!(r.contains("\"reason\":\"malformed\""), "{r}");
 
     let s = status(rpc_port);
-    assert_eq!(num(&s, "height"), Some(4_000), "a refused record moved the anchor: {s}");
+    assert_eq!(
+        num(&s, "height"),
+        Some(4_000),
+        "a refused record moved the anchor: {s}"
+    );
     hard_kill(&mut n);
     let mut n = start("wrongkey2", &dir, &cfg, p2p, rpc_port, stratum);
     let s = status(rpc_port);
-    assert_eq!(num(&s, "height"), Some(4_000), "the anchor changed across a restart: {s}");
+    assert_eq!(
+        num(&s, "height"),
+        Some(4_000),
+        "the anchor changed across a restart: {s}"
+    );
     hard_kill(&mut n);
 }

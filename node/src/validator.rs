@@ -155,7 +155,10 @@ fn report_headers(
 
         crate::wire::net::ValidatorSink::hold(
             holds,
-            plaine_p2p::traits::Held { hash: h.hash, height: h.height },
+            plaine_p2p::traits::Held {
+                hash: h.hash,
+                height: h.height,
+            },
         );
     }
     let Some(rej) = a.first_rejection else { return };
@@ -172,7 +175,10 @@ fn report_headers(
     );
     crate::wire::net::ValidatorSink::refuse(
         refusals,
-        crate::wire::net::Break { height: rej.repair_from, why: rej.why },
+        crate::wire::net::Break {
+            height: rej.repair_from,
+            why: rej.why,
+        },
     );
 }
 
@@ -207,7 +213,11 @@ pub fn run(
         match cmd {
             Cmd::Stop => break,
             Cmd::Tick => {}
-            Cmd::Headers { source, raws, solicitation } => {
+            Cmd::Headers {
+                source,
+                raws,
+                solicitation,
+            } => {
                 release(raws.len() * HEADER_BYTES);
                 let r = match solicitation {
                     Solicit::Unsolicited => chain.submit_headers(source, &raws),
@@ -225,7 +235,10 @@ pub fn run(
                 match chain.submit_block(&hash, bytes) {
                     Ok(()) => crate::log::debug(
                         "chain",
-                        format!("body {} accepted, {n} bytes", plaine_consensus::hex::encode(&hash[..8])),
+                        format!(
+                            "body {} accepted, {n} bytes",
+                            plaine_consensus::hex::encode(&hash[..8])
+                        ),
                     ),
                     Err(e) => {
                         rejects.count(&e);
@@ -233,7 +246,11 @@ pub fn run(
                     }
                 }
             }
-            Cmd::Tx { origin, bytes, reply } => {
+            Cmd::Tx {
+                origin,
+                bytes,
+                reply,
+            } => {
                 if reply.is_none() {
                     release(bytes.len());
                 }
@@ -258,19 +275,36 @@ pub fn run(
                     enforced: chain.checkpoints().len(),
                 });
             }
-            Cmd::Seal { header, body, reply } => {
+            Cmd::Seal {
+                header,
+                body,
+                reply,
+            } => {
                 let v = seal(&mut token, &mut chain, &header, body);
                 let _ = reply.send(v);
                 moved = v == SealVerdict::Accepted;
             }
             Cmd::Ask(q) => {
-                answer(&mut token, &chain, &interp, &clock, &author_note, &stranded, &rejects, q);
+                answer(
+                    &mut token,
+                    &chain,
+                    &interp,
+                    &clock,
+                    &author_note,
+                    &stranded,
+                    &rejects,
+                    q,
+                );
                 continue;
             }
         }
 
         match advance(&mut token, &mut chain) {
-            Ok(Progress::Advanced { tip, rolled_back, applied }) => {
+            Ok(Progress::Advanced {
+                tip,
+                rolled_back,
+                applied,
+            }) => {
                 moved = true;
                 crate::log::debug(
                     "chain",
@@ -282,7 +316,10 @@ pub fn run(
             }
             Ok(Progress::NoChange) => {}
             Err(Reject::Halted { detail }) => {
-                crate::log::error("chain", format!("halted: {detail}. Restart to re-derive the tip from storage."));
+                crate::log::error(
+                    "chain",
+                    format!("halted: {detail}. Restart to re-derive the tip from storage."),
+                );
             }
             Err(e) => crate::log::warn("chain", format!("advance: {e:?}")),
         }
@@ -306,7 +343,8 @@ pub struct StrandedFlag {
 
 impl StrandedFlag {
     pub fn note(&self, unix_now: u64) {
-        self.at.store(unix_now, std::sync::atomic::Ordering::Relaxed);
+        self.at
+            .store(unix_now, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn note_with(&self, unix_now: u64, r: crate::health::TransportStranded) {
@@ -332,7 +370,8 @@ impl StrandedFlag {
     }
 
     pub fn tick(&self, unix_now: u64) {
-        self.now.store(unix_now, std::sync::atomic::Ordering::Relaxed);
+        self.now
+            .store(unix_now, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn recent(&self) -> bool {
@@ -426,7 +465,10 @@ fn seal(
         return SealVerdict::Obsolete;
     }
 
-    if chain.submit_headers_solicited(LOCAL_SOURCE, &[*header]).is_err() {
+    if chain
+        .submit_headers_solicited(LOCAL_SOURCE, &[*header])
+        .is_err()
+    {
         return SealVerdict::Rejected;
     }
     if chain.submit_block(&rec.hash, body).is_err() {
@@ -502,7 +544,11 @@ fn publish(
         hash: t.hash,
         time: t.time,
         chainwork,
-        epoch: if t.hash == prev.hash { prev.epoch } else { prev.epoch + 1 },
+        epoch: if t.hash == prev.hash {
+            prev.epoch
+        } else {
+            prev.epoch + 1
+        },
         mempool_txs: chain.mempool().len(),
         halted: chain.halted(),
     });
@@ -531,7 +577,12 @@ fn answer(
         }
         Query::BySender(addr, r) => {
             let _ = r.send(
-                chain.mempool().sender_txs(&addr).into_iter().map(|t| t.bytes).collect(),
+                chain
+                    .mempool()
+                    .sender_txs(&addr)
+                    .into_iter()
+                    .map(|t| t.bytes)
+                    .collect(),
             );
         }
         Query::Tx(txid, r) => {
@@ -555,7 +606,14 @@ fn answer(
             let _ = r.send(chain.branch_report());
         }
         Query::Template(recipient, r) => {
-            let _ = r.send(build_template(t, chain, clock, author_note, &recipient, stranded));
+            let _ = r.send(build_template(
+                t,
+                chain,
+                clock,
+                author_note,
+                &recipient,
+                stranded,
+            ));
         }
     }
 }
@@ -592,7 +650,11 @@ fn build_template(
 
     let params = chain.params();
     let interval = params.asert_anchor_interval;
-    let anchor_height = if interval == 0 { 0 } else { tip.height / interval * interval };
+    let anchor_height = if interval == 0 {
+        0
+    } else {
+        tip.height / interval * interval
+    };
     let anchor = chain.header_at(anchor_height)?;
     let anchor_parent_time = if anchor_height == 0 {
         chain.header_at(0)?.time.saturating_sub(BLOCK_TIME_SECS)
@@ -683,13 +745,21 @@ mod tests {
         for _ in 0..2_104 {
             t.count(&Reject::BodyAlreadyHeld { hash: [0u8; 32] });
         }
-        assert_eq!((t.already_held, t.not_admissible), (2_104, 0), "the measured healthy shape");
+        assert_eq!(
+            (t.already_held, t.not_admissible),
+            (2_104, 0),
+            "the measured healthy shape"
+        );
 
         let mut w = RejectTally::default();
         for _ in 0..85 {
             w.count(&Reject::BodyNotAdmissible { hash: [1u8; 32] });
         }
-        assert_eq!((w.already_held, w.not_admissible), (0, 85), "the measured wedged shape");
+        assert_eq!(
+            (w.already_held, w.not_admissible),
+            (0, 85),
+            "the measured wedged shape"
+        );
     }
 
     #[test]
@@ -753,15 +823,9 @@ mod tests {
             genesis_bits: plaine_consensus::constants::GENESIS_BITS,
             ..d
         };
-        let chain: Manager = plaine_chain::ChainManager::new(
-            store,
-            sink,
-            Arc::clone(&interp),
-            clock,
-            params,
-            None,
-        )
-        .expect("manager");
+        let chain: Manager =
+            plaine_chain::ChainManager::new(store, sink, Arc::clone(&interp), clock, params, None)
+                .expect("manager");
         (
             chain,
             TipCell::default(),
@@ -771,9 +835,11 @@ mod tests {
         )
     }
 
-    fn report(tip: u64, best: u64, verdict: plaine_chain::BranchVerdict)
-        -> plaine_chain::BranchReport
-    {
+    fn report(
+        tip: u64,
+        best: u64,
+        verdict: plaine_chain::BranchVerdict,
+    ) -> plaine_chain::BranchReport {
         plaine_chain::BranchReport {
             tip,
             best,
@@ -788,23 +854,48 @@ mod tests {
     fn replayed_checkpoint_not_an_advance() {
         use plaine_chain::checkpoints::{CheckpointOutcome as O, CheckpointReport};
         use plaine_p2p::traits::{Anchor, AnchorUpdate as U};
-        let a = Anchor { height: 500, hash: [1u8; 32] };
-        let rep = |outcome, advanced| CheckpointReport { outcome, anchor_advanced: advanced };
+        let a = Anchor {
+            height: 500,
+            hash: [1u8; 32],
+        };
+        let rep = |outcome, advanced| CheckpointReport {
+            outcome,
+            anchor_advanced: advanced,
+        };
 
-        assert_eq!(anchor_update(Ok(rep(O::AnchorNotSuperseded, false)), Some(a)), U::Unchanged);
-        assert_eq!(anchor_update(Ok(rep(O::Admitted, false)), Some(a)), U::Unchanged);
+        assert_eq!(
+            anchor_update(Ok(rep(O::AnchorNotSuperseded, false)), Some(a)),
+            U::Unchanged
+        );
+        assert_eq!(
+            anchor_update(Ok(rep(O::Admitted, false)), Some(a)),
+            U::Unchanged
+        );
 
-        assert_eq!(anchor_update(Ok(rep(O::StoredAsAnchor, true)), Some(a)), U::Advanced(a));
+        assert_eq!(
+            anchor_update(Ok(rep(O::StoredAsAnchor, true)), Some(a)),
+            U::Advanced(a)
+        );
 
-        assert_eq!(anchor_update(Ok(rep(O::Unverified, false)), Some(a)), U::Unverified);
-        assert_eq!(anchor_update(Ok(rep(O::Unverified, false)), None), U::Unverified);
+        assert_eq!(
+            anchor_update(Ok(rep(O::Unverified, false)), Some(a)),
+            U::Unverified
+        );
+        assert_eq!(
+            anchor_update(Ok(rep(O::Unverified, false)), None),
+            U::Unverified
+        );
     }
 
     #[test]
     fn held_better_branch_builds_no_template() {
         use plaine_chain::BranchVerdict as V;
 
-        assert!(refuse_template(&report(1_686, 2_965, V::NeedBodies { missing: 1_279 }), false).is_some());
+        assert!(refuse_template(
+            &report(1_686, 2_965, V::NeedBodies { missing: 1_279 }),
+            false
+        )
+        .is_some());
         assert!(refuse_template(&report(247, 4_239, V::Stranded { cap: 30 }), false).is_some());
 
         assert!(refuse_template(&report(247, 247, V::Stranded { cap: 30 }), false).is_some());
@@ -842,11 +933,17 @@ mod tests {
     fn stranded_report_expires() {
         let f = StrandedFlag::default();
         f.tick(1_000);
-        assert!(!f.recent(), "an untouched flag must not hold templates back");
+        assert!(
+            !f.recent(),
+            "an untouched flag must not hold templates back"
+        );
         f.note(1_000);
         assert!(f.recent());
         f.tick(1_000 + STRANDED_TEMPLATE_HOLD_SECS - 1);
-        assert!(f.recent(), "it must outlive one p2p audit interval by a wide margin");
+        assert!(
+            f.recent(),
+            "it must outlive one p2p audit interval by a wide margin"
+        );
         f.tick(1_000 + STRANDED_TEMPLATE_HOLD_SECS + 1);
         assert!(!f.recent(), "a node that rejoined stayed idle for ever");
         assert!(
@@ -861,8 +958,15 @@ mod tests {
         let clock = SysClock::new();
         let mut token = OnConsensusThread::claim();
         assert!(
-            build_template(&mut token, &chain, &clock, &[], &[7u8; 20], &StrandedFlag::default())
-                .is_some(),
+            build_template(
+                &mut token,
+                &chain,
+                &clock,
+                &[],
+                &[7u8; 20],
+                &StrandedFlag::default()
+            )
+            .is_some(),
             "a node at height 0 on the only branch it holds refused to build"
         );
         assert!(refuse_template(&chain.branch_report(), false).is_none());
@@ -881,7 +985,6 @@ mod tests {
                 hash: poison,
             }))),
             Arc::new(std::sync::Mutex::new(Arc::new(vec![(9_999u64, poison)]))),
-
             Arc::new(std::sync::Mutex::new(Some(
                 plaine_p2p::traits::SignedCheckpoint {
                     height: 9_999,
@@ -976,7 +1079,11 @@ mod tests {
     #[test]
     fn connected_batch_publishes_nothing() {
         let cell = std::sync::Mutex::new(None);
-        let ok = plaine_chain::Accepted { connected: 1, verified_height: 9, ..Default::default() };
+        let ok = plaine_chain::Accepted {
+            connected: 1,
+            verified_height: 9,
+            ..Default::default()
+        };
         report_headers(&cell, &std::sync::Mutex::new(None), 7, &ok);
         assert_eq!(*cell.lock().expect("cell"), None);
     }
@@ -988,7 +1095,10 @@ mod tests {
         report_headers(&breaks, &holds, 7, &parked(148, [7u8; 32]));
         assert_eq!(
             *holds.lock().expect("cell"),
-            Some(plaine_p2p::traits::Held { hash: [7u8; 32], height: 148 })
+            Some(plaine_p2p::traits::Held {
+                hash: [7u8; 32],
+                height: 148
+            })
         );
         assert_eq!(
             *breaks.lock().expect("cell"),
@@ -1002,7 +1112,10 @@ mod tests {
         let breaks = std::sync::Mutex::new(None);
         let holds = std::sync::Mutex::new(None);
         let mut a = refused(42);
-        a.first_held = Some(plaine_chain::Held { hash: [3u8; 32], height: 40 });
+        a.first_held = Some(plaine_chain::Held {
+            hash: [3u8; 32],
+            height: 40,
+        });
         report_headers(&breaks, &holds, 7, &a);
         assert_eq!(breaks.lock().expect("cell").map(|b| b.height), Some(41));
         assert_eq!(holds.lock().expect("cell").map(|h| h.height), Some(40));
@@ -1021,7 +1134,11 @@ mod tests {
     #[test]
     fn connected_batch_parks_nothing() {
         let holds = std::sync::Mutex::new(None);
-        let ok = plaine_chain::Accepted { connected: 1, verified_height: 9, ..Default::default() };
+        let ok = plaine_chain::Accepted {
+            connected: 1,
+            verified_height: 9,
+            ..Default::default()
+        };
         report_headers(&std::sync::Mutex::new(None), &holds, 7, &ok);
         assert_eq!(*holds.lock().expect("cell"), None);
     }

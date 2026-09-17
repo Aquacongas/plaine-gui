@@ -1,8 +1,8 @@
 use crate::constants::*;
 use crate::peer::score::Offence;
 use crate::sync::rotation::{Designation, Rotator};
-use crate::sync::stall::{ProgressClock, StallKind};
 use crate::sync::staging::Staging;
+use crate::sync::stall::{ProgressClock, StallKind};
 use crate::sync::{Action, DeadReason};
 use crate::traits::{Anchor, Condition, Hash32, Mono, PeerId, RotationKind, TipSnapshot};
 use crate::wire::msg::Msg;
@@ -214,7 +214,10 @@ impl HeaderTrack {
     }
 
     pub fn claim_height(&self, peer: PeerId) -> u64 {
-        self.claims.get(&peer).map(|c| c.effective_height()).unwrap_or(0)
+        self.claims
+            .get(&peer)
+            .map(|c| c.effective_height())
+            .unwrap_or(0)
     }
 
     pub fn claim_demoted(&self, peer: PeerId) -> bool {
@@ -356,13 +359,7 @@ impl HeaderTrack {
         }
     }
 
-    fn set_sync_peer(
-        &mut self,
-        p: PeerId,
-        ctx: &HeaderCtx<'_>,
-        now: Mono,
-        out: &mut Vec<Action>,
-    ) {
+    fn set_sync_peer(&mut self, p: PeerId, ctx: &HeaderCtx<'_>, now: Mono, out: &mut Vec<Action>) {
         let changed = self.sync_peer != Some(p);
         self.sync_peer = Some(p);
         if let Some(s) = ctx.peers.get(&p) {
@@ -645,7 +642,9 @@ impl HeaderTrack {
                 out.push(Action::Say(Condition::StrandedBeyondReorgCap {
                     our_tip: ctx.our_tip.height,
                     their_tip: self.best_claimed_height(),
-                    depth: self.best_claimed_height().saturating_sub(ctx.our_tip.height),
+                    depth: self
+                        .best_claimed_height()
+                        .saturating_sub(ctx.our_tip.height),
                 }));
             }
         }

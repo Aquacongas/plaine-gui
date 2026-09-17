@@ -110,9 +110,7 @@ pub enum ParseError {
 pub enum Verb {
     Request(Request),
 
-    KeepAlive {
-        id: Option<u64>,
-    },
+    KeepAlive { id: Option<u64> },
 }
 
 pub fn parse_verb(doc: &mut Doc, line: &[u8], max_len: usize) -> Result<Verb, ParseError> {
@@ -178,13 +176,7 @@ pub fn write_error(out: &mut Vec<u8>, id: Option<u64>, e: ErrorCode) {
     out.extend_from_slice(b",null]}\n");
 }
 
-pub fn write_subscribe_result(
-    out: &mut Vec<u8>,
-    id: Option<u64>,
-    e1: E1,
-    sub: u32,
-    sub_bits: u32,
-) {
+pub fn write_subscribe_result(out: &mut Vec<u8>, id: Option<u64>, e1: E1, sub: u32, sub_bits: u32) {
     out.extend_from_slice(b"{\"id\":");
     write_id(out, id);
     out.extend_from_slice(b",\"result\":[[\"mining.notify\",\"mining.set_target\"],\"");
@@ -216,7 +208,11 @@ pub fn write_notify(
     json::write_u64(out, height);
     out.extend_from_slice(b",\"");
     json::write_hex(out, prefix);
-    out.extend_from_slice(if clean { b"\",true]}\n" } else { b"\",false]}\n" });
+    out.extend_from_slice(if clean {
+        b"\",true]}\n"
+    } else {
+        b"\",false]}\n"
+    });
 }
 
 pub fn write_reconnect(out: &mut Vec<u8>, host: &str, port: u16, wait_secs: u64) {
@@ -310,12 +306,22 @@ mod tests {
     #[test]
     fn signed_job_id_refused() {
         assert_eq!(parse_job_id("0000002b"), Some(0x2b));
-        assert_eq!(u32::from_str_radix("+000002b", 16), Ok(0x2b), "the differential is real");
-        assert_eq!(parse_job_id("+000002b"), None, "a signed job id is a second name for job 0x2b");
+        assert_eq!(
+            u32::from_str_radix("+000002b", 16),
+            Ok(0x2b),
+            "the differential is real"
+        );
+        assert_eq!(
+            parse_job_id("+000002b"),
+            None,
+            "a signed job id is a second name for job 0x2b"
+        );
         assert_eq!(parse_job_id("+0000000"), None);
 
         assert_eq!(
-            req(r#"{"id":7,"method":"mining.submit","params":["w","+000002b","2a00000003f2a300"]}"#),
+            req(
+                r#"{"id":7,"method":"mining.submit","params":["w","+000002b","2a00000003f2a300"]}"#
+            ),
             Err(ParseError::BadShareFields)
         );
     }
@@ -364,7 +370,9 @@ mod tests {
         let mut out = Vec::new();
         write_notify(&mut out, 0x2b, 184_602, &[0xABu8; 124], true);
         let txt = s(out);
-        assert!(txt.starts_with(r#"{"id":null,"method":"mining.notify","params":["0000002b",184602,"abab"#));
+        assert!(txt.starts_with(
+            r#"{"id":null,"method":"mining.notify","params":["0000002b",184602,"abab"#
+        ));
         assert!(txt.ends_with("\",true]}\n"));
 
         let hex_start = txt.find(",\"ab").unwrap() + 2;
@@ -433,8 +441,11 @@ mod tests {
 
         let mut out = Vec::new();
         write_ok_true(&mut out, Some(9));
-        assert_eq!(s(out), "{\"id\":9,\"result\":true,\"error\":null}
-");
+        assert_eq!(
+            s(out),
+            "{\"id\":9,\"result\":true,\"error\":null}
+"
+        );
     }
 
     #[test]
@@ -457,11 +468,19 @@ mod tests {
     fn keepalive_verb_vs_unknown_method() {
         let mut d = Doc::new();
         assert_eq!(
-            parse_verb(&mut d, br#"{"id":9,"method":"mining.keepalive"}"#, crate::limits::MAX_LINE_POST_AUTH),
+            parse_verb(
+                &mut d,
+                br#"{"id":9,"method":"mining.keepalive"}"#,
+                crate::limits::MAX_LINE_POST_AUTH
+            ),
             Ok(Verb::KeepAlive { id: Some(9) })
         );
         assert_eq!(
-            parse_verb(&mut d, br#"{"id":9,"method":"mining.keepalived"}"#, crate::limits::MAX_LINE_POST_AUTH),
+            parse_verb(
+                &mut d,
+                br#"{"id":9,"method":"mining.keepalived"}"#,
+                crate::limits::MAX_LINE_POST_AUTH
+            ),
             Ok(Verb::Request(Request::Unknown { id: Some(9) })),
             "one letter away from the verb is an unknown method, not a heartbeat"
         );

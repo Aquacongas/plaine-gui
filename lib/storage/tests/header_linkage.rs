@@ -29,12 +29,18 @@ fn seed(name: &str) -> Scratch {
 }
 
 fn hseg(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 
 fn flip_bit(p: &Path, off: u64, bit: u8) {
     use std::io::{Read, Seek, SeekFrom, Write};
-    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(p).unwrap();
+    let mut f = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(p)
+        .unwrap();
     let mut b = [0u8; 1];
     f.seek(SeekFrom::Start(off)).unwrap();
     f.read_exact(&mut b).unwrap();
@@ -48,8 +54,15 @@ fn flip_bit(p: &Path, off: u64, bit: u8) {
     let mut v = [0u8; 1];
     g.seek(SeekFrom::Start(off)).unwrap();
     g.read_exact(&mut v).unwrap();
-    assert_ne!(before, v[0], "the flip at offset {off} did not reach the file");
-    assert_eq!(v[0], before ^ (1u8 << bit), "the file holds something other than the flip");
+    assert_ne!(
+        before, v[0],
+        "the flip at offset {off} did not reach the file"
+    );
+    assert_eq!(
+        v[0],
+        before ^ (1u8 << bit),
+        "the file holds something other than the flip"
+    );
 }
 
 fn sweep(r: &StoreReader) -> (u64, Vec<(u32, u64)>, u32) {
@@ -93,20 +106,25 @@ fn pristine_segment_links_through() {
     );
 
     assert_eq!(
-        r.verify_segment_headers(2).expect("unsealed segment verdict"),
+        r.verify_segment_headers(2)
+            .expect("unsealed segment verdict"),
         None,
         "a segment above the watermark was JUDGED; a tier that judges a moving object \
          reads 'bad' on every healthy node between boundaries and is then ignored"
     );
 
     assert_eq!(
-        r.verify_segment_headers(9_999).expect("absent segment verdict"),
+        r.verify_segment_headers(9_999)
+            .expect("absent segment verdict"),
         None,
         "a nonexistent segment passed"
     );
 
     let (links, broken, unjudged) = sweep(&r);
-    assert!(broken.is_empty(), "the pristine store reports broken links: {broken:?}");
+    assert!(
+        broken.is_empty(),
+        "the pristine store reports broken links: {broken:?}"
+    );
     assert_eq!(
         links,
         2 * SEG - 1,
@@ -154,18 +172,33 @@ fn interior_header_flip_refused() {
     );
 
     let served = r.header_at(h).unwrap().expect("header still served");
-    assert_ne!(served, before, "the flip did not reach the header the reader serves");
+    assert_ne!(
+        served, before,
+        "the flip did not reach the header the reader serves"
+    );
 
     match r.verify_segment_headers(0) {
-        Err(StoreError::LinkageBroken { height, expected_prev, found_prev }) => {
+        Err(StoreError::LinkageBroken {
+            height,
+            expected_prev,
+            found_prev,
+        }) => {
             assert_eq!(
                 height,
                 h + 1,
                 "the refusal must name the CHILD height, whose stated parent hash is the \
                  thing that has become false"
             );
-            assert_ne!(expected_prev, found_prev, "a LinkageBroken with two equal hashes");
-            let msg = StoreError::LinkageBroken { height, expected_prev, found_prev }.to_string();
+            assert_ne!(
+                expected_prev, found_prev,
+                "a LinkageBroken with two equal hashes"
+            );
+            let msg = StoreError::LinkageBroken {
+                height,
+                expected_prev,
+                found_prev,
+            }
+            .to_string();
             assert!(
                 msg.contains(&(h + 1).to_string()),
                 "the message does not name the height: {msg}"
@@ -179,7 +212,12 @@ fn interior_header_flip_refused() {
     }
 
     let (_, broken, _) = sweep(&r);
-    assert_eq!(broken, vec![(0u32, h + 1)], "the sweep did not name segment 0 at height {}", h + 1);
+    assert_eq!(
+        broken,
+        vec![(0u32, h + 1)],
+        "the sweep did not name segment 0 at height {}",
+        h + 1
+    );
     drop(c);
     drop(r);
 }
@@ -208,7 +246,10 @@ fn first_header_flip_refused() {
     );
     match r.verify_segment_headers(0) {
         Err(StoreError::LinkageBroken { height, .. }) => {
-            assert_eq!(height, 1, "the first header of a sealed segment is outside the walk");
+            assert_eq!(
+                height, 1,
+                "the first header of a sealed segment is outside the walk"
+            );
             println!("  first header of segment 0: L3-H -> LinkageBroken at height 1");
         }
         other => panic!("a flip in the segment's FIRST header was not caught: {other:?}"),
@@ -233,10 +274,20 @@ fn live_segment_not_judged() {
         drop(r);
     }
     let (c, r, _) = open(cfg_of(&s)).expect("open");
-    assert_eq!(r.hdr_watermark(), 2 * SEG + 10, "the seed did not reach the live segment");
+    assert_eq!(
+        r.hdr_watermark(),
+        2 * SEG + 10,
+        "the seed did not reach the live segment"
+    );
     let p = hseg(&s, 2);
-    let len = std::fs::metadata(&p).expect("segment 2's header file must EXIST").len();
-    assert_eq!(len, 10 * 132, "segment 2 does not hold the ten live headers: {len} bytes");
+    let len = std::fs::metadata(&p)
+        .expect("segment 2's header file must EXIST")
+        .len();
+    assert_eq!(
+        len,
+        10 * 132,
+        "segment 2 does not hold the ten live headers: {len} bytes"
+    );
 
     assert_eq!(
         r.verify_segment_headers(2).expect("live segment verdict"),
@@ -272,7 +323,11 @@ fn full_file_below_wm_not_judged() {
          nothing about the guard"
     );
     let full = std::fs::metadata(hseg(&s, 0)).unwrap().len();
-    assert_eq!(full, SEG * 132, "segment 0 is not at the sealed length to begin with");
+    assert_eq!(
+        full,
+        SEG * 132,
+        "segment 0 is not at the sealed length to begin with"
+    );
 
     let old_tip = r.tip().height;
     let fork = SEG - 5;
@@ -280,12 +335,19 @@ fn full_file_below_wm_not_judged() {
     let alt = chain.build(2, 7);
     let rollback: Vec<u64> = (fork + 1..=old_tip).rev().collect();
     let cs = common::commits(&alt);
-    c.reorg(&ReorgPlan { fork_height: fork, rollback: &rollback, apply: &cs })
-        .expect("reorg across the segment boundary");
+    c.reorg(&ReorgPlan {
+        fork_height: fork,
+        rollback: &rollback,
+        apply: &cs,
+    })
+    .expect("reorg across the segment boundary");
     drop(cs);
 
     let wm = r.hdr_watermark();
-    assert!(wm < SEG, "the reorg did not drop the watermark below the boundary: {wm}");
+    assert!(
+        wm < SEG,
+        "the reorg did not drop the watermark below the boundary: {wm}"
+    );
 
     let after = std::fs::metadata(hseg(&s, 0)).unwrap().len();
     assert_eq!(

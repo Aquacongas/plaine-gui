@@ -9,7 +9,11 @@ use plaine_rpc::views::{
 fn ask(node: &Node, params: Vec<Json>) -> Result<Json, plaine_rpc::jsonrpc::RpcError> {
     plaine_rpc::methods::dispatch(
         node,
-        &Request { method: "checkpoint_submit".into(), params: Json::Arr(params), id: None },
+        &Request {
+            method: "checkpoint_submit".into(),
+            params: Json::Arr(params),
+            id: None,
+        },
     )
 }
 
@@ -34,7 +38,10 @@ impl PolicyView for Fixed {
         }
     }
     fn checkpoint_link(&self) -> CheckpointLink {
-        CheckpointLink::Live { last_anchor: None, enforced: 0 }
+        CheckpointLink::Live {
+            last_anchor: None,
+            enforced: 0,
+        }
     }
     fn checkpoint_submit(
         &self,
@@ -88,33 +95,56 @@ fn busy_chain_says_retry_not_rebuild() {
     assert_eq!(e.data.as_ref().and_then(|d| d.as_str()), Some("busy"));
 
     let d = e.detail.as_deref().unwrap_or("").to_lowercase();
-    assert!(d.contains("retry"), "the operator must be told to retry: {d}");
+    assert!(
+        d.contains("retry"),
+        "the operator must be told to retry: {d}"
+    );
     assert!(
         d.contains("not looked at") || d.contains("not verified"),
         "it must say the record was never examined, or the operator goes to the signer: {d}"
     );
 
-    assert!(!d.contains("no configuration fixes"), "sends the operator to rebuild a binary: {d}");
-    assert!(!d.contains("does not verify"), "sends the operator to the offline signer: {d}");
-    assert!(!d.contains("signer that produced it"), "same, by another route: {d}");
+    assert!(
+        !d.contains("no configuration fixes"),
+        "sends the operator to rebuild a binary: {d}"
+    );
+    assert!(
+        !d.contains("does not verify"),
+        "sends the operator to the offline signer: {d}"
+    );
+    assert!(
+        !d.contains("signer that produced it"),
+        "same, by another route: {d}"
+    );
 }
 
 #[test]
 fn real_refusal_is_terminal_and_distinct() {
     for (out, code) in [
         (CheckpointSubmit::Unverified, ErrorCode::CheckpointRejected),
-        (CheckpointSubmit::GenesisImmutable, ErrorCode::CheckpointRejected),
+        (
+            CheckpointSubmit::GenesisImmutable,
+            ErrorCode::CheckpointRejected,
+        ),
         (CheckpointSubmit::NotConfigured, ErrorCode::FeatureDisabled),
         (CheckpointSubmit::Severed, ErrorCode::FeatureDisabled),
     ] {
         let e = ask(&with(out), vec![hexed(&record(900, 1))]).unwrap_err();
         assert_eq!(e.code, code, "{out:?}");
-        assert_ne!(e.code, ErrorCode::NotReady, "{out:?} must not read as retryable");
+        assert_ne!(
+            e.code,
+            ErrorCode::NotReady,
+            "{out:?} must not read as retryable"
+        );
         assert_eq!(e.data.as_ref().and_then(|d| d.as_str()), Some(out.tag()));
     }
 
     let tags: Vec<&str> = [
-        CheckpointSubmit::Advanced { height: 1, enforced: 0, enforcing: false },
+        CheckpointSubmit::Advanced {
+            height: 1,
+            enforced: 0,
+            enforcing: false,
+        },
         CheckpointSubmit::Unchanged,
         CheckpointSubmit::GenesisImmutable,
         CheckpointSubmit::Unverified,
@@ -128,7 +158,11 @@ fn real_refusal_is_terminal_and_distinct() {
     let mut sorted = tags.clone();
     sorted.sort_unstable();
     sorted.dedup();
-    assert_eq!(sorted.len(), tags.len(), "two outcomes share a machine-readable tag: {tags:?}");
+    assert_eq!(
+        sorted.len(),
+        tags.len(),
+        "two outcomes share a machine-readable tag: {tags:?}"
+    );
 }
 
 #[test]
@@ -139,7 +173,10 @@ fn oversized_record_dies_on_length_check() {
             Fixed(CheckpointSubmit::Unchanged).checkpoint_status()
         }
         fn checkpoint_link(&self) -> CheckpointLink {
-            CheckpointLink::Live { last_anchor: None, enforced: 0 }
+            CheckpointLink::Live {
+                last_anchor: None,
+                enforced: 0,
+            }
         }
         fn checkpoint_submit(
             &self,
@@ -185,7 +222,11 @@ fn lying_sig_count_never_allocates() {
 
 #[test]
 fn unverified_refusal_is_not_an_oracle() {
-    let e = ask(&with(CheckpointSubmit::Unverified), vec![hexed(&record(900, 1))]).unwrap_err();
+    let e = ask(
+        &with(CheckpointSubmit::Unverified),
+        vec![hexed(&record(900, 1))],
+    )
+    .unwrap_err();
     let all = format!(
         "{} {}",
         e.detail.as_deref().unwrap_or(""),
@@ -200,7 +241,10 @@ fn unverified_refusal_is_not_an_oracle() {
         "unknown key",
         "signature 0",
     ] {
-        assert!(!all.contains(oracle), "the refusal names the failing check ({oracle}): {all}");
+        assert!(
+            !all.contains(oracle),
+            "the refusal names the failing check ({oracle}): {all}"
+        );
     }
 }
 
@@ -213,12 +257,21 @@ fn refusal_never_echoes_bytes() {
         *b = marker;
     }
     let hex = plaine_consensus::hex::encode(&r);
-    for params in [vec![Json::str(hex.clone())], vec![Json::str(hex[..hex.len() - 8].to_string())]] {
+    for params in [
+        vec![Json::str(hex.clone())],
+        vec![Json::str(hex[..hex.len() - 8].to_string())],
+    ] {
         let e = ask(&node, params).unwrap_err();
         let all = format!("{} {:?}", e.detail.as_deref().unwrap_or(""), e.data);
         assert!(!all.contains(&hex), "the whole record came back");
-        assert!(!all.contains("edededed"), "signature bytes came back: {all}");
-        assert!(!all.contains("3735928559"), "the decoded height came back: {all}");
+        assert!(
+            !all.contains("edededed"),
+            "signature bytes came back: {all}"
+        );
+        assert!(
+            !all.contains("3735928559"),
+            "the decoded height came back: {all}"
+        );
     }
 }
 
@@ -239,12 +292,20 @@ fn param_shape_checked_before_content() {
 
 #[test]
 fn only_real_advance_is_reported() {
-    let v = ask(&with(CheckpointSubmit::Unchanged), vec![hexed(&record(900, 1))]).expect("200");
+    let v = ask(
+        &with(CheckpointSubmit::Unchanged),
+        vec![hexed(&record(900, 1))],
+    )
+    .expect("200");
     assert_eq!(v.get("anchorAdvanced").unwrap().as_bool(), Some(false));
     assert_eq!(v.get("result").unwrap().as_str(), Some("unchanged"));
 
     let v = ask(
-        &with(CheckpointSubmit::Advanced { height: 900, enforced: 2, enforcing: true }),
+        &with(CheckpointSubmit::Advanced {
+            height: 900,
+            enforced: 2,
+            enforcing: true,
+        }),
         vec![hexed(&record(900, 1))],
     )
     .expect("200");

@@ -195,7 +195,10 @@ impl KeyFile {
         ));
         s.push_str(&format!("address: {}\n", self.address));
 
-        s.push_str(&format!("ciphertext: {}\n", sechex::encode(&self.ciphertext)));
+        s.push_str(&format!(
+            "ciphertext: {}\n",
+            sechex::encode(&self.ciphertext)
+        ));
         s
     }
 
@@ -214,7 +217,10 @@ impl KeyFile {
                 "key file contains a non-ASCII byte; the format is ASCII only",
             ));
         }
-        let mut lines: Vec<&str> = text.split('\n').map(|l| l.strip_suffix('\r').unwrap_or(l)).collect();
+        let mut lines: Vec<&str> = text
+            .split('\n')
+            .map(|l| l.strip_suffix('\r').unwrap_or(l))
+            .collect();
 
         if lines.last() == Some(&"") {
             lines.pop();
@@ -251,7 +257,9 @@ impl KeyFile {
                 )));
             }
             if value.is_empty() {
-                return Err(WalletError::format(format!("line {lineno}: {key} is empty")));
+                return Err(WalletError::format(format!(
+                    "line {lineno}: {key} is empty"
+                )));
             }
             values.push(value);
         }
@@ -266,9 +274,8 @@ impl KeyFile {
             })
         };
         let bytes32 = |i: usize, name: &str| -> Result<[u8; 32]> {
-            let v = sechex::decode(values[i]).map_err(|e| {
-                WalletError::format(format!("line {}: {name}: {e}", i + 2))
-            })?;
+            let v = sechex::decode(values[i])
+                .map_err(|e| WalletError::format(format!("line {}: {name}: {e}", i + 2)))?;
             v.as_slice().try_into().map_err(|_| {
                 WalletError::format(format!(
                     "line {}: {name} must be 32 bytes (64 hex digits), got {}",
@@ -286,7 +293,8 @@ impl KeyFile {
             )));
         }
         let version = FORMAT_VERSION;
-        let role = Role::parse(values[1]).map_err(|e| WalletError::format(format!("line 3: {e}")))?;
+        let role =
+            Role::parse(values[1]).map_err(|e| WalletError::format(format!("line 3: {e}")))?;
         let created = num(2, "created")?;
         let kdf_name = values[3].to_string();
         let kdf_iters = num(4, "kdf_iters")?;
@@ -471,7 +479,10 @@ mod tests {
         let (kf, s, _p) = sealed();
         let text = kf.render();
         let seed_hex = sechex::encode(s.expose());
-        assert!(!text.contains(&seed_hex), "the seed is in the file in the clear");
+        assert!(
+            !text.contains(&seed_hex),
+            "the seed is in the file in the clear"
+        );
     }
 
     #[test]
@@ -536,8 +547,16 @@ mod tests {
         let a = KeyFile::seal(Role::Spend, created, &s1, Some(&p), 64).unwrap();
         let b = KeyFile::seal(Role::Spend, created, &s2, Some(&p), 64).unwrap();
 
-        assert_eq!(a.kdf_salt, kdf::derive_salt(&s1, created), "salt must be the derived one");
-        assert_eq!(a.nonce, kdf::derive_nonce(&s1, created), "nonce must be the derived one");
+        assert_eq!(
+            a.kdf_salt,
+            kdf::derive_salt(&s1, created),
+            "salt must be the derived one"
+        );
+        assert_eq!(
+            a.nonce,
+            kdf::derive_nonce(&s1, created),
+            "nonce must be the derived one"
+        );
         assert_ne!(a.kdf_salt, b.kdf_salt, "two keys must not share a salt");
         assert_ne!(a.nonce, b.nonce, "two keys must not share a cipher nonce");
         assert_ne!(a.kdf_salt, [0u8; 32], "salt must not be all-zero");
@@ -616,7 +635,10 @@ mod tests {
                 .map(|k| k.version)
                 .expect_err(&format!("version {bogus} must be refused"));
             assert_eq!(err.kind(), "format");
-            assert!(err.to_string().contains(bogus), "the refusal must name the value: {err}");
+            assert!(
+                err.to_string().contains(bogus),
+                "the refusal must name the value: {err}"
+            );
         }
         assert!(KeyFile::parse(&good).is_ok(), "and version 1 still parses");
     }
@@ -629,7 +651,10 @@ mod tests {
         let cases: Vec<(&str, String)> = vec![
             ("trailing junk line", format!("{good}anything at all\n")),
             ("two junk lines", format!("{good}a\nb\n")),
-            ("leading zeros on version", good.replacen("version: 1\n", "version: 01\n", 1)),
+            (
+                "leading zeros on version",
+                good.replacen("version: 1\n", "version: 01\n", 1),
+            ),
             (
                 "leading zeros on created",
                 good.replacen(
@@ -648,7 +673,9 @@ mod tests {
             ),
         ];
         for (name, text) in cases {
-            let err = KeyFile::parse(&text).err().unwrap_or_else(|| panic!("{name} must not parse"));
+            let err = KeyFile::parse(&text)
+                .err()
+                .unwrap_or_else(|| panic!("{name} must not parse"));
             assert_eq!(err.kind(), "format", "{name}");
         }
 
@@ -679,7 +706,10 @@ mod tests {
             &format!("kdf_iters: {}", kdf::MAX_ITERS),
             1,
         );
-        assert!(KeyFile::parse(&text).is_ok(), "the ceiling value must parse");
+        assert!(
+            KeyFile::parse(&text).is_ok(),
+            "the ceiling value must parse"
+        );
     }
 
     #[test]
@@ -724,7 +754,10 @@ mod tests {
 
         let cases: Vec<(&str, String)> = vec![
             ("bad magic", good.replacen("PLNEKEY1", "PLNEKEY2", 1)),
-            ("missing line", good.replacen(&format!("role: {}\n", kf.role.as_str()), "", 1)),
+            (
+                "missing line",
+                good.replacen(&format!("role: {}\n", kf.role.as_str()), "", 1),
+            ),
             (
                 "duplicate line",
                 good.replacen("created:", "created: 1\ncreated:", 1),
@@ -767,7 +800,11 @@ mod tests {
         let err = write_new(&path, "second").unwrap_err();
         assert_eq!(err.kind(), "refused");
         assert!(err.to_string().contains(&path.display().to_string()));
-        assert_eq!(std::fs::read(&path).unwrap(), before, "file must be untouched");
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            before,
+            "file must be untouched"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 

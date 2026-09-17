@@ -270,7 +270,11 @@ impl Session {
     }
 
     pub fn admit_checkpoint(&mut self, height: u64, hash: Hash32, now: Mono) -> CheckpointAdmit {
-        if self.checkpoint_seen.iter().any(|(h, x)| *h == height && *x == hash) {
+        if self
+            .checkpoint_seen
+            .iter()
+            .any(|(h, x)| *h == height && *x == hash)
+        {
             return CheckpointAdmit::Duplicate;
         }
         let fresh = match self.checkpoint_window {

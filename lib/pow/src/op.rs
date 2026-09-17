@@ -133,7 +133,10 @@ impl Op {
 const _: () = {
     let mut i = 0;
     while i < OP_COUNT {
-        assert!(ALL_OPS[i] as usize == i, "ALL_OPS must be in discriminant order");
+        assert!(
+            ALL_OPS[i] as usize == i,
+            "ALL_OPS must be in discriminant order"
+        );
         i += 1;
     }
 };

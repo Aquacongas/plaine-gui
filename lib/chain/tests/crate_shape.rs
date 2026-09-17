@@ -14,7 +14,11 @@ fn runtime_dep_is_only_consensus() {
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
         .filter_map(|l| l.split(['=', ' ']).next())
         .collect();
-    assert_eq!(names, vec!["plaine-consensus"], "runtime dependencies drifted: {names:?}");
+    assert_eq!(
+        names,
+        vec!["plaine-consensus"],
+        "runtime dependencies drifted: {names:?}"
+    );
 }
 
 #[test]
@@ -26,7 +30,10 @@ fn signer_is_dev_dep_only() {
         .filter(|l| !l.starts_with('#'))
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(!code.contains("ed25519"), "the signer must not be a runtime dependency");
+    assert!(
+        !code.contains("ed25519"),
+        "the signer must not be a runtime dependency"
+    );
     let dev = section(MANIFEST, "[dev-dependencies]");
     assert!(dev.contains("ed25519-dalek"), "the tests do need a signer");
 }
@@ -109,7 +116,10 @@ fn interpreter_budget_uses_tighter_number() {
 }
 
 fn section<'a>(toml: &'a str, header: &str) -> &'a str {
-    let start = toml.find(header).unwrap_or_else(|| panic!("no {header} section")) + header.len();
+    let start = toml
+        .find(header)
+        .unwrap_or_else(|| panic!("no {header} section"))
+        + header.len();
     let rest = &toml[start..];
     let end = rest
         .lines()

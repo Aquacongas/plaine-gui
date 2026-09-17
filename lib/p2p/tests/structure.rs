@@ -2,8 +2,14 @@ use plaine_p2p::constants::*;
 
 const SYNC_SOURCES: &[(&str, &str)] = &[
     ("sync/mod.rs", include_str!("../src/sync/mod.rs")),
-    ("sync/header_track.rs", include_str!("../src/sync/header_track.rs")),
-    ("sync/body_track.rs", include_str!("../src/sync/body_track.rs")),
+    (
+        "sync/header_track.rs",
+        include_str!("../src/sync/header_track.rs"),
+    ),
+    (
+        "sync/body_track.rs",
+        include_str!("../src/sync/body_track.rs"),
+    ),
     ("sync/staging.rs", include_str!("../src/sync/staging.rs")),
     ("sync/stall.rs", include_str!("../src/sync/stall.rs")),
     ("sync/rotation.rs", include_str!("../src/sync/rotation.rs")),
@@ -11,10 +17,22 @@ const SYNC_SOURCES: &[(&str, &str)] = &[
     ("sync/tree.rs", include_str!("../src/sync/tree.rs")),
     ("sync/tx_relay.rs", include_str!("../src/sync/tx_relay.rs")),
     ("gate/g0_dedup.rs", include_str!("../src/gate/g0_dedup.rs")),
-    ("gate/g1_structure.rs", include_str!("../src/gate/g1_structure.rs")),
-    ("gate/g2_context.rs", include_str!("../src/gate/g2_context.rs")),
-    ("gate/g3_admission.rs", include_str!("../src/gate/g3_admission.rs")),
-    ("gate/g4_budget.rs", include_str!("../src/gate/g4_budget.rs")),
+    (
+        "gate/g1_structure.rs",
+        include_str!("../src/gate/g1_structure.rs"),
+    ),
+    (
+        "gate/g2_context.rs",
+        include_str!("../src/gate/g2_context.rs"),
+    ),
+    (
+        "gate/g3_admission.rs",
+        include_str!("../src/gate/g3_admission.rs"),
+    ),
+    (
+        "gate/g4_budget.rs",
+        include_str!("../src/gate/g4_budget.rs"),
+    ),
     ("peer/score.rs", include_str!("../src/peer/score.rs")),
     ("peer/session.rs", include_str!("../src/peer/session.rs")),
     ("peer/inbox.rs", include_str!("../src/peer/inbox.rs")),
@@ -33,8 +51,8 @@ fn code_only(src: &str) -> String {
 #[test]
 fn no_lock_is_held_across_network_io() {
     const FORBIDDEN: &[&str] = &[
-        "Mutex", "RwLock", "RefCell", "Cell<", ".await", "async fn", "lock()",
-        "spawn", "join", "thread::",
+        "Mutex", "RwLock", "RefCell", "Cell<", ".await", "async fn", "lock()", "spawn", "join",
+        "thread::",
     ];
     for (name, src) in SYNC_SOURCES {
         let code = code_only(src);
@@ -54,7 +72,12 @@ fn no_lock_is_held_across_network_io() {
 #[test]
 fn no_barrier_over_peers() {
     const BARRIERS: &[&str] = &[
-        "join_all", "JoinSet", "WaitGroup", "Barrier", "wait()", "block_on",
+        "join_all",
+        "JoinSet",
+        "WaitGroup",
+        "Barrier",
+        "wait()",
+        "block_on",
     ];
     for (name, src) in SYNC_SOURCES {
         let code = code_only(src);
@@ -107,8 +130,19 @@ fn tokio_is_the_only_added_dependency() {
         .collect::<Vec<_>>()
         .join("\n");
     for banned in [
-        "serde", "bytes ", "anyhow", "tracing", "proptest", "rand ", "arbitrary",
-        "parking_lot", "futures", "blake3", "hex", "redb", "ed25519",
+        "serde",
+        "bytes ",
+        "anyhow",
+        "tracing",
+        "proptest",
+        "rand ",
+        "arbitrary",
+        "parking_lot",
+        "futures",
+        "blake3",
+        "hex",
+        "redb",
+        "ed25519",
     ] {
         assert!(
             !code.contains(banned),
@@ -169,8 +203,7 @@ fn p2p_constants_match_the_frozen_numbers() {
 
 #[test]
 fn gate_cpu_ceiling_recomputes() {
-    let uncapped_hdr_per_sec =
-        MAX_PEERS as u64 * READ_PEER_BYTES_PER_SEC / HEADER_BYTES as u64;
+    let uncapped_hdr_per_sec = MAX_PEERS as u64 * READ_PEER_BYTES_PER_SEC / HEADER_BYTES as u64;
     let uncapped_cores = uncapped_hdr_per_sec * GATE_NS_PER_HEADER / 1_000_000_000;
     assert!(
         (4..=5).contains(&uncapped_cores),
@@ -194,13 +227,9 @@ fn header_verify_recomputes_vs_arch() {
 
     let haircut = 100 - VERIFY_BANDWIDTH_HAIRCUT_PCT;
     let min_minutes =
-        above_anchor * HEADER_VERIFY_US_MIN / VERIFY_WORKERS_REFERENCE * 100
-            / haircut
-            / 60_000_000;
+        above_anchor * HEADER_VERIFY_US_MIN / VERIFY_WORKERS_REFERENCE * 100 / haircut / 60_000_000;
     let max_minutes =
-        above_anchor * HEADER_VERIFY_US_MAX / VERIFY_WORKERS_REFERENCE * 100
-            / haircut
-            / 60_000_000;
+        above_anchor * HEADER_VERIFY_US_MAX / VERIFY_WORKERS_REFERENCE * 100 / haircut / 60_000_000;
     assert!(
         (58..=62).contains(&min_minutes),
         "low end recomputed to {} min, not the stated ~60",
@@ -238,7 +267,10 @@ fn ibd_rate_floor_bounds_sync() {
     );
 
     let floor_per_sec = SYNC_MIN_RATE_IBD_PER_10S / 10;
-    assert!(floor_per_sec * 4 < 850, "the floor is too close to our own rate");
+    assert!(
+        floor_per_sec * 4 < 850,
+        "the floor is too close to our own rate"
+    );
 
     assert_eq!(SYNC_MIN_RATE_TRACKING_PER_10S, 0);
 }
@@ -248,7 +280,11 @@ fn fast_forward_sampling_is_cheap() {
     let sub_anchor = CHECKPOINT_SUNSET_HEIGHT;
     let calls = sub_anchor / FF_SAMPLE_RATE;
     let seconds = calls * 2 / 1_000;
-    assert!(seconds < 10, "sampling costs {} s, which is not negligible", seconds);
+    assert!(
+        seconds < 10,
+        "sampling costs {} s, which is not negligible",
+        seconds
+    );
     let naive_bytes = sub_anchor * HEADER_BYTES as u64;
     let sampled_bytes = FF_SAMPLE_RATE * HEADER_BYTES as u64;
     assert!(
@@ -297,10 +333,16 @@ const NON_ASYNC_SOURCES: &[(&str, &str)] = &[
     ("mock/chain.rs", include_str!("../src/mock/chain.rs")),
     ("mock/clock.rs", include_str!("../src/mock/clock.rs")),
     ("mock/scenario.rs", include_str!("../src/mock/scenario.rs")),
-    ("mock/transport.rs", include_str!("../src/mock/transport.rs")),
+    (
+        "mock/transport.rs",
+        include_str!("../src/mock/transport.rs"),
+    ),
     ("peer/mod.rs", include_str!("../src/peer/mod.rs")),
     ("peer/ban.rs", include_str!("../src/peer/ban.rs")),
-    ("peer/handshake.rs", include_str!("../src/peer/handshake.rs")),
+    (
+        "peer/handshake.rs",
+        include_str!("../src/peer/handshake.rs"),
+    ),
     ("wire/mod.rs", include_str!("../src/wire/mod.rs")),
     ("wire/cmd.rs", include_str!("../src/wire/cmd.rs")),
     ("wire/codec.rs", include_str!("../src/wire/codec.rs")),
@@ -327,7 +369,12 @@ fn socket_driver_only_async() {
 fn consensus_seams_off_reactor() {
     for (name, src) in NET_SOURCES {
         let code = code_only(src);
-        for pat in ["ChainView", "PowVerifier", "BlockSink", "plaine_consensus::"] {
+        for pat in [
+            "ChainView",
+            "PowVerifier",
+            "BlockSink",
+            "plaine_consensus::",
+        ] {
             assert!(
                 !code.contains(pat),
                 "{} names `{}`. The seams belong to src/engine/; a reactor task \

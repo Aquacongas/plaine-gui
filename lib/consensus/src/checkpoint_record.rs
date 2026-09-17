@@ -35,10 +35,16 @@ impl std::fmt::Display for RecordError {
                 write!(f, "anchor record version {v}, this build writes {VERSION}")
             }
             RecordError::Truncated { got, want } => {
-                write!(f, "anchor record truncated: {got} bytes present, {want} needed")
+                write!(
+                    f,
+                    "anchor record truncated: {got} bytes present, {want} needed"
+                )
             }
             RecordError::TooManySignatures(n) => {
-                write!(f, "anchor record carries {n} signatures, the cap is {SIGS_MAX}")
+                write!(
+                    f,
+                    "anchor record carries {n} signatures, the cap is {SIGS_MAX}"
+                )
             }
             RecordError::TrailingBytes(n) => {
                 write!(f, "anchor record has {n} bytes after the last signature")
@@ -64,7 +70,10 @@ pub fn encode(cp: &SignedCheckpoint) -> Vec<u8> {
 pub fn decode(raw: &[u8]) -> Result<SignedCheckpoint, RecordError> {
     const HEAD: usize = 1 + 8 + 32 + 1;
     if raw.len() < HEAD {
-        return Err(RecordError::Truncated { got: raw.len(), want: HEAD });
+        return Err(RecordError::Truncated {
+            got: raw.len(),
+            want: HEAD,
+        });
     }
     if raw[0] != VERSION {
         return Err(RecordError::Version(raw[0]));
@@ -81,7 +90,10 @@ pub fn decode(raw: &[u8]) -> Result<SignedCheckpoint, RecordError> {
     }
     let want = HEAD + n * 96;
     if raw.len() < want {
-        return Err(RecordError::Truncated { got: raw.len(), want });
+        return Err(RecordError::Truncated {
+            got: raw.len(),
+            want,
+        });
     }
     if raw.len() > want {
         return Err(RecordError::TrailingBytes(raw.len() - want));
@@ -107,7 +119,10 @@ mod tests {
             height: 0x0102_0304_0506_0708,
             hash: [7u8; 32],
             sigs: (0..n)
-                .map(|i| CheckpointSig { pubkey: [i as u8; 32], sig: [(i as u8).wrapping_add(0x80); 64] })
+                .map(|i| CheckpointSig {
+                    pubkey: [i as u8; 32],
+                    sig: [(i as u8).wrapping_add(0x80); 64],
+                })
                 .collect(),
         }
     }
@@ -138,8 +153,14 @@ mod tests {
     fn malformed_records_are_named() {
         let raw = encode(&cp(2));
 
-        assert_eq!(decode(&[]), Err(RecordError::Truncated { got: 0, want: 42 }));
-        assert_eq!(decode(&raw[..41]), Err(RecordError::Truncated { got: 41, want: 42 }));
+        assert_eq!(
+            decode(&[]),
+            Err(RecordError::Truncated { got: 0, want: 42 })
+        );
+        assert_eq!(
+            decode(&raw[..41]),
+            Err(RecordError::Truncated { got: 41, want: 42 })
+        );
 
         let mut wrong_version = raw.clone();
         wrong_version[0] = 2;
@@ -147,7 +168,13 @@ mod tests {
 
         let mut lying = raw.clone();
         lying[41] = 3;
-        assert_eq!(decode(&lying), Err(RecordError::Truncated { got: raw.len(), want: 42 + 3 * 96 }));
+        assert_eq!(
+            decode(&lying),
+            Err(RecordError::Truncated {
+                got: raw.len(),
+                want: 42 + 3 * 96
+            })
+        );
 
         let mut too_many = raw.clone();
         too_many[41] = (SIGS_MAX + 1) as u8;

@@ -7,7 +7,7 @@ use crate::metrics::Metrics;
 use crate::nonce::{assemble_header, E1};
 use crate::proto::{self, ErrorCode, Request, Verb};
 use crate::target::Target;
-use crate::verify::{Admitted, ConnId, ShareVerifier, ShareWork, VerifyResult, Verdict};
+use crate::verify::{Admitted, ConnId, ShareVerifier, ShareWork, Verdict, VerifyResult};
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
@@ -225,8 +225,18 @@ impl Session {
             jobs: JobSlots::new(),
             vardiff,
             admission: crate::verify::Admission::default(),
-            submits: build_bucket(sh.cfg.rates.submit_enabled, sh.cfg.rates.submit_per_sec, sh.cfg.rates.submit_burst, now_ms),
-            lines: build_bucket(sh.cfg.rates.line_enabled, sh.cfg.rates.line_per_sec, sh.cfg.rates.line_burst, now_ms),
+            submits: build_bucket(
+                sh.cfg.rates.submit_enabled,
+                sh.cfg.rates.submit_per_sec,
+                sh.cfg.rates.submit_burst,
+                now_ms,
+            ),
+            lines: build_bucket(
+                sh.cfg.rates.line_enabled,
+                sh.cfg.rates.line_per_sec,
+                sh.cfg.rates.line_burst,
+                now_ms,
+            ),
             pending: None,
             seq: 0,
             storm_floor: None,
@@ -370,8 +380,7 @@ impl Session {
         self.storm_floor = storm_floor.map(|f| f.max(sh.cfg.diff.min_diff));
         let min = self.vardiff_min(sh);
         let max = vardiff_ceiling(&sh.cfg, network_diff);
-        self.vardiff =
-            crate::vardiff::Vardiff::new(start, min, max, sh.cfg.setpoint_secs, now_ms);
+        self.vardiff = crate::vardiff::Vardiff::new(start, min, max, sh.cfg.setpoint_secs, now_ms);
         self.vardiff.set_cadence(sh.cfg.cadence);
         if !sh.cfg.vardiff_enabled {
             self.vardiff.pin(vardiff_fixed(&sh.cfg));
@@ -388,14 +397,7 @@ impl Session {
         self.push_job(now_ms, sh, true);
     }
 
-    fn on_submit(
-        &mut self,
-        id: Option<u64>,
-        job_id: u32,
-        nonce: u64,
-        now_ms: u64,
-        sh: &Shared,
-    ) {
+    fn on_submit(&mut self, id: Option<u64>, job_id: u32, nonce: u64, now_ms: u64, sh: &Shared) {
         Metrics::inc(&sh.metrics.shares_submitted);
         if self.phase != Phase::Authorized {
             self.reject_and_score(id, ErrorCode::Unauthorized, now_ms, sh);
@@ -680,11 +682,7 @@ impl Session {
 
     fn network_difficulty(&self, sh: &Shared) -> u64 {
         let zero = [0u8; 20];
-        let addr = self
-            .login
-            .as_ref()
-            .map(|l| l.address_bytes)
-            .unwrap_or(zero);
+        let addr = self.login.as_ref().map(|l| l.address_bytes).unwrap_or(zero);
         match sh.jobs.current(&addr) {
             Ok(t) => t.network_target.to_difficulty(),
             Err(_) => u64::MAX,
@@ -767,9 +765,9 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
-    use crate::nonce::E1Allocator;
     use super::*;
     use crate::mock::{InlineVerifier, MockJobSource, MockPow};
+    use crate::nonce::E1Allocator;
     use plaine_consensus::bech32m;
     use plaine_consensus::constants::ADDRESS_HRP;
     use std::cell::RefCell;
@@ -818,7 +816,12 @@ mod tests {
             cfg: ServerConfig::for_mode(mode),
         });
         RESULTS.with(|v| v.borrow_mut().clear());
-        Harness { sh, src, verifier, alloc }
+        Harness {
+            sh,
+            src,
+            verifier,
+            alloc,
+        }
     }
 
     fn feed(s: &mut Session, h: &Harness, line: &str, now: u64) -> String {
@@ -900,13 +903,7 @@ mod tests {
         let _ = mine(&prefix, E1(1), &Target::from_difficulty(u64::MAX));
     }
 
-    fn search(
-        prefix: &[u8; 124],
-        e1: E1,
-        target: &Target,
-        from: u64,
-        budget: u64,
-    ) -> Option<u64> {
+    fn search(prefix: &[u8; 124], e1: E1, target: &Target, from: u64, budget: u64) -> Option<u64> {
         use crate::verify::PowHasher;
 
         let need = target.to_difficulty();
@@ -950,7 +947,10 @@ mod tests {
             10,
         );
         let mut lines = auth.lines();
-        assert_eq!(lines.next().unwrap(), r#"{"id":2,"result":true,"error":null}"#);
+        assert_eq!(
+            lines.next().unwrap(),
+            r#"{"id":2,"result":true,"error":null}"#
+        );
 
         assert!(lines.next().unwrap().contains("mining.set_target"));
         let notify = lines.next().unwrap();
@@ -999,7 +999,12 @@ mod tests {
     fn bad_address_is_error_24() {
         let h = harness(Mode::Pool, 1_000_000);
         let mut s = session(&h, 3, 0);
-        feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":[]}"#, 0);
+        feed(
+            &mut s,
+            &h,
+            r#"{"id":1,"method":"mining.subscribe","params":[]}"#,
+            0,
+        );
         let out = feed(
             &mut s,
             &h,
@@ -1118,7 +1123,10 @@ mod tests {
         );
         feed(&mut s, &h, &line, 100);
         let out = feed(&mut s, &h, &line, 200);
-        assert!(out.contains("\"error\":[27"), "expected a ban notice: {out}");
+        assert!(
+            out.contains("\"error\":[27"),
+            "expected a ban notice: {out}"
+        );
         assert_eq!(closed(&mut s), Some(CloseReason::Banned));
     }
 
@@ -1219,7 +1227,10 @@ mod tests {
         s.outbuf.clear();
         s.on_tick(20_000, &h.sh);
         let pushed = String::from_utf8(core::mem::take(&mut s.outbuf)).unwrap();
-        assert!(pushed.contains("true]}"), "clean_jobs must be true: {pushed}");
+        assert!(
+            pushed.contains("true]}"),
+            "clean_jobs must be true: {pushed}"
+        );
 
         let line = format!(
             r#"{{"id":7,"method":"mining.submit","params":["w","{:08x}","{}"]}}"#,
@@ -1354,7 +1365,12 @@ mod tests {
     fn pinned_login_disables_vardiff() {
         let h = harness(Mode::Pool, 1_000_000);
         let mut s = session(&h, 22, 0);
-        feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":[]}"#, 0);
+        feed(
+            &mut s,
+            &h,
+            r#"{"id":1,"method":"mining.subscribe","params":[]}"#,
+            0,
+        );
         feed(
             &mut s,
             &h,
@@ -1424,7 +1440,8 @@ mod tests {
 
     #[test]
     fn solo_template_per_address() {
-        let src = Arc::new(MockJobSource::new(1, Target::from_difficulty(1_000_000)).per_recipient(true));
+        let src =
+            Arc::new(MockJobSource::new(1, Target::from_difficulty(1_000_000)).per_recipient(true));
         let sink: crate::verify::ResultSink = Arc::new(|_| {});
         let verifier = Arc::new(InlineVerifier::new(Arc::new(MockPow::new()), sink));
         let sh = Arc::new(Shared {
@@ -1642,7 +1659,11 @@ mod tests {
             ),
             0,
         );
-        assert_eq!(attacker.difficulty(), 5_000_000, "the pin itself is honoured");
+        assert_eq!(
+            attacker.difficulty(),
+            5_000_000,
+            "the pin itself is honoured"
+        );
         attacker.release(0, &h.sh);
 
         let mut victim = session(&h, 45, 1_000);
@@ -1700,7 +1721,12 @@ mod tests {
         }
         assert!(s.accepted_shares >= DIFF_CACHE_MIN_SHARES);
 
-        let cached = h.sh.diffs.lock().unwrap().start_for(&[victim_seed; 20], now).0;
+        let cached =
+            h.sh.diffs
+                .lock()
+                .unwrap()
+                .start_for(&[victim_seed; 20], now)
+                .0;
         assert_eq!(
             cached, START_DIFF,
             "a pinned difficulty ({cached}) leaked into the address cache"
@@ -1736,7 +1762,11 @@ mod tests {
         }
         assert_eq!(s.accepted_shares, DIFF_CACHE_MIN_SHARES);
         let cached = h.sh.diffs.lock().unwrap().start_for(&[46u8; 20], now).0;
-        assert_eq!(cached, s.difficulty(), "earned difficulty must be remembered");
+        assert_eq!(
+            cached,
+            s.difficulty(),
+            "earned difficulty must be remembered"
+        );
     }
 
     #[test]
@@ -2013,7 +2043,10 @@ mod tests {
         const HONEST_DEADLINE_MS: u64 = 2_000;
         const FLOODERS: usize = 8;
 
-        let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(MIN_DIFF)));
+        let src = Arc::new(MockJobSource::new(
+            184_602,
+            Target::from_difficulty(MIN_DIFF),
+        ));
         let verifier = Arc::new(PacedVerifier::new(4_096));
         let mut cfg = ServerConfig::for_mode(Mode::Pool);
 
@@ -2031,7 +2064,8 @@ mod tests {
             cfg,
         });
 
-        let mk = |id: u64, ip: u8| Session::new(id, IpAddr::V4(Ipv4Addr::new(10, 1, 0, ip)), 0, &sh);
+        let mk =
+            |id: u64, ip: u8| Session::new(id, IpAddr::V4(Ipv4Addr::new(10, 1, 0, ip)), 0, &sh);
         let mut honest = mk(1, 1);
         let mut slow = mk(2, 2);
         let mut silent = mk(3, 3);
@@ -2196,7 +2230,10 @@ mod tests {
             honest_closed, None,
             "the honest miner was disconnected ({honest_closed:?})"
         );
-        assert_eq!(honest_rejects, 0, "an honest share was refused: {first_reject}");
+        assert_eq!(
+            honest_rejects, 0,
+            "an honest share was refused: {first_reject}"
+        );
         assert!(
             honest_acks >= 20,
             "the honest miner got only {honest_acks} answers in 60 s"

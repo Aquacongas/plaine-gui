@@ -105,7 +105,11 @@ fn sbox_matches_fips197_known_answers() {
         (0x53, 0xed),
         (0xff, 0x16),
     ] {
-        assert_eq!(s[x], want, "S-box[{x:#04x}] = {:#04x}, want {want:#04x}", s[x]);
+        assert_eq!(
+            s[x], want,
+            "S-box[{x:#04x}] = {:#04x}, want {want:#04x}",
+            s[x]
+        );
     }
 }
 

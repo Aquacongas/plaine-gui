@@ -117,7 +117,10 @@ fn f1b_missing_live_hdr_real_tip() {
     let tip = r.tip();
     assert_eq!(tip.height, 4_095);
     println!("  tip.hash   : {}", hex(&tip.hash));
-    println!("  hash_at    : {}", hex(&r.hash_at(4_095).unwrap().unwrap()));
+    println!(
+        "  hash_at    : {}",
+        hex(&r.hash_at(4_095).unwrap().unwrap())
+    );
     assert_eq!(
         tip.hash,
         r.hash_at(4_095).unwrap().unwrap(),
@@ -128,7 +131,10 @@ fn f1b_missing_live_hdr_real_tip() {
         "the work of the lost tip is still advertised"
     );
 
-    println!("  chainwork_at(4096)   : {:?}", r.chainwork_at(4_096).unwrap().is_some());
+    println!(
+        "  chainwork_at(4096)   : {:?}",
+        r.chainwork_at(4_096).unwrap().is_some()
+    );
     assert!(
         r.chainwork_at(4_096).unwrap().is_none(),
         "a checkpoint above the repaired tip survived"
@@ -190,7 +196,10 @@ fn f2_old_schema_named_not_panic() {
     let got = open_result(&s).expect("open must not panic on an older schema");
     println!("  open() on schema 0 + 40-byte tip -> {got:?}");
     match got {
-        Err(StoreError::SchemaVersion { found: 0, expected: 1 }) => {}
+        Err(StoreError::SchemaVersion {
+            found: 0,
+            expected: 1,
+        }) => {}
         other => panic!("expected SchemaVersion{{0,1}}, got {other:?}"),
     }
 }
@@ -203,7 +212,11 @@ fn f2b_short_network_row_named() {
     let got = open_result(&s).expect("open must not panic");
     println!("  open() on a 2-byte network row -> {got:?}");
     match got {
-        Err(StoreError::MetaRowMalformed { key: "network", len: 2, expected: 4 }) => {}
+        Err(StoreError::MetaRowMalformed {
+            key: "network",
+            len: 2,
+            expected: 4,
+        }) => {}
         other => panic!("expected MetaRowMalformed(network), got {other:?}"),
     }
 }
@@ -217,7 +230,11 @@ fn f2c_short_issued_row_named() {
     let got = open_result(&s).expect("open must not panic");
     println!("  open() on an 8-byte issued row -> {got:?}");
     match got {
-        Err(StoreError::MetaRowMalformed { key: "issued", len: 8, expected: 16 }) => {}
+        Err(StoreError::MetaRowMalformed {
+            key: "issued",
+            len: 8,
+            expected: 16,
+        }) => {}
         other => panic!("expected MetaRowMalformed(issued), got {other:?}"),
     }
 }
@@ -230,7 +247,11 @@ fn f2d_short_fingerprint_row_named() {
     let got = open_result(&s).expect("open must not panic");
     println!("  open() on a 16-byte fingerprint row -> {got:?}");
     match got {
-        Err(StoreError::MetaRowMalformed { key: "state_fingerprint", len: 16, expected: 32 }) => {}
+        Err(StoreError::MetaRowMalformed {
+            key: "state_fingerprint",
+            len: 16,
+            expected: 32,
+        }) => {}
         other => panic!("expected MetaRowMalformed(state_fingerprint), got {other:?}"),
     }
 }
@@ -241,12 +262,18 @@ fn f2e_bad_bidx_row_named() {
     let s = seed("sweep-f2-bidx", 40);
     poke_meta(
         &s,
-        &[("bidx_sealed_through", 0x8000_0000_0000_0000u64.to_le_bytes().to_vec())],
+        &[(
+            "bidx_sealed_through",
+            0x8000_0000_0000_0000u64.to_le_bytes().to_vec(),
+        )],
     );
     let got = open_result(&s).expect("open must not panic on an absurd segment number");
     println!("  open() on bidx_sealed_through = i64::MIN -> {got:?}");
     match got {
-        Err(StoreError::MetaRowMalformed { key: "bidx_sealed_through", .. }) => {}
+        Err(StoreError::MetaRowMalformed {
+            key: "bidx_sealed_through",
+            ..
+        }) => {}
         other => panic!("expected MetaRowMalformed(bidx_sealed_through), got {other:?}"),
     }
 }
@@ -274,7 +301,10 @@ fn f3_zero_count_range_on_degraded() {
     println!("  header_damage: {}", rep.integrity.header_damage.len());
 
     let mut out = Vec::new();
-    println!("  headers_range(0, 4, ..) -> {:?}", r.headers_range(0, 4, &mut out));
+    println!(
+        "  headers_range(0, 4, ..) -> {:?}",
+        r.headers_range(0, 4, &mut out)
+    );
 
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(|_| {}));
@@ -309,7 +339,10 @@ fn f1c_deep_flip_publishes_kept_hash() {
     println!("  tip.height           : {}", tip.height);
     println!("  tip.hash             : {}", hex(&tip.hash));
     let kept = r.header_at(295).unwrap().unwrap();
-    println!("  header_at(295) is the corrupt one: {}", kept[..] != before[..]);
+    println!(
+        "  header_at(295) is the corrupt one: {}",
+        kept[..] != before[..]
+    );
     assert_eq!(rep.headers_truncated_to, Some(296));
     assert_eq!(tip.height, 295);
     assert_ne!(&kept[..], &before[..], "the corrupt header is the new tip");

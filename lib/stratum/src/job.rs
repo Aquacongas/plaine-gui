@@ -294,9 +294,18 @@ mod tests {
     #[test]
     fn previous_job_survives_clean_push() {
         let mut s = JobSlots::new();
-        let old = s.push(tmpl(1, false), Target::from_difficulty(4_096), 4_096, false, 0);
+        let old = s.push(
+            tmpl(1, false),
+            Target::from_difficulty(4_096),
+            4_096,
+            false,
+            0,
+        );
         s.push(tmpl(2, true), Target::MAX, 1, true, 1_000);
-        let r = s.lookup(old, 1_500).job_ref().expect("a job to verify against");
+        let r = s
+            .lookup(old, 1_500)
+            .job_ref()
+            .expect("a job to verify against");
         let job = s.get(r).expect("the previous job is still here");
         assert_eq!(job.job_id, old);
         assert_eq!(job.served_difficulty, 4_096);
@@ -331,8 +340,7 @@ mod tests {
 
     #[test]
     fn dedup_cap_is_unreachable_at_the_protocol_rate() {
-        let admitted =
-            crate::limits::SUBMIT_BURST + crate::limits::SUBMIT_RATE_PER_SEC * 60.0;
+        let admitted = crate::limits::SUBMIT_BURST + crate::limits::SUBMIT_RATE_PER_SEC * 60.0;
         assert!(
             admitted < DEDUP_PER_JOB as f64,
             "{admitted} submits possible against a cap of {DEDUP_PER_JOB}"
@@ -386,8 +394,14 @@ mod tests {
 
         assert!(!d.check_and_record(9_999));
 
-        assert!(d.check_and_record(0), "nonce 0 was forgotten, which is a replay");
-        assert!(d.check_and_record(1), "nonce 1 was forgotten, which is a replay");
+        assert!(
+            d.check_and_record(0),
+            "nonce 0 was forgotten, which is a replay"
+        );
+        assert!(
+            d.check_and_record(1),
+            "nonce 1 was forgotten, which is a replay"
+        );
         assert!(
             d.check_and_record(DEDUP_PER_JOB as u64 - 1),
             "the newest recorded nonce was forgotten"

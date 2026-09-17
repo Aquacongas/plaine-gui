@@ -44,7 +44,10 @@ mod tests {
         assert_ne!(a, b);
 
         let diff = (a ^ b).count_ones();
-        assert!((16..=48).contains(&diff), "poor avalanche: {diff} bits differ");
+        assert!(
+            (16..=48).contains(&diff),
+            "poor avalanche: {diff} bits differ"
+        );
     }
 
     #[test]

@@ -32,7 +32,10 @@ fn branch_at_depth(honest: &Scenario, depth: u64) -> Scenario {
 }
 
 fn refused() -> Option<CheckpointReport> {
-    Some(CheckpointReport { outcome: CheckpointOutcome::Unverified, anchor_advanced: false })
+    Some(CheckpointReport {
+        outcome: CheckpointOutcome::Unverified,
+        anchor_advanced: false,
+    })
 }
 
 fn sign_with(sk: &ed25519_dalek::SigningKey, height: u64, hash: &[u8; 32]) -> [u8; 64] {
@@ -69,7 +72,10 @@ fn decode_frame(buf: &[u8], authority_keys: &[[u8; 32]]) -> Option<SignedCheckpo
         let key_id = buf[at] as usize;
         let sig: [u8; 64] = buf[at + 1..at + 65].try_into().ok()?;
         match authority_keys.get(key_id) {
-            Some(pubkey) => sigs.push(CheckpointSig { pubkey: *pubkey, sig }),
+            Some(pubkey) => sigs.push(CheckpointSig {
+                pubkey: *pubkey,
+                sig,
+            }),
             None => continue,
         }
     }
@@ -91,11 +97,17 @@ fn deliver_over_a_socket(r: &mut Rig, frame: &[u8]) -> Option<CheckpointReport> 
     sock.read_to_end(&mut got).expect("read frame");
     sender.join().expect("sender thread");
 
-    assert_eq!(got, frame, "the bytes that arrived are the bytes that were sent");
+    assert_eq!(
+        got, frame,
+        "the bytes that arrived are the bytes that were sent"
+    );
 
     let keys = params().authority_keys;
     let cp = decode_frame(&got, &keys)?;
-    Some(r.cm.submit_checkpoint(&cp).expect("submit_checkpoint never errors"))
+    Some(
+        r.cm.submit_checkpoint(&cp)
+            .expect("submit_checkpoint never errors"),
+    )
 }
 
 #[test]
@@ -106,20 +118,36 @@ fn signed_checkpoint_admits_deep_reorg() {
     let attacker = branch_at_depth(&honest, depth);
 
     let anchored = attacker.blocks[(base + depth / 2) as usize].rec;
-    assert!(anchored.height > base, "the anchor must sit inside the branch");
+    assert!(
+        anchored.height > base,
+        "the anchor must sit inside the branch"
+    );
 
     let mut control = rig_on(&honest);
     let a = control.offer(7, &blocks_above(&attacker, base));
-    assert_eq!(a.connected, 0, "without an anchor the cheap gate refuses the branch");
-    assert!(matches!(control.cm.advance().expect("not halted"), Progress::NoChange));
+    assert_eq!(
+        a.connected, 0,
+        "without an anchor the cheap gate refuses the branch"
+    );
+    assert!(matches!(
+        control.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
     assert_eq!(control.height(), HONEST_TIP);
 
     let mut r = rig_on(&honest);
-    assert!(r.cm.anchor().is_none(), "premise: no anchor before the frame arrives");
+    assert!(
+        r.cm.anchor().is_none(),
+        "premise: no anchor before the frame arrives"
+    );
 
     let sig = sign_with(&authority_key(), anchored.height, &anchored.hash);
     let frame = encode_frame(anchored.height, &anchored.hash, &[(0u8, sig)]);
-    assert_eq!(frame.len(), 8 + 32 + 1 + 65, "one signature is a 106-byte frame");
+    assert_eq!(
+        frame.len(),
+        8 + 32 + 1 + 65,
+        "one signature is a 106-byte frame"
+    );
 
     let outcome = deliver_over_a_socket(&mut r, &frame).expect("the frame decodes");
 
@@ -129,12 +157,17 @@ fn signed_checkpoint_admits_deep_reorg() {
         r.cm.anchor().map(|a| (a.height, a.hash)),
         Some((anchored.height, anchored.hash))
     );
-    assert!(r.cm.checkpoints().is_empty(), "a contradicted height never enters enforcement");
+    assert!(
+        r.cm.checkpoints().is_empty(),
+        "a contradicted height never enters enforcement"
+    );
 
     let a = r.offer(7, &blocks_above(&attacker, base));
     assert_eq!(a.connected, depth, "the anchor relaxes the ingest gate");
     match r.cm.advance().expect("the anchor admits the deep reorg") {
-        Progress::Advanced { tip, rolled_back, .. } => {
+        Progress::Advanced {
+            tip, rolled_back, ..
+        } => {
             assert_eq!(rolled_back, depth);
             assert_eq!(tip.hash, attacker.tip().hash);
         }
@@ -171,16 +204,20 @@ fn unsigned_checkpoint_refused() {
     assert!(r.cm.anchor().is_none());
 
     let no_such_key = encode_frame(anchored.height, &anchored.hash, &[(7u8, [0u8; 64])]);
-    assert_eq!(
-        deliver_over_a_socket(&mut r, &no_such_key),
-        refused()
-    );
+    assert_eq!(deliver_over_a_socket(&mut r, &no_such_key), refused());
     assert!(r.cm.anchor().is_none());
 
     let a = r.offer(7, &blocks_above(&attacker, base));
     assert_eq!(a.connected, 0);
-    assert!(matches!(r.cm.advance().expect("not halted"), Progress::NoChange));
-    assert_eq!(r.height(), HONEST_TIP, "an unsigned deep reorg never moves the tip");
+    assert!(matches!(
+        r.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
+    assert_eq!(
+        r.height(),
+        HONEST_TIP,
+        "an unsigned deep reorg never moves the tip"
+    );
 }
 
 #[test]
@@ -189,8 +226,9 @@ fn oversized_frame_refused() {
     let mut r = rig_on(&honest);
 
     let hash = honest.blocks[10].rec.hash;
-    let sigs: Vec<(u8, [u8; 64])> =
-        (0..CHECKPOINT_SIGS_MAX as u8).map(|i| (0u8, [i ^ 0xA5; 64])).collect();
+    let sigs: Vec<(u8, [u8; 64])> = (0..CHECKPOINT_SIGS_MAX as u8)
+        .map(|i| (0u8, [i ^ 0xA5; 64]))
+        .collect();
     let frame = encode_frame(10, &hash, &sigs);
     assert_eq!(
         frame.len(),
@@ -206,7 +244,10 @@ fn oversized_frame_refused() {
     let honest_frame = encode_frame(10, &hash, &[(0u8, good)]);
     assert_eq!(
         deliver_over_a_socket(&mut r, &honest_frame),
-        Some(CheckpointReport { outcome: CheckpointOutcome::Admitted, anchor_advanced: true }),
+        Some(CheckpointReport {
+            outcome: CheckpointOutcome::Admitted,
+            anchor_advanced: true
+        }),
         "the honest one-signature frame at a height we hold enters the enforcement map"
     );
     assert_eq!(r.cm.checkpoints(), vec![(10, hash)]);
@@ -218,7 +259,11 @@ fn replayed_checkpoint_not_an_advance() {
     let mut r = rig_on(&honest);
 
     let framed = |height: u64, hash: &[u8; 32]| {
-        encode_frame(height, hash, &[(0u8, sign_with(&authority_key(), height, hash))])
+        encode_frame(
+            height,
+            hash,
+            &[(0u8, sign_with(&authority_key(), height, hash))],
+        )
     };
 
     let h20 = honest.blocks[20].rec.hash;
@@ -226,27 +271,43 @@ fn replayed_checkpoint_not_an_advance() {
 
     assert_eq!(
         deliver_over_a_socket(&mut r, &framed(20, &h20)),
-        Some(CheckpointReport { outcome: CheckpointOutcome::Admitted, anchor_advanced: true })
+        Some(CheckpointReport {
+            outcome: CheckpointOutcome::Admitted,
+            anchor_advanced: true
+        })
     );
     assert_eq!(r.cm.anchor().map(|a| a.height), Some(20));
 
     assert_eq!(
         deliver_over_a_socket(&mut r, &framed(20, &h20)),
-        Some(CheckpointReport { outcome: CheckpointOutcome::Admitted, anchor_advanced: false }),
+        Some(CheckpointReport {
+            outcome: CheckpointOutcome::Admitted,
+            anchor_advanced: false
+        }),
         "a replay enters the same map entry again, and the anchor does not move"
     );
     assert_eq!(r.cm.anchor().map(|a| a.height), Some(20));
 
     assert_eq!(
         deliver_over_a_socket(&mut r, &framed(10, &h10)),
-        Some(CheckpointReport { outcome: CheckpointOutcome::Admitted, anchor_advanced: false })
+        Some(CheckpointReport {
+            outcome: CheckpointOutcome::Admitted,
+            anchor_advanced: false
+        })
     );
-    assert_eq!(r.cm.anchor().map(|a| a.height), Some(20), "the anchor is monotone in height");
+    assert_eq!(
+        r.cm.anchor().map(|a| a.height),
+        Some(20),
+        "the anchor is monotone in height"
+    );
 
     let h25 = honest.blocks[25].rec.hash;
     assert_eq!(
         deliver_over_a_socket(&mut r, &framed(25, &h25)),
-        Some(CheckpointReport { outcome: CheckpointOutcome::Admitted, anchor_advanced: true })
+        Some(CheckpointReport {
+            outcome: CheckpointOutcome::Admitted,
+            anchor_advanced: true
+        })
     );
     assert_eq!(r.cm.anchor().map(|a| a.height), Some(25));
 }

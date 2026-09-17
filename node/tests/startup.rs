@@ -49,10 +49,16 @@ fn fresh_dir_writes_config_and_serves() {
     );
 
     let g = rpc(node.rpc, "chain_getBlockByHeight", "[0,0]").expect("genesis block");
-    assert!(g.contains(&expected), "genesis block record names its own hash");
+    assert!(
+        g.contains(&expected),
+        "genesis block record names its own hash"
+    );
 
     let audit = rpc(node.rpc, "emission_audit", "[0]").expect("emission_audit");
-    assert_eq!(num(&audit, "issuedMile"), num(&audit, "expectedByFormulaMile"));
+    assert_eq!(
+        num(&audit, "issuedMile"),
+        num(&audit, "expectedByFormulaMile")
+    );
 }
 
 #[test]
@@ -99,7 +105,10 @@ fn all_seams_open_and_coherent() {
     }
 
     let notes = rpc(node.rpc, "author_getNotes", "[]").expect("author_getNotes");
-    assert!(notes.contains("\"total\":0"), "a fresh chain holds no announcements: {notes}");
+    assert!(
+        notes.contains("\"total\":0"),
+        "a fresh chain holds no announcements: {notes}"
+    );
     let cp = rpc(node.rpc, "checkpoint_getStatus", "[]").expect("checkpoint_getStatus");
     assert!(cp.contains("\"keySource\":\"embedded\""), "{cp}");
 

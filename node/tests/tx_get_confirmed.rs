@@ -8,9 +8,8 @@ use std::path::Path;
 use std::time::Duration;
 
 fn rpc_raw(port: u16, method: &str, params: &str) -> String {
-    let body = format!(
-        "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"{method}\",\"params\":{params}}}"
-    );
+    let body =
+        format!("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"{method}\",\"params\":{params}}}");
     let req = format!(
         "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
          Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -21,7 +20,9 @@ fn rpc_raw(port: u16, method: &str, params: &str) -> String {
     s.write_all(req.as_bytes()).expect("write");
     let mut out = String::new();
     let _ = s.read_to_string(&mut out);
-    out.split_once("\r\n\r\n").map(|(_, j)| j.to_string()).unwrap_or(out)
+    out.split_once("\r\n\r\n")
+        .map(|(_, j)| j.to_string())
+        .unwrap_or(out)
 }
 
 const P2P: u16 = 34_356;
@@ -31,7 +32,14 @@ const P2P_NOINDEX: u16 = 34_366;
 const RPC_NOINDEX: u16 = 34_367;
 const STRATUM_NOINDEX: u16 = 34_369;
 
-fn write_config_txindex(dir: &Path, data: &Path, p2p: u16, rpc: u16, stratum: u16, txindex: bool) -> std::path::PathBuf {
+fn write_config_txindex(
+    dir: &Path,
+    data: &Path,
+    p2p: u16,
+    rpc: u16,
+    stratum: u16,
+    txindex: bool,
+) -> std::path::PathBuf {
     let text = format!(
         "[node]\nnetwork = \"main\"\ndata_dir = {:?}\nprune = false\ntxindex = {txindex}\n\n\
          [p2p]\nlisten = \"127.0.0.1:{p2p}\"\n\n\
@@ -47,9 +55,14 @@ fn write_config_txindex(dir: &Path, data: &Path, p2p: u16, rpc: u16, stratum: u1
 fn first_txid_at(rpc_port: u16, height: u64) -> String {
     let blk = rpc(rpc_port, "chain_getBlockByHeight", &format!("[{height},1]"))
         .unwrap_or_else(|| panic!("chain_getBlockByHeight [{height}] answered nothing"));
-    let at = blk.find("\"txids\"").unwrap_or_else(|| panic!("no txids in {blk}"));
+    let at = blk
+        .find("\"txids\"")
+        .unwrap_or_else(|| panic!("no txids in {blk}"));
     let rest = &blk[at..];
-    let open = rest.find('"').and_then(|_| rest.find('[')).expect("txids array");
+    let open = rest
+        .find('"')
+        .and_then(|_| rest.find('['))
+        .expect("txids array");
     let inner = &rest[open + 1..];
     let end = inner.find(']').expect("txids array end");
     let first = inner[..end]
@@ -76,7 +89,10 @@ fn tx_get_answers_for_mined_tx() {
     let mut node = start("indexed", &dir, &cfg, P2P, RPC, STRATUM);
 
     let h = mine_to(&node, 4, Duration::from_secs(300));
-    assert!(h >= 3, "the miner produced only {h} blocks; nothing to look up");
+    assert!(
+        h >= 3,
+        "the miner produced only {h} blocks; nothing to look up"
+    );
 
     let txid = first_txid_at(RPC, 2);
 
@@ -135,8 +151,22 @@ fn node_without_index_refuses() {
     ensure_console();
     let dir = scratch("txget-noindex");
     let data = dir.join("data");
-    let cfg = write_config_txindex(&dir, &data, P2P_NOINDEX, RPC_NOINDEX, STRATUM_NOINDEX, false);
-    let mut node = start("unindexed", &dir, &cfg, P2P_NOINDEX, RPC_NOINDEX, STRATUM_NOINDEX);
+    let cfg = write_config_txindex(
+        &dir,
+        &data,
+        P2P_NOINDEX,
+        RPC_NOINDEX,
+        STRATUM_NOINDEX,
+        false,
+    );
+    let mut node = start(
+        "unindexed",
+        &dir,
+        &cfg,
+        P2P_NOINDEX,
+        RPC_NOINDEX,
+        STRATUM_NOINDEX,
+    );
 
     let id = "11".repeat(32);
     let out = rpc_raw(RPC_NOINDEX, "tx_get", &format!("[\"{id}\"]"));

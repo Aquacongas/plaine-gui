@@ -256,7 +256,9 @@ fn no_mempool_relays_nothing() {
 
     let all: Vec<&Node> = vec![&a, &b];
     assert!(
-        settle(&all, 200, || a.node.outbound_count() + b.node.outbound_count() > 0),
+        settle(&all, 200, || a.node.outbound_count()
+            + b.node.outbound_count()
+            > 0),
         "the pair never connected"
     );
 
@@ -268,7 +270,10 @@ fn no_mempool_relays_nothing() {
         "the transaction reached B through some path other than the mempool \
          seam, so the seam is not what the tests above are proving"
     );
-    assert!(a.chain.has_tx(&txid), "the fixture lost its own transaction");
+    assert!(
+        a.chain.has_tx(&txid),
+        "the fixture lost its own transaction"
+    );
 
     let f = fds(&all);
     a.node.shutdown();
@@ -386,7 +391,11 @@ fn silent_announcer_releases_slots() {
         "a missed transaction deadline was charged as something other than a \
          deadline miss"
     );
-    assert_eq!(scored(&out3).len(), 4, "the missed deadlines were not charged");
+    assert_eq!(
+        scored(&out3).len(),
+        4,
+        "the missed deadlines were not charged"
+    );
 
     let mut out4 = Vec::new();
     r.on_announced(PeerId(2), &some, later, &mut out4);
@@ -403,7 +412,10 @@ fn unrequested_tx_scored() {
     let mut out = Vec::new();
     let (txid, _) = a_tx(77);
     let admit = r.on_tx(PeerId(1), txid, Mono(1_000), &mut out);
-    assert!(!admit, "a transaction nobody asked for was passed to the sink");
+    assert!(
+        !admit,
+        "a transaction nobody asked for was passed to the sink"
+    );
     assert_eq!(scored(&out), vec![Offence::UnsolicitedBody]);
 }
 
@@ -439,7 +451,11 @@ fn tx_not_announced_to_source() {
     let mut o = Vec::new();
     r.on_tick(Mono(2_000), &[PeerId(1), PeerId(2)], Vec::new, &mut o);
     for a in &o {
-        if let Action::Send { peer, msg: Msg::Inv(v) } = a {
+        if let Action::Send {
+            peer,
+            msg: Msg::Inv(v),
+        } = a
+        {
             assert!(
                 !(*peer == PeerId(1) && v.iter().any(|i| i.hash == txid)),
                 "the transaction was announced back to the peer that sent it"
@@ -548,7 +564,10 @@ fn decided_tx_not_repeated() {
     r.on_tick(Mono(2_000), &[], || vec![txid], &mut out2);
     assert_eq!(r.seen_len(), 1, "the poll did not mark it seen");
     let queued_after_poll = r.pending_len();
-    assert_eq!(queued_after_poll, 1, "the poll did not queue it for announcement");
+    assert_eq!(
+        queued_after_poll, 1,
+        "the poll did not queue it for announcement"
+    );
 
     let mut out3 = Vec::new();
     let admit = r.on_tx(PeerId(1), txid, Mono(3_000), &mut out3);
@@ -607,7 +626,9 @@ fn notfound_releases_tx_slot() {
     );
     assert_eq!(sim.engine.tx.inflight_len(), 1, "no slot was taken");
 
-    let acts = sim.engine.on_event(Event::NotFoundTx { peer, txid }, Mono(1_200));
+    let acts = sim
+        .engine
+        .on_event(Event::NotFoundTx { peer, txid }, Mono(1_200));
     assert_eq!(
         sim.engine.tx.inflight_len(),
         0,

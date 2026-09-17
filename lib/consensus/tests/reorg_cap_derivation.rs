@@ -24,8 +24,7 @@ impl Rng {
         x ^= x << 25;
         x ^= x >> 27;
         self.0 = x;
-        let u = (((x.wrapping_mul(0x2545_F491_4F6C_DD1D)) >> 11) as f64)
-            / ((1u64 << 53) as f64);
+        let u = (((x.wrapping_mul(0x2545_F491_4F6C_DD1D)) >> 11) as f64) / ((1u64 << 53) as f64);
         -mean * u.max(1e-18).ln()
     }
 }
@@ -165,7 +164,12 @@ fn stochastic_windows_shorter() {
     let det = tightest_window(&grow(20_000, HS_EIGHT_THREADS, None, None), cap).0;
     let mut worst = f64::INFINITY;
     for s in 0..20u64 {
-        let t = grow(20_000, HS_EIGHT_THREADS, None, Some(0xdead_beef ^ s.wrapping_mul(0x9e37_79b9)));
+        let t = grow(
+            20_000,
+            HS_EIGHT_THREADS,
+            None,
+            Some(0xdead_beef ^ s.wrapping_mul(0x9e37_79b9)),
+        );
         worst = worst.min(tightest_window(&t, cap).0);
     }
     println!(
@@ -208,7 +212,10 @@ fn difficulty_ramp_ends_within_four_hours() {
 fn derivation_tables() {
     let cap = MAX_REORG_DEPTH as usize;
     println!("\nMAX_REORG_DEPTH = {MAX_REORG_DEPTH}  BLOCK_TIME_SECS = {BLOCK_TIME_SECS}");
-    println!("work at GENESIS_BITS = {:.0} hashes/block\n", work_of(GENESIS_BITS));
+    println!(
+        "work at GENESIS_BITS = {:.0} hashes/block\n",
+        work_of(GENESIS_BITS)
+    );
 
     println!("-- the honest cost: minutes until a partition cannot heal (mature difficulty) --");
     println!("  cap  | share 0.50 | share 0.30 | share 0.10");

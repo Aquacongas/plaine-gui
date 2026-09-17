@@ -61,7 +61,10 @@ impl Checkpoints {
         params: &ChainParams,
         observe: &mut dyn FnMut(Condition),
     ) -> CheckpointReport {
-        let report = |outcome, anchor_advanced| CheckpointReport { outcome, anchor_advanced };
+        let report = |outcome, anchor_advanced| CheckpointReport {
+            outcome,
+            anchor_advanced,
+        };
         if !verify_checkpoint(cp, &params.authority_keys, params.checkpoint_threshold) {
             return report(CheckpointOutcome::Unverified, false);
         }
@@ -88,7 +91,10 @@ impl Checkpoints {
                 report(CheckpointOutcome::Admitted, advanced)
             }
             CheckpointAdmission::HashConflict => {
-                observe(Condition::AnchorContradiction { height: cp.height, hash: cp.hash });
+                observe(Condition::AnchorContradiction {
+                    height: cp.height,
+                    hash: cp.hash,
+                });
                 if self.install_anchor(cp) {
                     report(CheckpointOutcome::StoredAsAnchor, true)
                 } else {
@@ -100,7 +106,10 @@ impl Checkpoints {
 
     // Anchor only moves forward; the supersede check drops stale or replayed records.
     fn install_anchor(&mut self, cp: &SignedCheckpoint) -> bool {
-        let cand = Anchor { height: cp.height, hash: cp.hash };
+        let cand = Anchor {
+            height: cp.height,
+            hash: cp.hash,
+        };
         if anchor_supersedes(self.anchor.as_ref(), &cand) {
             self.anchor = Some(cand);
 

@@ -5,9 +5,9 @@ use plaine_consensus::codec::TransferTx;
 #[cfg(feature = "author-tools")]
 use plaine_consensus::codec::AnnouncementTx;
 use plaine_consensus::constants::Network;
-use plaine_consensus::{crypto, hex};
 #[cfg(feature = "author-tools")]
 use plaine_consensus::tx;
+use plaine_consensus::{crypto, hex};
 use plaine_wallet::ui::Streams;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -70,11 +70,7 @@ fn wallet(argv: &[&str], stdin: &[u8]) -> Run {
     drive(plaine_wallet::wallet_cli::run, argv, stdin)
 }
 
-fn drive(
-    f: fn(&[String], &mut Streams) -> i32,
-    argv: &[&str],
-    stdin: &[u8],
-) -> Run {
+fn drive(f: fn(&[String], &mut Streams) -> i32, argv: &[&str], stdin: &[u8]) -> Run {
     let args: Vec<String> = argv.iter().map(|s| s.to_string()).collect();
     let mut input = Cursor::new(stdin.to_vec());
     let mut out: Vec<u8> = Vec::new();
@@ -102,8 +98,16 @@ fn make_key(d: &Dir, name: &str, role: &str, tag: &[u8]) -> (String, String, Str
     let out = d.s(name);
     let r = wallet(
         &[
-            "new", "--out", &out, "--role", role, "--seed-stdin",
-            "--passphrase-file", &pass, "--kdf-iters", "1024",
+            "new",
+            "--out",
+            &out,
+            "--role",
+            role,
+            "--seed-stdin",
+            "--passphrase-file",
+            &pass,
+            "--kdf-iters",
+            "1024",
         ],
         seed_hex(tag).as_bytes(),
     );
@@ -122,12 +126,18 @@ fn transfer_accepted_by_consensus() {
     let r = wallet(
         &[
             "transfer",
-            "--in", &key,
-            "--to", &to,
-            "--amount", "1.5plne",
-            "--fee", "1000mile",
-            "--nonce", "7",
-            "--passphrase-file", &d.s("pass.txt"),
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1.5plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "7",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
@@ -136,7 +146,11 @@ fn transfer_accepted_by_consensus() {
     assert_eq!(r.field("from"), from_addr);
 
     let bytes = hex::decode(&r.field("hex")).expect("the wallet must emit hex");
-    assert_eq!(bytes.len(), 157, "a signed transfer is 157 bytes on the wire");
+    assert_eq!(
+        bytes.len(),
+        157,
+        "a signed transfer is 157 bytes on the wire"
+    );
 
     let decoded = TransferTx::decode(&bytes).expect("consensus must decode it");
     crypto::verify_transfer_signature(Network::Main, &decoded)
@@ -163,9 +177,19 @@ fn wallet_signs_under_one_chain_id() {
 
     let m = wallet(
         &[
-            "transfer", "--in", &key, "--to", &to,
-            "--amount", "1plne", "--fee", "1000mile", "--nonce", "0",
-            "--passphrase-file", &d.s("pass.txt"),
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "0",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
@@ -191,16 +215,30 @@ fn removed_placeholder_flag_is_rejected() {
 
     let r = wallet(
         &[
-            "transfer", "--in", &key, "--to", &to, "--amount", "1plne",
-            "--fee", "1000mile", "--nonce", "0",
-            "--passphrase-file", &d.s("pass.txt"),
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "0",
+            "--passphrase-file",
+            &d.s("pass.txt"),
             "--allow-placeholder-chain-id",
         ],
         b"",
     );
     assert_eq!(r.code, 2, "a removed flag is a usage error: {}", r.all());
     assert!(r.err.contains("was removed"), "{}", r.err);
-    assert!(r.err.contains("PLNE"), "must name the frozen value: {}", r.err);
+    assert!(
+        r.err.contains("PLNE"),
+        "must name the frozen value: {}",
+        r.err
+    );
     assert!(
         !r.out.contains("hex        "),
         "nothing may be emitted when the invocation is refused:
@@ -215,10 +253,21 @@ fn removed_placeholder_flag_is_rejected() {
         std::fs::write(d.path("msg.txt"), "a message").unwrap();
         let r2 = wallet(
             &[
-                "announce", "--in", &author_key, "--author-pubkey",
-                &author_pub, "--payload-file", &d.s("msg.txt"), "--encoding", "1",
-                "--fee", "50000mile", "--nonce", "0",
-                "--passphrase-file", &d.s("pass.txt"),
+                "announce",
+                "--in",
+                &author_key,
+                "--author-pubkey",
+                &author_pub,
+                "--payload-file",
+                &d.s("msg.txt"),
+                "--encoding",
+                "1",
+                "--fee",
+                "50000mile",
+                "--nonce",
+                "0",
+                "--passphrase-file",
+                &d.s("pass.txt"),
                 "--allow-placeholder-chain-id",
             ],
             b"",
@@ -236,18 +285,29 @@ fn author_announcement_accepted_impostor_refused() {
     let (other_key, _, other_pub) = make_key(&d, "other.plnekey", "spend", b"e2e impostor");
     assert_ne!(author_pub, other_pub);
 
-    std::fs::write(d.path("msg.txt"), "PLNE emergency: algorithm change at height 100000").unwrap();
+    std::fs::write(
+        d.path("msg.txt"),
+        "PLNE emergency: algorithm change at height 100000",
+    )
+    .unwrap();
 
     let r = wallet(
         &[
             "announce",
-            "--in", &author_key,
-            "--author-pubkey", &author_pub,
-            "--payload-file", &d.s("msg.txt"),
-            "--encoding", "1",
-            "--fee", "50000mile",
-            "--nonce", "3",
-            "--passphrase-file", &d.s("pass.txt"),
+            "--in",
+            &author_key,
+            "--author-pubkey",
+            &author_pub,
+            "--payload-file",
+            &d.s("msg.txt"),
+            "--encoding",
+            "1",
+            "--fee",
+            "50000mile",
+            "--nonce",
+            "3",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
@@ -265,17 +325,27 @@ fn author_announcement_accepted_impostor_refused() {
     let refused = wallet(
         &[
             "announce",
-            "--in", &other_key,
-            "--author-pubkey", &author_pub,
-            "--payload-file", &d.s("msg.txt"),
-            "--encoding", "1",
-            "--fee", "50000mile",
-            "--nonce", "3",
-            "--passphrase-file", &d.s("pass.txt"),
+            "--in",
+            &other_key,
+            "--author-pubkey",
+            &author_pub,
+            "--payload-file",
+            &d.s("msg.txt"),
+            "--encoding",
+            "1",
+            "--fee",
+            "50000mile",
+            "--nonce",
+            "3",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
-    assert_ne!(refused.code, 0, "a non-author key must not produce an announcement");
+    assert_ne!(
+        refused.code, 0,
+        "a non-author key must not produce an announcement"
+    );
     assert!(
         refused.err.contains("author"),
         "the refusal must say why: {}",
@@ -297,11 +367,21 @@ fn author_announcement_accepted_impostor_refused() {
     );
 
     let checked = wallet(
-        &["decode", "--hex", &hex::encode(&bytes), "--author-pubkey", &other_pub],
+        &[
+            "decode",
+            "--hex",
+            &hex::encode(&bytes),
+            "--author-pubkey",
+            &other_pub,
+        ],
         b"",
     );
     assert_ne!(checked.code, 0);
-    assert!(checked.out.contains("rule 1     REJECTED"), "{}", checked.out);
+    assert!(
+        checked.out.contains("rule 1     REJECTED"),
+        "{}",
+        checked.out
+    );
 }
 
 #[cfg(feature = "author-tools")]
@@ -313,12 +393,19 @@ fn journal_refuses_second_message_at_nonce() {
     std::fs::write(d.path("b.txt"), "a DIFFERENT message").unwrap();
 
     let base: Vec<String> = vec![
-        "announce".into(), "--in".into(), key.clone(),
-        "--author-pubkey".into(), pubkey.clone(),
-        "--encoding".into(), "1".into(),
-        "--fee".into(), "50000mile".into(),
-        "--nonce".into(), "11".into(),
-        "--passphrase-file".into(), d.s("pass.txt"),
+        "announce".into(),
+        "--in".into(),
+        key.clone(),
+        "--author-pubkey".into(),
+        pubkey.clone(),
+        "--encoding".into(),
+        "1".into(),
+        "--fee".into(),
+        "50000mile".into(),
+        "--nonce".into(),
+        "11".into(),
+        "--passphrase-file".into(),
+        d.s("pass.txt"),
     ];
     let with = |file: &str, extra: &[&str]| -> Run {
         let mut v: Vec<String> = base.clone();
@@ -347,7 +434,12 @@ fn journal_refuses_second_message_at_nonce() {
         let refs: Vec<&str> = v.iter().map(|s| s.as_str()).collect();
         wallet(&refs, b"")
     };
-    assert_ne!(bumped.code, 0, "a fee bump at a used nonce is a conflict:\n{}", bumped.all());
+    assert_ne!(
+        bumped.code,
+        0,
+        "a fee bump at a used nonce is a conflict:\n{}",
+        bumped.all()
+    );
     assert!(bumped.err.contains("nonce 11"), "{}", bumped.err);
 
     with(&d.s("b.txt"), &["--reuse-nonce"]).ok();
@@ -369,8 +461,18 @@ fn only_backup_prints_the_seed() {
     runs.push((
         "new",
         wallet(
-            &["new", "--out", &key, "--role", "spend", "--seed-stdin",
-              "--passphrase-file", &pass, "--kdf-iters", "1024"],
+            &[
+                "new",
+                "--out",
+                &key,
+                "--role",
+                "spend",
+                "--seed-stdin",
+                "--passphrase-file",
+                &pass,
+                "--kdf-iters",
+                "1024",
+            ],
             seed.as_bytes(),
         ),
     ));
@@ -384,28 +486,60 @@ fn only_backup_prints_the_seed() {
     runs.push((
         "passphrase",
         wallet(
-            &["passphrase", "--in", &key, "--out", &d.s("rotated.plnekey"),
-              "--old-passphrase-file", &pass, "--new-passphrase-file", &pass,
-              "--kdf-iters", "1024"],
+            &[
+                "passphrase",
+                "--in",
+                &key,
+                "--out",
+                &d.s("rotated.plnekey"),
+                "--old-passphrase-file",
+                &pass,
+                "--new-passphrase-file",
+                &pass,
+                "--kdf-iters",
+                "1024",
+            ],
             b"",
         ),
     ));
 
-    let backup_string = plaine_wallet::sechex::encode_backup(
-        &plaine_wallet::secret::Secret32::from_bytes(plaine_consensus::blake3::hash(
-            b"e2e disclosure",
-        )),
-    );
+    let backup_string =
+        plaine_wallet::sechex::encode_backup(&plaine_wallet::secret::Secret32::from_bytes(
+            plaine_consensus::blake3::hash(b"e2e disclosure"),
+        ));
     let imported = wallet(
-        &["import", "--out", &d.s("restored.plnekey"), "--role", "spend",
-          "--seed-stdin", "--passphrase-file", &pass, "--kdf-iters", "1024"],
+        &[
+            "import",
+            "--out",
+            &d.s("restored.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
+            "--passphrase-file",
+            &pass,
+            "--kdf-iters",
+            "1024",
+        ],
         backup_string.as_bytes(),
     );
     imported.ok();
     runs.push(("import", imported));
     let transfer = wallet(
-        &["transfer", "--in", &key, "--to", &to, "--amount", "2plne",
-          "--fee", "1000mile", "--nonce", "1", "--passphrase-file", &pass],
+        &[
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "2plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "1",
+            "--passphrase-file",
+            &pass,
+        ],
         b"",
     );
     let tx_hex = transfer.field("hex");
@@ -415,9 +549,23 @@ fn only_backup_prints_the_seed() {
     runs.push((
         "announce",
         wallet(
-            &["announce", "--in", &key, "--author-pubkey", &_pubkey,
-              "--payload-file", &d.s("msg.txt"), "--encoding", "1",
-              "--fee", "50000mile", "--nonce", "1", "--passphrase-file", &pass],
+            &[
+                "announce",
+                "--in",
+                &key,
+                "--author-pubkey",
+                &_pubkey,
+                "--payload-file",
+                &d.s("msg.txt"),
+                "--encoding",
+                "1",
+                "--fee",
+                "50000mile",
+                "--nonce",
+                "1",
+                "--passphrase-file",
+                &pass,
+            ],
             b"",
         ),
     ));
@@ -428,7 +576,10 @@ fn only_backup_prints_the_seed() {
     runs.push(("bad-flag", wallet(&["transfer", "--nope", "1"], b"")));
     runs.push((
         "wrong-passphrase",
-        wallet(&["verify", "--in", &key, "--passphrase-file", &d.s("msg.txt")], b""),
+        wallet(
+            &["verify", "--in", &key, "--passphrase-file", &d.s("msg.txt")],
+            b"",
+        ),
     ));
     runs.push((
         "seed-on-argv",
@@ -454,12 +605,21 @@ fn only_backup_prints_the_seed() {
     }
 
     let b = wallet(
-        &["backup", "--in", &key, "--passphrase-file", &pass,
-          "--i-understand-this-prints-a-secret"],
+        &[
+            "backup",
+            "--in",
+            &key,
+            "--passphrase-file",
+            &pass,
+            "--i-understand-this-prints-a-secret",
+        ],
         b"",
     );
     b.ok();
-    assert!(b.out.contains(&seed), "backup is the one command that discloses");
+    assert!(
+        b.out.contains(&seed),
+        "backup is the one command that discloses"
+    );
 
     let refused = wallet(&["backup", "--in", &key, "--passphrase-file", &pass], b"");
     assert_ne!(refused.code, 0);
@@ -477,12 +637,19 @@ fn new_without_a_seed_generates_a_key() {
     r.ok();
 
     let addr = r.field("address");
-    assert!(addr.starts_with("plne1"), "expected a plne1 address, got {addr}");
+    assert!(
+        addr.starts_with("plne1"),
+        "expected a plne1 address, got {addr}"
+    );
     crypto::decode_address(&addr).expect("the printed address must decode");
 
     let back = wallet(&["address", "--in", &key], b"");
     back.ok();
-    assert_eq!(back.out.trim(), addr, "the file reads back to the printed address");
+    assert_eq!(
+        back.out.trim(),
+        addr,
+        "the file reads back to the printed address"
+    );
 
     let text = std::fs::read_to_string(&key).unwrap();
     assert!(text.starts_with("PLNEKEY1"), "a real key file was written");
@@ -494,7 +661,14 @@ fn generated_keys_differ_between_runs() {
     let mut seen = Vec::new();
     for name in ["one.plnekey", "two.plnekey", "three.plnekey"] {
         let r = wallet(
-            &["new", "--out", &d.s(name), "--role", "spend", "--no-passphrase"],
+            &[
+                "new",
+                "--out",
+                &d.s(name),
+                "--role",
+                "spend",
+                "--no-passphrase",
+            ],
             b"",
         );
         r.ok();
@@ -514,16 +688,30 @@ fn a_supplied_seed_still_pins_the_address() {
     let seed = seed_hex(b"a fixed seed produces a fixed address");
     let make = |name: &str| -> String {
         wallet(
-            &["new", "--out", &d.s(name), "--role", "spend", "--no-passphrase", "--seed-stdin"],
+            &[
+                "new",
+                "--out",
+                &d.s(name),
+                "--role",
+                "spend",
+                "--no-passphrase",
+                "--seed-stdin",
+            ],
             seed.as_bytes(),
         )
         .ok();
-        wallet(&["address", "--in", &d.s(name)], b"").out.trim().to_string()
+        wallet(&["address", "--in", &d.s(name)], b"")
+            .out
+            .trim()
+            .to_string()
     };
     let first = make("a.plnekey");
     let second = make("b.plnekey");
     assert!(first.starts_with("plne1"));
-    assert_eq!(first, second, "the same supplied seed yields the same address");
+    assert_eq!(
+        first, second,
+        "the same supplied seed yields the same address"
+    );
 }
 
 #[test]
@@ -533,8 +721,18 @@ fn keyfile_and_journal_hold_no_seed() {
     std::fs::write(d.path("pass.txt"), "a generated passphrase").unwrap();
     let key = d.s("author.plnekey");
     wallet(
-        &["new", "--out", &key, "--role", "author", "--seed-stdin",
-          "--passphrase-file", &d.s("pass.txt"), "--kdf-iters", "1024"],
+        &[
+            "new",
+            "--out",
+            &key,
+            "--role",
+            "author",
+            "--seed-stdin",
+            "--passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            "1024",
+        ],
         seed.as_bytes(),
     )
     .ok();
@@ -553,9 +751,23 @@ fn keyfile_and_journal_hold_no_seed() {
         };
         std::fs::write(d.path("m.txt"), "note").unwrap();
         wallet(
-            &["announce", "--in", &key, "--author-pubkey", &pubkey,
-              "--payload-file", &d.s("m.txt"), "--encoding", "1", "--fee", "9000mile",
-              "--nonce", "0", "--passphrase-file", &d.s("pass.txt")],
+            &[
+                "announce",
+                "--in",
+                &key,
+                "--author-pubkey",
+                &pubkey,
+                "--payload-file",
+                &d.s("m.txt"),
+                "--encoding",
+                "1",
+                "--fee",
+                "9000mile",
+                "--nonce",
+                "0",
+                "--passphrase-file",
+                &d.s("pass.txt"),
+            ],
             b"",
         )
         .ok();
@@ -563,7 +775,10 @@ fn keyfile_and_journal_hold_no_seed() {
         let journal = std::fs::read_to_string(format!("{key}.journal")).unwrap();
         assert!(!journal.contains(&seed));
         assert!(!journal.contains("PLNEKEY1"));
-        assert!(journal.contains("nonce"), "the journal must record the nonce: {journal}");
+        assert!(
+            journal.contains("nonce"),
+            "the journal must record the nonce: {journal}"
+        );
     }
 }
 
@@ -572,7 +787,11 @@ fn no_networking_and_no_unsafe() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut files = Vec::new();
     collect_rs(&src, &mut files);
-    assert!(files.len() > 10, "expected the whole crate, found {}", files.len());
+    assert!(
+        files.len() > 10,
+        "expected the whole crate, found {}",
+        files.len()
+    );
 
     let mut lib_forbids = false;
     for f in &files {
@@ -602,7 +821,10 @@ fn no_networking_and_no_unsafe() {
             lib_forbids = true;
         }
     }
-    assert!(lib_forbids, "the crate root must carry #![forbid(unsafe_code)]");
+    assert!(
+        lib_forbids,
+        "the crate root must carry #![forbid(unsafe_code)]"
+    );
 
     let bin = "plaine-wallet.rs";
     let text = std::fs::read_to_string(src.join("bin").join(bin)).unwrap();
@@ -624,7 +846,11 @@ fn no_height_zero_pow_exemption() {
     let mut files = Vec::new();
     collect_rs(&wallet_src, &mut files);
     collect_rs(&consensus_src, &mut files);
-    assert!(files.len() > 15, "expected both crates, found {}", files.len());
+    assert!(
+        files.len() > 15,
+        "expected both crates, found {}",
+        files.len()
+    );
 
     const FORBIDDEN_NAMES: [&str; 6] = [
         "skip_pow",
@@ -634,7 +860,14 @@ fn no_height_zero_pow_exemption() {
         "no_pow_check",
         "skip_proof_of_work",
     ];
-    const POW_WORDS: [&str; 6] = ["pow", "proof_of_work", "isochron", "meets_target", "work", "nonce"];
+    const POW_WORDS: [&str; 6] = [
+        "pow",
+        "proof_of_work",
+        "isochron",
+        "meets_target",
+        "work",
+        "nonce",
+    ];
 
     let mut checked_a_height_zero_line = false;
     for f in &files {

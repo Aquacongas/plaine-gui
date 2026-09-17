@@ -75,15 +75,27 @@ pub struct RpcError {
 
 impl RpcError {
     pub fn new(code: ErrorCode) -> Self {
-        RpcError { code, detail: None, data: None }
+        RpcError {
+            code,
+            detail: None,
+            data: None,
+        }
     }
 
     pub fn detail(code: ErrorCode, detail: impl Into<String>) -> Self {
-        RpcError { code, detail: Some(detail.into()), data: None }
+        RpcError {
+            code,
+            detail: Some(detail.into()),
+            data: None,
+        }
     }
 
     pub fn with_data(code: ErrorCode, detail: impl Into<String>, data: Json) -> Self {
-        RpcError { code, detail: Some(detail.into()), data: Some(data) }
+        RpcError {
+            code,
+            detail: Some(detail.into()),
+            data: Some(data),
+        }
     }
 
     fn to_json(&self) -> Json {
@@ -250,11 +262,17 @@ pub fn hash_param(params: &Json, index: usize, name: &str) -> Result<[u8; 32], R
     if s.len() != 64 {
         return Err(RpcError::detail(
             ErrorCode::InvalidParams,
-            format!("`{name}` must be 64 hex characters (32 bytes), got {}", s.len()),
+            format!(
+                "`{name}` must be 64 hex characters (32 bytes), got {}",
+                s.len()
+            ),
         ));
     }
     let bytes = plaine_consensus::hex::decode(s).map_err(|_| {
-        RpcError::detail(ErrorCode::InvalidParams, format!("`{name}` is not valid hex"))
+        RpcError::detail(
+            ErrorCode::InvalidParams,
+            format!("`{name}` is not valid hex"),
+        )
     })?;
     let mut out = [0u8; 32];
     out.copy_from_slice(&bytes);
@@ -294,7 +312,8 @@ mod tests {
     #[test]
     fn bad_params_and_id_shapes_refused() {
         for bad in ["7", r#""a""#, "true", "1.0e2"] {
-            let body = format!(r#"{{"jsonrpc":"2.0","method":"chain_getInfo","params":{bad},"id":1}}"#);
+            let body =
+                format!(r#"{{"jsonrpc":"2.0","method":"chain_getInfo","params":{bad},"id":1}}"#);
 
             let Ok(value) = parse(body.as_bytes(), JsonLimits::default()) else {
                 continue;
@@ -308,7 +327,10 @@ mod tests {
         for good in ["[1]", r#"{"height":1}"#, "null"] {
             let body =
                 format!(r#"{{"jsonrpc":"2.0","method":"chain_getInfo","params":{good},"id":1}}"#);
-            assert!(parse_request(&v(&body)).is_ok(), r#""params": {good} was refused"#);
+            assert!(
+                parse_request(&v(&body)).is_ok(),
+                r#""params": {good} was refused"#
+            );
         }
 
         for bad in ["{}", "[]", "true", r#"{"a":1}"#] {
@@ -321,7 +343,10 @@ mod tests {
 
         for good in ["1", r#""abc""#] {
             let body = format!(r#"{{"jsonrpc":"2.0","method":"chain_getInfo","id":{good}}}"#);
-            assert!(parse_request(&v(&body)).expect("ok").id.is_some(), r#""id": {good}"#);
+            assert!(
+                parse_request(&v(&body)).expect("ok").id.is_some(),
+                r#""id": {good}"#
+            );
         }
     }
 
@@ -362,7 +387,10 @@ mod tests {
     fn responses_have_required_members() {
         let ok = success(&Json::Int(1), Json::Bool(true)).to_string();
         assert_eq!(ok, r#"{"jsonrpc":"2.0","result":true,"id":1}"#);
-        let bad = failure(Json::Null, &RpcError::detail(ErrorCode::NotFound, "no such block"));
+        let bad = failure(
+            Json::Null,
+            &RpcError::detail(ErrorCode::NotFound, "no such block"),
+        );
         assert_eq!(
             bad.to_string(),
             r#"{"jsonrpc":"2.0","error":{"code":-32001,"message":"Not found","data":{"detail":"no such block"}},"id":null}"#

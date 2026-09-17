@@ -62,8 +62,7 @@ fn stalled_peer_rotated() {
     );
     let _ = answered_at;
     assert!(
-        rotated_at * 1_000 >= STALL_TIMEOUT_MS
-            && rotated_at * 1_000 <= STALL_TIMEOUT_MS + 4_000,
+        rotated_at * 1_000 >= STALL_TIMEOUT_MS && rotated_at * 1_000 <= STALL_TIMEOUT_MS + 4_000,
         "the rotation landed at t={}s: the {}s progress deadline is the only \
          one that can produce that timing, and anything below it would mean \
          LOCATE_TIMEOUT acted instead",
@@ -744,7 +743,6 @@ fn inflated_claim_retired() {
 
 #[test]
 fn slow_serving_peer_keeps_claim() {
-
     let mut sim = Sim::new(1, T0);
     let chain = sim.extension(20_000);
     let slow = sim.add_peer(Behaviour::Trickle { n: 10 }, chain);

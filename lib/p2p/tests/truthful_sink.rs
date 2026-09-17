@@ -1,7 +1,7 @@
 use plaine_p2p::constants::STALL_TIMEOUT_MS;
 use plaine_p2p::mock::{Behaviour, Sim};
-use plaine_p2p::sync::Event;
 use plaine_p2p::sync::Action;
+use plaine_p2p::sync::Event;
 use plaine_p2p::traits::*;
 
 const T0: u64 = 1_800_000_000;
@@ -171,7 +171,10 @@ fn late_refusal_repaired_on_announce() {
     sim.connect(peer);
 
     sim.announce(peer, vec![ext[0].hash]);
-    sim.engine_event(Event::Headers { peer, raw: vec![ext[0].raw] });
+    sim.engine_event(Event::Headers {
+        peer,
+        raw: vec![ext[0].raw],
+    });
     let after_first = sim.engine.known_len() + sim.engine.tree_len();
     assert!(
         after_first > 0,
@@ -180,7 +183,10 @@ fn late_refusal_repaired_on_announce() {
     );
 
     sim.announce(peer, vec![ext[1].hash]);
-    sim.engine_event(Event::Headers { peer, raw: vec![ext[1].raw] });
+    sim.engine_event(Event::Headers {
+        peer,
+        raw: vec![ext[1].raw],
+    });
 
     assert!(
         sim.said(|c| matches!(c, Condition::HeaderRefusedByChain { .. })),
@@ -193,7 +199,9 @@ fn late_refusal_repaired_on_announce() {
         "announced header the chain never kept is still in `known` or the fork tree; a tree hit returns before the sink, same permanent lock"
     );
     assert!(
-        !sim.actions.iter().any(|a| matches!(a, Action::Score { .. })),
+        !sim.actions
+            .iter()
+            .any(|a| matches!(a, Action::Score { .. })),
         "the announcing peer was scored for our own chain's verdict"
     );
 }

@@ -8,9 +8,9 @@ use crate::InvalidReason;
 use plaine_consensus::constants::{HEADER_BYTES, MAX_HEADERS_PER_MSG};
 use plaine_consensus::crypto::header_hash;
 
+use crate::anchor;
 use crate::codec;
 use crate::error::{StoreError, TxLocation};
-use crate::anchor;
 use crate::integrity::{
     BodyVouch, DamageKind, DamageSet, DamagedRange, RangeAvailability, SegmentKind,
     UnverifiableCause, VouchSet,
@@ -222,9 +222,10 @@ impl StoreReader {
     pub fn vouches_for_all_bodies(&self) -> bool {
         let v = self.body_vouch();
         v.damaged.is_empty()
-            && !v.unverifiable.iter().any(|(_, _, c)| {
-                !matches!(c, UnverifiableCause::Unsealed { .. })
-            })
+            && !v
+                .unverifiable
+                .iter()
+                .any(|(_, _, c)| !matches!(c, UnverifiableCause::Unsealed { .. }))
             && !self.is_degraded()
     }
 
@@ -313,7 +314,9 @@ impl StoreReader {
             return Ok(None);
         }
         let rec = |b: &[u8], i: usize| -> [u8; HEADER_BYTES] {
-            b[i * HEADER_BYTES..(i + 1) * HEADER_BYTES].try_into().expect("fixed stride")
+            b[i * HEADER_BYTES..(i + 1) * HEADER_BYTES]
+                .try_into()
+                .expect("fixed stride")
         };
         let mut prev = header_hash(&rec(&buf, 0));
         let mut links = 0u64;
@@ -415,7 +418,9 @@ impl StoreReader {
         if !self.horizons().hdr_damaged {
             return None;
         }
-        self.damage().header_at(height).map(|d| d.into_error(height))
+        self.damage()
+            .header_at(height)
+            .map(|d| d.into_error(height))
     }
 
     pub fn header_at(&self, height: u64) -> Result<Option<[u8; HEADER_BYTES]>, StoreError> {
@@ -431,8 +436,7 @@ impl StoreReader {
                 segment: layout::seg_of(height),
                 height,
                 first_height: layout::seg_first_height(layout::seg_of(height)),
-                last_height: layout::seg_first_height(layout::seg_of(height))
-                    + layout::SEG_BLOCKS
+                last_height: layout::seg_first_height(layout::seg_of(height)) + layout::SEG_BLOCKS
                     - 1,
                 reason: DamageKind::Missing,
             });
@@ -607,11 +611,7 @@ impl StoreReader {
         Ok(t.get(hash)?.and_then(|v| codec::decode_side(v.value())))
     }
 
-    pub fn side_headers_from(
-        &self,
-        from: u64,
-        max: usize,
-    ) -> Result<Vec<SideHeader>, StoreError> {
+    pub fn side_headers_from(&self, from: u64, max: usize) -> Result<Vec<SideHeader>, StoreError> {
         let mut out = Vec::new();
         if max == 0 {
             return Ok(out);
@@ -657,7 +657,10 @@ impl StoreReader {
             let (_, v) = row?;
             *counts.entry(v.value()).or_default() += 1;
         }
-        Ok(counts.into_iter().map(|(c, n)| (InvalidReason::from_code(c), n)).collect())
+        Ok(counts
+            .into_iter()
+            .map(|(c, n)| (InvalidReason::from_code(c), n))
+            .collect())
     }
 
     pub fn body_at(&self, height: u64, out: &mut Vec<u8>) -> Result<Option<BodyRead>, StoreError> {
@@ -788,7 +791,9 @@ impl StoreReader {
     pub fn undo_at(&self, height: u64) -> Result<Option<Vec<crate::types::UndoRec>>, StoreError> {
         let txn = self.0.db.begin_read()?;
         let t = txn.open_table(crate::tables::UNDO)?;
-        Ok(t.get(height)?.and_then(|v| codec::decode_undo(v.value())).map(|(r, _)| r))
+        Ok(t.get(height)?
+            .and_then(|v| codec::decode_undo(v.value()))
+            .map(|(r, _)| r))
     }
 
     pub fn checkpoint_at_or_below(&self, height: u64) -> Result<Option<u64>, StoreError> {
@@ -807,7 +812,9 @@ impl StoreReader {
             Err(redb::TableError::TableDoesNotExist(_)) => return Ok(None),
             Err(e) => return Err(e.into()),
         };
-        let Some(v) = t.get(crate::meta::K_ANCHOR_CP)? else { return Ok(None) };
+        let Some(v) = t.get(crate::meta::K_ANCHOR_CP)? else {
+            return Ok(None);
+        };
         let raw = v.value();
         if raw.len() > crate::committer::ANCHOR_RECORD_CAP_BYTES {
             return Err(StoreError::MetaRowMalformed {
@@ -831,7 +838,9 @@ impl StoreReader {
 
     pub fn txindex_lookup(&self, txid: &[u8; 32]) -> Result<TxLocation, StoreError> {
         let Some(from) = self.txindex_from() else {
-            return Ok(TxLocation::NotIndexed { indexed_from: u64::MAX });
+            return Ok(TxLocation::NotIndexed {
+                indexed_from: u64::MAX,
+            });
         };
         let txn = self.0.db.begin_read()?;
         let t = txn.open_table(crate::tables::TXINDEX)?;

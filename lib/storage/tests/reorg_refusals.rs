@@ -57,7 +57,10 @@ fn g1_empty_body_refused() {
         apply: &cs,
     };
     let receipt = c.reorg(&plan);
-    println!("  reorg with an empty body -> {:?}", receipt.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  reorg with an empty body -> {:?}",
+        receipt.as_ref().err().map(|e| e.to_string())
+    );
     assert!(
         matches!(receipt, Err(StoreError::BadPlan(_))),
         "reorg accepted an empty body: {receipt:?}"
@@ -66,8 +69,14 @@ fn g1_empty_body_refused() {
 
     assert_eq!(r.tip().height, 199);
     assert_eq!(r.tip().hash, main[199].hash);
-    assert_eq!(r.header_at(victim).unwrap().unwrap(), main[victim as usize].header);
-    assert!(!c.is_poisoned(), "a refusal before the first write must not poison");
+    assert_eq!(
+        r.header_at(victim).unwrap().unwrap(),
+        main[victim as usize].header
+    );
+    assert!(
+        !c.is_poisoned(),
+        "a refusal before the first write must not poison"
+    );
     let mut buf = Vec::new();
     assert!(r.body_at(victim, &mut buf).unwrap().is_some());
     r.verify_state_fingerprint().expect("state untouched");
@@ -124,7 +133,10 @@ fn g2_mismatched_pair_refused() {
         apply: &cs,
     };
     let out = c.reorg(&plan);
-    println!("  reorg with 3 deltas / 2 undo -> {:?}", out.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  reorg with 3 deltas / 2 undo -> {:?}",
+        out.as_ref().err().map(|e| e.to_string())
+    );
     assert!(
         matches!(out, Err(StoreError::BadPlan(_))),
         "reorg accepted a mismatched pair: {out:?}"
@@ -133,7 +145,8 @@ fn g2_mismatched_pair_refused() {
     assert_eq!(r.tip().height, 199);
     assert_eq!(r.tip().hash, main[199].hash);
     assert!(!c.is_poisoned());
-    r.verify_state_fingerprint().expect("fingerprint after a refused reorg");
+    r.verify_state_fingerprint()
+        .expect("fingerprint after a refused reorg");
     drop(c);
     drop(r);
 }
@@ -172,7 +185,10 @@ fn g3_refused_reorg_no_change() {
         main[(fork + 1) as usize].header,
         "a REFUSED plan reached the header segment"
     );
-    assert!(!c.is_poisoned(), "an up-front refusal must leave the handle usable");
+    assert!(
+        !c.is_poisoned(),
+        "an up-front refusal must leave the handle usable"
+    );
 
     c.mark_invalid(&alt[5].hash, plaine_storage::InvalidReason::BadTx)
         .expect("mark_invalid after a refused branch");
@@ -231,7 +247,10 @@ fn g3b_failure_poisons_handle_disk_recovers() {
     let on_disk = r.header_at(fork + 1).unwrap().unwrap();
     assert_eq!(on_disk, alt[0].header, "the overwrite did not happen");
 
-    assert!(c.is_poisoned(), "a panic through the reorg left a usable handle");
+    assert!(
+        c.is_poisoned(),
+        "a panic through the reorg left a usable handle"
+    );
     assert!(matches!(
         c.mark_invalid(&alt[0].hash, plaine_storage::InvalidReason::BadTx),
         Err(StoreError::Poisoned { .. })
@@ -246,10 +265,16 @@ fn g3b_failure_poisons_handle_disk_recovers() {
         r.tip().height,
         rep.headers_truncated_to
     );
-    assert!(rep.hdr_undo_replayed.is_some(), "the undo blob was not replayed");
+    assert!(
+        rep.hdr_undo_replayed.is_some(),
+        "the undo blob was not replayed"
+    );
     assert_eq!(r.tip().height, 199);
     assert_eq!(r.tip().hash, main[199].hash);
-    assert_eq!(r.header_at(fork + 1).unwrap().unwrap(), main[(fork + 1) as usize].header);
+    assert_eq!(
+        r.header_at(fork + 1).unwrap().unwrap(),
+        main[(fork + 1) as usize].header
+    );
     assert!(rep.integrity.is_clean());
     r.verify_state_fingerprint().expect("state after recovery");
     drop(c);
@@ -290,13 +315,22 @@ fn g3c_poisoned_handle_refuses_writes() {
     });
     println!("  reorg -> {:?}", e.as_ref().err().map(|x| x.to_string()));
     assert!(e.is_err(), "the fault did not fire");
-    assert!(c.is_poisoned(), "a mid-flight failure did not poison the handle");
+    assert!(
+        c.is_poisoned(),
+        "a mid-flight failure did not poison the handle"
+    );
 
     let m = c.mark_invalid(&alt[5].hash, plaine_storage::InvalidReason::BadTx);
-    println!("  mark_invalid -> {:?}", m.as_ref().err().map(|x| x.to_string()));
+    println!(
+        "  mark_invalid -> {:?}",
+        m.as_ref().err().map(|x| x.to_string())
+    );
     assert!(matches!(m, Err(StoreError::Poisoned { .. })));
     assert!(matches!(c.flush(), Err(StoreError::Poisoned { .. })));
-    assert!(matches!(c.clear_invalid_all(), Err(StoreError::Poisoned { .. })));
+    assert!(matches!(
+        c.clear_invalid_all(),
+        Err(StoreError::Poisoned { .. })
+    ));
     assert!(matches!(c.prune_to(10), Err(StoreError::Poisoned { .. })));
     assert!(matches!(
         c.extend(&commits(&alt)[..1]),
@@ -306,7 +340,11 @@ fn g3c_poisoned_handle_refuses_writes() {
     drop(r);
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open after a poisoned handle");
-    println!("  reopen: tip {} clean {}", r.tip().height, rep.integrity.is_clean());
+    println!(
+        "  reopen: tip {} clean {}",
+        r.tip().height,
+        rep.integrity.is_clean()
+    );
     assert_eq!(r.tip().height, 199);
     drop(c);
     drop(r);
@@ -331,7 +369,10 @@ fn g4_reorg_enforces_max_body_bytes() {
         rollback: &rollback,
         apply: &cs,
     });
-    println!("  reorg with a {over}-byte body -> {:?}", out.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  reorg with a {over}-byte body -> {:?}",
+        out.as_ref().err().map(|e| e.to_string())
+    );
     assert!(
         matches!(out, Err(StoreError::BadPlan(_))),
         "reorg accepted a body over MAX_BODY_BYTES: {out:?}"
@@ -343,8 +384,14 @@ fn g4_reorg_enforces_max_body_bytes() {
     drop(r);
 
     let (c, r, rep) = open(cfg_of(&s)).expect("reopen");
-    println!("  after a clean restart: bodies_truncated_to {:?}", rep.bodies_truncated_to);
-    assert!(rep.bodies_truncated_to.is_none(), "the watermark walked back");
+    println!(
+        "  after a clean restart: bodies_truncated_to {:?}",
+        rep.bodies_truncated_to
+    );
+    assert!(
+        rep.bodies_truncated_to.is_none(),
+        "the watermark walked back"
+    );
     assert_eq!(r.hdr_watermark(), 200);
     assert_eq!(r.body_watermark(), 200);
     let mut buf = Vec::new();
@@ -370,7 +417,10 @@ fn g5_apply_heights_contiguous() {
         rollback: &rollback,
         apply: &cs,
     });
-    println!("  reorg with a gap in apply -> {:?}", out.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  reorg with a gap in apply -> {:?}",
+        out.as_ref().err().map(|e| e.to_string())
+    );
     assert!(matches!(out, Err(StoreError::BadPlan(_))), "{out:?}");
     assert_eq!(r.tip().hash, main[199].hash);
     drop(cs);

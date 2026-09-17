@@ -53,13 +53,19 @@ fn seed_legacy(name: &str, blocks: u64, variant: u64) -> Scratch {
 }
 
 fn hdr(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 fn bseg(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bseg"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bseg"))
 }
 fn bidx(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bidx"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bidx"))
 }
 
 fn poke(p: &Path, off: u64, bytes: &[u8]) {
@@ -228,10 +234,14 @@ fn v01b_rotated_sidecar_no_truncation() {
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     let after = len_of(&bseg(&s, 1));
     verdict("V01b sidecar rotated one slot", &rep, &r, SEG);
-    println!("      V01b .bseg bytes {before} -> {after} (lost {})", before - after);
+    println!(
+        "      V01b .bseg bytes {before} -> {after} (lost {})",
+        before - after
+    );
     assert_not_silently_accepted("V01b", &rep, &r, SEG);
     assert_eq!(
-        after, before,
+        after,
+        before,
         "V01b: open() dropped {} payload bytes on the strength of a corrupt sidecar",
         before - after
     );
@@ -258,9 +268,13 @@ fn v24_last_offset_flip_keeps_payload() {
     verdict("V24 one bit flipped in off[4095]", &rep, &r, SEG);
     println!("      V24 .bseg bytes {before} -> {after}");
     assert_not_silently_accepted("V24", &rep, &r, SEG);
-    assert!(!rep.integrity.is_clean(), "V24: a corrupt sidecar was accepted");
+    assert!(
+        !rep.integrity.is_clean(),
+        "V24: a corrupt sidecar was accepted"
+    );
     assert_eq!(
-        after, before,
+        after,
+        before,
         "V24: a segment the sweep called damaged was truncated anyway, losing {} bytes",
         before - after
     );
@@ -422,10 +436,9 @@ fn v08_deleted_anchor_suffix_raises_floor() {
     assert!(rep.integrity.is_clean(), "V08: a suffix gap is not damage");
     assert!(!r.is_degraded());
     assert_eq!(rep.unverifiable_body_ranges.len(), 2);
-    assert!(rep
-        .unverifiable_body_ranges
-        .iter()
-        .all(|(_, _, c)| matches!(c, UnverifiableCause::WriterRegressed { since } if *since == SEG)));
+    assert!(rep.unverifiable_body_ranges.iter().all(
+        |(_, _, c)| matches!(c, UnverifiableCause::WriterRegressed { since } if *since == SEG)
+    ));
     assert_eq!(
         rep.anchor_floor_raised,
         Some((0, SEG)),
@@ -440,7 +453,9 @@ fn v08_deleted_anchor_suffix_raises_floor() {
             .body_at(h, &mut buf)
             .unwrap()
             .unwrap()
-            .any_provenance(AcceptUnverified::because("V08 asserts the range is serveable"));
+            .any_provenance(AcceptUnverified::because(
+                "V08 asserts the range is serveable",
+            ));
         assert_eq!(n, 64, "V08: height {h} stopped being serveable");
     }
     drop(c);
@@ -474,7 +489,10 @@ fn v10_forced_grade_not_verified() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     verdict("V10 anchor grade 1 -> 2", &rep, &r, SEG);
-    assert!(rep.integrity.is_clean(), "V10: a grade change is not damage");
+    assert!(
+        rep.integrity.is_clean(),
+        "V10: a grade change is not damage"
+    );
     assert!(matches!(
         r.body_availability(SEG),
         RangeAvailability::Unverifiable {
@@ -499,7 +517,10 @@ fn v11_two_anchor_rows_swapped() {
     verdict("V11 anchor rows 1 and 2 swapped", &rep, &r, SEG);
     assert_not_silently_accepted("V11", &rep, &r, SEG);
     assert_eq!(damaged_body(&rep, SEG), Some(DamageKind::AnchorMismatch));
-    assert_eq!(damaged_body(&rep, 2 * SEG), Some(DamageKind::AnchorMismatch));
+    assert_eq!(
+        damaged_body(&rep, 2 * SEG),
+        Some(DamageKind::AnchorMismatch)
+    );
     drop(c);
     drop(r);
 }
@@ -524,12 +545,21 @@ fn v12_stray_anchor_above_wm() {
 fn v13_pre_anchor_store_honest() {
     let _g = serial();
     let s = seed_legacy("fv-v13", 3 * SEG, 1);
-    assert!(anchor_rows(&s).is_empty(), "the legacy writer minted anchors");
+    assert!(
+        anchor_rows(&s).is_empty(),
+        "the legacy writer minted anchors"
+    );
 
     let (c, r, rep) = open(cfg_of(&s)).expect("a pre-anchor store must still open");
     verdict("V13 pre-anchor store, first upgrade", &rep, &r, SEG);
-    assert!(rep.integrity.is_clean(), "V13: absence was treated as damage");
-    assert!(!r.is_degraded(), "V13: an upgraded store must not be degraded");
+    assert!(
+        rep.integrity.is_clean(),
+        "V13: absence was treated as damage"
+    );
+    assert!(
+        !r.is_degraded(),
+        "V13: an upgraded store must not be degraded"
+    );
     assert_eq!(rep.unverifiable_body_ranges.len(), 3);
     assert!(rep
         .unverifiable_body_ranges
@@ -613,7 +643,10 @@ fn v15_post_upgrade_seals_verified() {
     println!(
         "      V15 vouch: verified={:?} unverifiable={:?}",
         v.verified,
-        v.unverifiable.iter().map(|(a, b, _)| (*a, *b)).collect::<Vec<_>>()
+        v.unverifiable
+            .iter()
+            .map(|(a, b, _)| (*a, *b))
+            .collect::<Vec<_>>()
     );
     assert_eq!(v.verified, vec![(3 * SEG, 5 * SEG - 1)]);
     drop(c);
@@ -647,7 +680,10 @@ fn v17_interior_crc_gap_closed_by_l2() {
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     let h = SEG + slot as u64;
     verdict("V17 interior frame CRC (slot 2000)", &rep, &r, h);
-    assert!(rep.integrity.is_clean(), "L1's coverage is stated as first+last only");
+    assert!(
+        rep.integrity.is_clean(),
+        "L1's coverage is stated as first+last only"
+    );
     let mut buf = Vec::new();
     assert!(
         matches!(r.body_at(h, &mut buf), Err(StoreError::CrcMismatch { .. })),
@@ -678,7 +714,10 @@ fn v18_sealed_body_truncated_midway() {
         Err(StoreError::SegmentDamaged { .. })
     ));
 
-    assert!(matches!(r.body_availability(0), RangeAvailability::Verified));
+    assert!(matches!(
+        r.body_availability(0),
+        RangeAvailability::Verified
+    ));
     drop(c);
     drop(r);
 }
@@ -710,7 +749,12 @@ fn v20_lost_sidecar_slot_rebuilt() {
     poke(&bidx(&s, 1), BIDX_BYTES - 8, &[0u8; 8]);
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
-    verdict("V20 sidecar last slot zeroed (honest)", &rep, &r, 2 * SEG - 1);
+    verdict(
+        "V20 sidecar last slot zeroed (honest)",
+        &rep,
+        &r,
+        2 * SEG - 1,
+    );
     assert!(
         rep.bidx_rebuilt_segments.contains(&1),
         "V20: the sidecar was not rebuilt"
@@ -774,11 +818,19 @@ fn v25_anchored_overlong_truncated_verifies() {
     verdict("V25 anchored .bseg grew by 104,096 B", &rep, &r, SEG);
     assert_eq!(rep.integrity.overlong_truncated.len(), 1);
     assert!(rep.integrity.overlong_untruncated.is_empty());
-    assert_eq!(len_of(&bseg(&s, 1)), before, "V25: the lossless repair stopped working");
+    assert_eq!(
+        len_of(&bseg(&s, 1)),
+        before,
+        "V25: the lossless repair stopped working"
+    );
     assert!(rep.integrity.is_clean());
     let mut buf = Vec::new();
     assert_eq!(
-        r.body_at(SEG + 7, &mut buf).unwrap().unwrap().verified().unwrap(),
+        r.body_at(SEG + 7, &mut buf)
+            .unwrap()
+            .unwrap()
+            .verified()
+            .unwrap(),
         64
     );
     drop(c);
@@ -802,7 +854,10 @@ fn v26_anchorless_overlong_reported() {
     );
     assert!(rep.integrity.overlong_truncated.is_empty());
     assert_eq!(rep.integrity.overlong_untruncated.len(), 1);
-    assert!(rep.integrity.is_clean(), "V26: declining to repair is not damage");
+    assert!(
+        rep.integrity.is_clean(),
+        "V26: declining to repair is not damage"
+    );
     let mut buf = Vec::new();
     assert_eq!(
         r.body_at(SEG + 7, &mut buf)
@@ -843,7 +898,10 @@ fn v21_hostile_open_bounded_lossless() {
             drop(c);
             drop(r);
         }
-        Err(e) => println!("{}V21a alien chain.redb: open REFUSED in {ms} ms | {e}", tag()),
+        Err(e) => println!(
+            "{}V21a alien chain.redb: open REFUSED in {ms} ms | {e}",
+            tag()
+        ),
     }
     println!(
         "      header bytes {hdr_before} -> {hdr_after} | body bytes {body_before} -> {body_after}"

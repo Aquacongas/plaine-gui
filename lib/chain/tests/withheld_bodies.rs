@@ -21,7 +21,8 @@ fn rig_on(chain: &Scenario) -> Rig {
 
 fn offer_headers_only(r: &mut Rig, source: u32, blocks: &[BuiltBlock]) -> plaine_chain::Accepted {
     let raws: Vec<[u8; 132]> = blocks.iter().map(|b| b.rec.raw).collect();
-    r.cm.submit_headers_solicited(source, &raws).expect("not halted")
+    r.cm.submit_headers_solicited(source, &raws)
+        .expect("not halted")
 }
 
 fn withheld_branch(honest: &Scenario) -> Scenario {
@@ -34,7 +35,10 @@ fn bodyless_rig(honest: &Scenario) -> (Rig, Scenario) {
 
     let attacker = withheld_branch(honest);
     let a = offer_headers_only(&mut r, 7, &blocks_above(&attacker, HONEST_TIP));
-    assert_eq!(a.connected, 2, "premise: the branch is admitted to the arena");
+    assert_eq!(
+        a.connected, 2,
+        "premise: the branch is admitted to the arena"
+    );
     assert!(
         !r.cm.have_body(&attacker.tip().hash),
         "premise: we do not hold the branch's bodies"
@@ -58,10 +62,18 @@ fn commits_tip_while_heavier_withholds_bodies() {
     let extended = honest.fork_at(HONEST_TIP).extend(1);
     let next = extended.blocks[(HONEST_TIP + 1) as usize].clone();
     r.clock.set_unix(next.rec.time);
-    assert_eq!(r.offer(1, slice::from_ref(&next)).connected, 1, "our own block reaches the arena");
+    assert_eq!(
+        r.offer(1, slice::from_ref(&next)).connected,
+        1,
+        "our own block reaches the arena"
+    );
 
     match r.cm.advance() {
-        Ok(Progress::Advanced { tip, rolled_back, applied }) => {
+        Ok(Progress::Advanced {
+            tip,
+            rolled_back,
+            applied,
+        }) => {
             assert_eq!(rolled_back, 0, "a pure extension discards nothing");
             assert_eq!(applied, 1);
             assert_eq!(tip.hash, next.rec.hash);
@@ -81,7 +93,11 @@ fn keeps_committing_while_bodies_withheld() {
         extended = extended.extend(1);
         let b = extended.blocks[(HONEST_TIP + i) as usize].clone();
         r.clock.set_unix(b.rec.time);
-        assert_eq!(r.offer(1, slice::from_ref(&b)).connected, 1, "honest block {i} reaches the arena");
+        assert_eq!(
+            r.offer(1, slice::from_ref(&b)).connected,
+            1,
+            "honest block {i} reaches the arena"
+        );
         let p = r.cm.advance();
         assert!(
             matches!(p, Ok(Progress::Advanced { .. })),
@@ -100,8 +116,10 @@ fn sealed_block_not_rejected_by_withheld_branch() {
     let mined = honest.fork_at(HONEST_TIP).extend(1);
     let b = mined.blocks[(HONEST_TIP + 1) as usize].clone();
     r.clock.set_unix(b.rec.time);
-    r.cm.submit_headers_solicited(0, &[b.rec.raw]).expect("our own header");
-    r.cm.submit_block(&b.rec.hash, b.body.clone()).expect("our own body");
+    r.cm.submit_headers_solicited(0, &[b.rec.raw])
+        .expect("our own header");
+    r.cm.submit_block(&b.rec.hash, b.body.clone())
+        .expect("our own body");
     let verdict = r.cm.advance();
     assert!(
         matches!(verdict, Ok(Progress::Advanced { .. })),
@@ -113,8 +131,10 @@ fn sealed_block_not_rejected_by_withheld_branch() {
 fn withheld_bodies_re_requested_each_pass() {
     let honest = honest_chain();
     let (mut r, attacker) = bodyless_rig(&honest);
-    let want: Vec<[u8; 32]> =
-        blocks_above(&attacker, HONEST_TIP).iter().map(|b| b.rec.hash).collect();
+    let want: Vec<[u8; 32]> = blocks_above(&attacker, HONEST_TIP)
+        .iter()
+        .map(|b| b.rec.hash)
+        .collect();
 
     let extended = honest.fork_at(HONEST_TIP).extend(1);
     let next = extended.blocks[(HONEST_TIP + 1) as usize].clone();
@@ -149,10 +169,15 @@ fn bottom_up_branch_adopted_as_far_as_bodies() {
     let blocks = blocks_above(&attacker, HONEST_TIP);
     offer_headers_only(&mut r, 7, &blocks);
 
-    r.cm.submit_block(&blocks[0].rec.hash, blocks[0].body.clone()).expect("admissible");
+    r.cm.submit_block(&blocks[0].rec.hash, blocks[0].body.clone())
+        .expect("admissible");
 
     match r.cm.advance().expect("not halted") {
-        Progress::Advanced { tip, applied, rolled_back } => {
+        Progress::Advanced {
+            tip,
+            applied,
+            rolled_back,
+        } => {
             assert_eq!(rolled_back, 0);
             assert_eq!(applied, 1);
             assert_eq!(
@@ -179,8 +204,10 @@ fn branch_with_body_hole_names_it() {
     let blocks = blocks_above(&attacker, HONEST_TIP);
     offer_headers_only(&mut r, 7, &blocks);
 
-    r.cm.submit_block(&blocks[0].rec.hash, blocks[0].body.clone()).expect("admissible");
-    r.cm.submit_block(&blocks[2].rec.hash, blocks[2].body.clone()).expect("admissible");
+    r.cm.submit_block(&blocks[0].rec.hash, blocks[0].body.clone())
+        .expect("admissible");
+    r.cm.submit_block(&blocks[2].rec.hash, blocks[2].body.clone())
+        .expect("admissible");
 
     match r.cm.advance().expect("not halted") {
         Progress::Advanced { tip, applied, .. } => {
@@ -208,10 +235,15 @@ fn branch_adopted_when_bodies_arrive() {
     let (mut r, attacker) = bodyless_rig(&honest);
 
     for b in blocks_above(&attacker, HONEST_TIP) {
-        r.cm.submit_block(&b.rec.hash, b.body.clone()).expect("body admissible");
+        r.cm.submit_block(&b.rec.hash, b.body.clone())
+            .expect("body admissible");
     }
     match r.cm.advance().expect("not halted") {
-        Progress::Advanced { tip, rolled_back, applied } => {
+        Progress::Advanced {
+            tip,
+            rolled_back,
+            applied,
+        } => {
             assert_eq!(rolled_back, 0);
             assert_eq!(applied, 2);
             assert_eq!(tip.hash, attacker.tip().hash);
@@ -225,13 +257,15 @@ fn withheld_branch_outworks_tip() {
     let honest = honest_chain();
     let (r, attacker) = bodyless_rig(&honest);
     let ours = r.cm.tip().chainwork;
-    let theirs = r
-        .cm
-        .index()
-        .get(&attacker.tip().hash)
-        .expect("the branch is in the arena")
-        .cum_work;
-    assert!(theirs > ours, "fixture: the withheld branch must out-work our tip");
+    let theirs =
+        r.cm.index()
+            .get(&attacker.tip().hash)
+            .expect("the branch is in the arena")
+            .cum_work;
+    assert!(
+        theirs > ours,
+        "fixture: the withheld branch must out-work our tip"
+    );
 }
 
 fn hex(h: &[u8; 32]) -> String {

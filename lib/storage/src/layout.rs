@@ -88,6 +88,9 @@ mod tests {
         assert_eq!(HDR_SEG_BYTES, 540_672);
         assert_eq!(BIDX_SEG_BYTES, 32_768);
 
-        assert_eq!(seg_first_height(seg_of(1_234_567)) + slot_of(1_234_567), 1_234_567);
+        assert_eq!(
+            seg_first_height(seg_of(1_234_567)) + slot_of(1_234_567),
+            1_234_567
+        );
     }
 }

@@ -119,51 +119,25 @@ pub enum Event {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
-    Send {
-        peer: PeerId,
-        msg: Msg,
-    },
+    Send { peer: PeerId, msg: Msg },
 
-    Disconnect {
-        peer: PeerId,
-        reason: DeadReason,
-    },
+    Disconnect { peer: PeerId, reason: DeadReason },
 
-    Ban {
-        peer: PeerId,
-        ms: u64,
-    },
+    Ban { peer: PeerId, ms: u64 },
 
-    Score {
-        peer: PeerId,
-        offence: Offence,
-    },
+    Score { peer: PeerId, offence: Offence },
 
-    Dial {
-        count: usize,
-        widen: bool,
-    },
+    Dial { count: usize, widen: bool },
 
-    Designate {
-        peer: PeerId,
-    },
+    Designate { peer: PeerId },
 
-    Undesignate {
-        peer: PeerId,
-    },
+    Undesignate { peer: PeerId },
 
-    WaiveCooldown {
-        peer: PeerId,
-    },
+    WaiveCooldown { peer: PeerId },
 
-    SyncCooldown {
-        peer: PeerId,
-        ms: u64,
-    },
+    SyncCooldown { peer: PeerId, ms: u64 },
 
-    QuarantineBranch {
-        branch: Hash32,
-    },
+    QuarantineBranch { branch: Hash32 },
     RepublishTip,
     Say(Condition),
 }
@@ -321,15 +295,8 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
                 s.services = services;
                 s.whitelisted = self.cfg.whitelist.contains(&ip);
                 self.peers.insert(peer, s);
-                self.header.note_claim(
-                    peer,
-                    PeerClaim {
-                        height,
-                        work,
-                        tip,
-                    },
-                    now,
-                );
+                self.header
+                    .note_claim(peer, PeerClaim { height, work, tip }, now);
             }
             Event::PeerGone { peer } => {
                 self.peers.remove(&peer);
@@ -450,8 +417,7 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
                             self.say(Condition::AnchorChainUnavailable { height, hash });
                         }
                     }
-                    Err(SinkError::Full) => {
-                    }
+                    Err(SinkError::Full) => {}
 
                     Err(SinkError::Invalid(_) | SinkError::RefusedAt { .. }) => {
                         out.push(Action::Score {
@@ -845,7 +811,12 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
         let repeats = repair_repeat(self.repair_watch, height, tip);
         self.repair_watch = Some((height, tip, repeats, why));
         if repeats >= REPAIR_STUCK_REPEATS {
-            self.say(Condition::HeaderRepairStuck { height, why, repeats, our_tip: tip });
+            self.say(Condition::HeaderRepairStuck {
+                height,
+                why,
+                repeats,
+                our_tip: tip,
+            });
         }
     }
 
@@ -1103,11 +1074,7 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
                 Err(Rejection::TimeFuture { by_secs }) => {
                     // a future-dated header may just mean our own clock is behind,
                     // so we park it and retry later instead of scoring the peer.
-                    let group = self
-                        .peers
-                        .get(&peer)
-                        .map(|s| s.group)
-                        .unwrap_or([0u8; 4]);
+                    let group = self.peers.get(&peer).map(|s| s.group).unwrap_or([0u8; 4]);
                     if self.parked.len() < TIME_PARK_MAX {
                         self.parked.push((rec, now, group));
                     }
@@ -1274,10 +1241,11 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
                 break;
             }
             let before = self.header.staging.pow_calls;
-            let outcome =
-                self.header
-                    .staging
-                    .verify_step(&*self.pow, anchor.as_ref(), self.cfg.verify_all_pow);
+            let outcome = self.header.staging.verify_step(
+                &*self.pow,
+                anchor.as_ref(),
+                self.cfg.verify_all_pow,
+            );
             let calls = self.header.staging.pow_calls - before;
             if calls > 0 {
                 self.budgets.admit_pow(cost.saturating_mul(calls), now);
@@ -1470,7 +1438,10 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
             if due {
                 self.no_supplier_said = Some(now);
                 let peers = self.peers.len();
-                self.say(Condition::NoBodySupplier { wanted: need, peers });
+                self.say(Condition::NoBodySupplier {
+                    wanted: need,
+                    peers,
+                });
             }
         }
 
@@ -1510,7 +1481,10 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
         if !t2.is_empty() {
             return (t2, false);
         }
-        (pick(self.peers.values().filter(|s| s.is_ready()).collect()), true)
+        (
+            pick(self.peers.values().filter(|s| s.is_ready()).collect()),
+            true,
+        )
     }
 
     fn catch_up_to_the_chain(&mut self) {
@@ -2035,11 +2009,7 @@ impl<C: ChainView, S: BlockSink, V: PowVerifier, B: BitsRule> SyncEngine<C, S, V
     }
 }
 
-fn repair_repeat(
-    prev: Option<(u64, u64, u32, &'static str)>,
-    height: u64,
-    tip: u64,
-) -> u32 {
+fn repair_repeat(prev: Option<(u64, u64, u32, &'static str)>, height: u64, tip: u64) -> u32 {
     match prev {
         Some((h, t, n, _)) if h == height && t == tip => n.saturating_add(1),
         _ => 1,

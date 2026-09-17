@@ -5,7 +5,9 @@ fn src() -> PathBuf {
 }
 
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         if p.is_dir() {
@@ -51,7 +53,11 @@ fn code_only(s: &str) -> String {
 fn chain_manager_never_shared() {
     for (p, s) in all() {
         let code = code_only(&s);
-        for bad in ["Mutex<ChainManager", "RwLock<ChainManager", "Arc<ChainManager"] {
+        for bad in [
+            "Mutex<ChainManager",
+            "RwLock<ChainManager",
+            "Arc<ChainManager",
+        ] {
             assert!(
                 !code.contains(bad),
                 "{} contains `{bad}`. The chain manager stays by value in the validator \
@@ -73,7 +79,11 @@ fn async_wire_avoids_manager() {
         if !asyncy {
             continue;
         }
-        for bad in ["plaine_chain::ChainManager", "ChainManager<", "plaine_storage::Committer"] {
+        for bad in [
+            "plaine_chain::ChainManager",
+            "ChainManager<",
+            "plaine_storage::Committer",
+        ] {
             assert!(
                 !code.contains(bad),
                 "{} is async AND names `{bad}`",
@@ -88,8 +98,7 @@ fn token_claimed_in_one_file() {
     let claims: Vec<String> = all()
         .into_iter()
         .filter(|(p, s)| {
-            code_only(s).contains("OnConsensusThread::claim")
-                && !p.ends_with("mod.rs")
+            code_only(s).contains("OnConsensusThread::claim") && !p.ends_with("mod.rs")
         })
         .map(|(p, _)| p.display().to_string())
         .collect();
@@ -133,8 +142,7 @@ fn emitter_not_reachable() {
         !manifest.contains("plaine-pow-mine"),
         "plaine-noded's manifest names the JIT crate"
     );
-    let ws = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..");
+    let ws = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let lock = std::fs::read_to_string(ws.join("Cargo.lock")).unwrap_or_default();
     assert!(
         !lock.contains("plaine-pow-mine"),
@@ -143,12 +151,25 @@ fn emitter_not_reachable() {
     let wsm = toml_code_only(
         &std::fs::read_to_string(ws.join("Cargo.toml")).expect("workspace manifest"),
     );
-    assert!(!wsm.contains("crates/pow/mine"), "the workspace lists the miner as a member");
-    assert!(!wsm.contains("crates/*"), "the members list has become a glob");
+    assert!(
+        !wsm.contains("crates/pow/mine"),
+        "the workspace lists the miner as a member"
+    );
+    assert!(
+        !wsm.contains("crates/*"),
+        "the members list has become a glob"
+    );
 
     for (p, s) in all() {
         let c = code_only(&s);
-        for bad in ["VirtualAlloc", "VirtualProtect", "mprotect", "PROT_EXEC", "CodeW", "CodeX"] {
+        for bad in [
+            "VirtualAlloc",
+            "VirtualProtect",
+            "mprotect",
+            "PROT_EXEC",
+            "CodeW",
+            "CodeX",
+        ] {
             assert!(!c.contains(bad), "{} names `{bad}`", p.display());
         }
     }
@@ -174,13 +195,25 @@ fn dependency_policy_holds() {
         .split("[dependencies]")
         .nth(1)
         .expect("a dependencies section");
-    for banned in ["serde", "clap", "anyhow", "tracing", "log =", "env_logger", "reqwest"] {
+    for banned in [
+        "serde",
+        "clap",
+        "anyhow",
+        "tracing",
+        "log =",
+        "env_logger",
+        "reqwest",
+    ] {
         assert!(
             !deps.contains(banned),
             "plaine-noded depends on `{banned}`, which the dependency policy forbids"
         );
     }
-    for name in deps.lines().filter_map(|l| l.split('=').next()).map(str::trim) {
+    for name in deps
+        .lines()
+        .filter_map(|l| l.split('=').next())
+        .map(str::trim)
+    {
         if name.is_empty() || name.starts_with('#') || name.starts_with('[') {
             continue;
         }
@@ -197,7 +230,11 @@ fn no_regtest_in_shipped_binary() {
     let code: Vec<(PathBuf, String)> = all()
         .into_iter()
         .map(|(p, s)| {
-            let shipped = s.split("#[cfg(test)]").next().unwrap_or_default().to_string();
+            let shipped = s
+                .split("#[cfg(test)]")
+                .next()
+                .unwrap_or_default()
+                .to_string();
             (p, code_only(&shipped))
         })
         .collect();
@@ -235,7 +272,11 @@ fn health_line_fed_both_clocks() {
         .map(|(_, s)| code_only(&s))
         .expect("node.rs is in the crate");
 
-    for feed in ["tracker.observe_gap(", "tracker.observe_top_claim(", "tracker.observe("] {
+    for feed in [
+        "tracker.observe_gap(",
+        "tracker.observe_top_claim(",
+        "tracker.observe(",
+    ] {
         assert!(
             node.contains(feed),
             "`node.rs` never calls `{feed}`, so that clock reads zero for the \
@@ -318,7 +359,10 @@ mod followup_drift_guards {
             line.contains("plaine_stratum::limits::SOLO_TEMPLATE_LRU"),
             "the bound must come from the trait's constant: {line}"
         );
-        assert!(!line.contains("64"), "the number is spelled out again: {line}");
+        assert!(
+            !line.contains("64"),
+            "the number is spelled out again: {line}"
+        );
     }
 
     #[test]

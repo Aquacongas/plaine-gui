@@ -24,11 +24,7 @@ pub use scratch::Scratch;
 pub enum PowError {
     NoHardwareAes,
 
-    PlatformHashMismatch {
-        seed: u64,
-        expected: u64,
-        got: u64,
-    },
+    PlatformHashMismatch { seed: u64, expected: u64, got: u64 },
 }
 
 impl core::fmt::Display for PowError {

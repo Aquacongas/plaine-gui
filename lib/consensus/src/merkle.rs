@@ -71,7 +71,11 @@ pub fn merkle_proof(leaves: &[Hash32], index: usize) -> Option<MerkleProof> {
         level = next;
         idx /= 2;
     }
-    Some(MerkleProof { index: index as u32, tx_count: tx_count as u32, siblings })
+    Some(MerkleProof {
+        index: index as u32,
+        tx_count: tx_count as u32,
+        siblings,
+    })
 }
 
 pub fn verify_merkle_proof(leaf: &Hash32, proof: &MerkleProof, root: &Hash32) -> bool {
@@ -96,7 +100,11 @@ pub fn verify_merkle_proof(leaf: &Hash32, proof: &MerkleProof, root: &Hash32) ->
                 return false;
             };
             used += 1;
-            h = if idx % 2 == 0 { node_hash(&h, sib, false) } else { node_hash(sib, &h, false) };
+            h = if idx % 2 == 0 {
+                node_hash(&h, sib, false)
+            } else {
+                node_hash(sib, &h, false)
+            };
         }
         idx /= 2;
         width = width.div_ceil(2);
@@ -166,8 +174,16 @@ mod tests {
         assert_ne!(merkle_root(&l), node_hash(&l[0], &l[0], false));
         assert_eq!(merkle_root(&[]), TX_ROOT_EMPTY);
         let (a, b) = (leaf_hash(b"a"), leaf_hash(b"b"));
-        assert_ne!(node_hash(&a, &b, false), node_hash(&a, &b, true), "the flag is in the preimage");
-        assert_ne!(node_hash(&a, &b, false), node_hash(&b, &a, false), "order matters");
+        assert_ne!(
+            node_hash(&a, &b, false),
+            node_hash(&a, &b, true),
+            "the flag is in the preimage"
+        );
+        assert_ne!(
+            node_hash(&a, &b, false),
+            node_hash(&b, &a, false),
+            "order matters"
+        );
     }
 
     #[test]
@@ -226,12 +242,30 @@ mod tests {
     #[test]
     fn pinned_root_hexes() {
         const PINNED: [(usize, &str); 6] = [
-            (1, "14b10741e82e6e9bd48e6cccc3bdff302ba435ebabf418ca8e85a581e4d4023e"),
-            (2, "3a126089dc41e2b9fdac3f1a49775be90fa1fad7cfa8d89275c1284c70a7d00d"),
-            (3, "d243a4fb442dbd714ce2b797675c978b879f0c3e9272c5380a0bd8ec53584273"),
-            (4, "5f07ff69927801655a9cc2135c1106394b27b623f0079a2c1a90256e0aea3773"),
-            (5, "7fc09a1e6dba594292987513e287415d8949059065c626fdf70fd06ba6b30a77"),
-            (8, "2a12919f34a969a8509a45ce37246fdf006b03d57f63c12be0478b91e36118da"),
+            (
+                1,
+                "14b10741e82e6e9bd48e6cccc3bdff302ba435ebabf418ca8e85a581e4d4023e",
+            ),
+            (
+                2,
+                "3a126089dc41e2b9fdac3f1a49775be90fa1fad7cfa8d89275c1284c70a7d00d",
+            ),
+            (
+                3,
+                "d243a4fb442dbd714ce2b797675c978b879f0c3e9272c5380a0bd8ec53584273",
+            ),
+            (
+                4,
+                "5f07ff69927801655a9cc2135c1106394b27b623f0079a2c1a90256e0aea3773",
+            ),
+            (
+                5,
+                "7fc09a1e6dba594292987513e287415d8949059065c626fdf70fd06ba6b30a77",
+            ),
+            (
+                8,
+                "2a12919f34a969a8509a45ce37246fdf006b03d57f63c12be0478b91e36118da",
+            ),
         ];
         for (n, want) in PINNED {
             let l = leaves(n);
@@ -291,7 +325,11 @@ mod tests {
         p.tx_count = 0;
         assert!(!verify_merkle_proof(&l[5], &p, &root));
 
-        let p = MerkleProof { index: 0, tx_count: 2, siblings: vec![[0u8; 32]; 13] };
+        let p = MerkleProof {
+            index: 0,
+            tx_count: 2,
+            siblings: vec![[0u8; 32]; 13],
+        };
         assert!(!verify_merkle_proof(&l[0], &p, &root));
     }
 
@@ -303,14 +341,21 @@ mod tests {
         assert_eq!(honest.tx_count, 3);
         assert!(verify_merkle_proof(&l3[0], &honest, &root3));
 
-        let lying =
-            MerkleProof { index: 0, tx_count: 4, siblings: honest.siblings.clone() };
+        let lying = MerkleProof {
+            index: 0,
+            tx_count: 4,
+            siblings: honest.siblings.clone(),
+        };
         assert!(
             verify_merkle_proof(&l3[0], &lying, &root3),
             "documented limitation: tx_count is a shape hint, not authenticated data"
         );
 
-        assert!(!verify_merkle_proof(&leaf_hash(b"not in the tree"), &lying, &root3));
+        assert!(!verify_merkle_proof(
+            &leaf_hash(b"not in the tree"),
+            &lying,
+            &root3
+        ));
     }
 
     #[test]

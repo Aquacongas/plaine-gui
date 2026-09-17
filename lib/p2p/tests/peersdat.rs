@@ -1,4 +1,6 @@
-use plaine_p2p::addr::persist::{decode, encode, PeersError, PEERS_DIGEST_BYTES, PEERS_HEADER_BYTES};
+use plaine_p2p::addr::persist::{
+    decode, encode, PeersError, PEERS_DIGEST_BYTES, PEERS_HEADER_BYTES,
+};
 use plaine_p2p::addr::{AddrMan, Table};
 use plaine_p2p::constants::*;
 use plaine_p2p::rng::Rng;
@@ -141,18 +143,27 @@ fn restart_does_not_launder_quota() {
         added, 0,
         "a restart bought the flooder {added} fresh slots it had already spent"
     );
-    assert_eq!(restarted.count_new_from(grp(203, 0)), ADDR_PER_SOURCE_GROUP_MAX);
+    assert_eq!(
+        restarted.count_new_from(grp(203, 0)),
+        ADDR_PER_SOURCE_GROUP_MAX
+    );
 }
 
 #[test]
 fn the_file_cannot_grant_seed_status() {
     let mut live = AddrMan::new();
     live.add(v4(185, 199, 108, 1), 9256, true, NOW);
-    assert!(live.get(&v4(185, 199, 108, 1), 9256).expect("seed").from_seed);
+    assert!(
+        live.get(&v4(185, 199, 108, 1), 9256)
+            .expect("seed")
+            .from_seed
+    );
 
     let mut restarted = AddrMan::new();
     round_trip(&live, &mut restarted, false);
-    let e = restarted.get(&v4(185, 199, 108, 1), 9256).expect("restored");
+    let e = restarted
+        .get(&v4(185, 199, 108, 1), 9256)
+        .expect("restored");
     assert!(
         !e.from_seed,
         "the file granted seed privilege to an address the current config does not name"
@@ -216,7 +227,12 @@ fn aged_record_not_reloaded() {
     let mut later = AddrMan::new();
     let bytes = encode(live.entries(), CHAIN_ID);
     let recs = decode(&bytes, CHAIN_ID).expect("decode");
-    later.restore(&recs, NOW + ADDR_MAX_AGE_SECS + 86_400, false, &mut Rng::new(1));
+    later.restore(
+        &recs,
+        NOW + ADDR_MAX_AGE_SECS + 86_400,
+        false,
+        &mut Rng::new(1),
+    );
     assert_eq!(later.len(), 0, "a week-old book came back whole");
 
     let mut forged = recs.clone();
@@ -224,7 +240,10 @@ fn aged_record_not_reloaded() {
     let mut clamped = AddrMan::new();
     clamped.restore(&forged, NOW, false, &mut Rng::new(2));
     assert_eq!(
-        clamped.get(&v4(185, 199, 108, 1), 9256).expect("kept").last_seen,
+        clamped
+            .get(&v4(185, 199, 108, 1), 9256)
+            .expect("kept")
+            .last_seen,
         NOW,
         "a future-dated record kept its own timestamp"
     );
@@ -249,7 +268,12 @@ fn full_book_refuses_file() {
     for g in 0..16u8 {
         for i in 0..ADDR_PER_SOURCE_GROUP_MAX {
             live.add_from_peer(
-                v4(g + 20, (i / 250) as u8, ((i / 25) % 10) as u8, (i % 25) as u8),
+                v4(
+                    g + 20,
+                    (i / 250) as u8,
+                    ((i / 25) % 10) as u8,
+                    (i % 25) as u8,
+                ),
                 9256,
                 0,
                 NOW,
@@ -287,14 +311,23 @@ fn file_order_not_dial_order() {
     let b = order_with(2);
     assert_eq!(a.len(), 64);
 
-    assert_ne!(a, file_order, "the reload preserved the attacker's own ordering");
-    assert_ne!(a, b, "the reload is not drawing from the per-node stream at all");
+    assert_ne!(
+        a, file_order,
+        "the reload preserved the attacker's own ordering"
+    );
+    assert_ne!(
+        a, b,
+        "the reload is not drawing from the per-node stream at all"
+    );
 
     let mut sorted_a = a.clone();
     let mut sorted_f = file_order.clone();
     sorted_a.sort();
     sorted_f.sort();
-    assert_eq!(sorted_a, sorted_f, "the shuffle changed the set, not just the order");
+    assert_eq!(
+        sorted_a, sorted_f,
+        "the shuffle changed the set, not just the order"
+    );
 }
 
 #[test]
@@ -376,16 +409,30 @@ fn file_cut_to_source_quota() {
 fn file_cut_to_table() {
     let mut recs: Vec<plaine_p2p::addr::PeerRec> = Vec::new();
     for g in 0..24u8 {
-        recs.extend(recs_from(grp(100 + g, 0), ADDR_PER_SOURCE_GROUP_MAX, Table::New));
+        recs.extend(recs_from(
+            grp(100 + g, 0),
+            ADDR_PER_SOURCE_GROUP_MAX,
+            Table::New,
+        ));
     }
 
     for (i, r) in recs.iter_mut().enumerate() {
-        r.ip = v4(45, (i / 60_000) as u8, ((i / 240) % 250) as u8, (i % 240) as u8);
+        r.ip = v4(
+            45,
+            (i / 60_000) as u8,
+            ((i / 240) % 250) as u8,
+            (i % 240) as u8,
+        );
         r.port = 9256 + (i / 15_000) as u16;
     }
     let mut am = AddrMan::new();
     am.restore(&recs, NOW, false, &mut Rng::new(8));
-    assert_eq!(am.count(Table::New), ADDR_NEW_MAX, "`new` overflowed to {}", am.count(Table::New));
+    assert_eq!(
+        am.count(Table::New),
+        ADDR_NEW_MAX,
+        "`new` overflowed to {}",
+        am.count(Table::New)
+    );
 
     let mut tried: Vec<plaine_p2p::addr::PeerRec> = Vec::new();
     for i in 0..(ADDR_TRIED_MAX * 2) {

@@ -35,7 +35,11 @@ fn assert_no_verify(name: &str, tweak: impl Fn(Header) -> Header) {
     let a = r.cm.submit_headers(9, &[hdr.encode()]).expect("not halted");
     assert_eq!(a.connected, 0, "{name}: nothing may be connected");
     assert_eq!(a.rejected, 1, "{name}: exactly one rejection");
-    assert_eq!(r.pow.calls(), 0, "{name}: the interpreter must not be reached");
+    assert_eq!(
+        r.pow.calls(),
+        0,
+        "{name}: the interpreter must not be reached"
+    );
     assert_eq!(r.height(), 20, "{name}: the tip must not move");
 }
 
@@ -121,7 +125,11 @@ fn s4_future_time_skips_interpreter() {
     };
     let a = r.cm.submit_headers(9, &[hdr.encode()]).expect("not halted");
     assert_eq!(a.rejected, 1);
-    assert_eq!(r.pow.calls(), 0, "MAX_FUTURE_DRIFT is checked before the interpreter");
+    assert_eq!(
+        r.pow.calls(),
+        0,
+        "MAX_FUTURE_DRIFT is checked before the interpreter"
+    );
 }
 
 #[test]
@@ -137,7 +145,11 @@ fn s5_deep_fork_skips_interpreter() {
     let a = r.offer(7, &blocks_above(&attacker, 99));
     assert_eq!(a.connected, 0);
     assert!(a.rejected > 0);
-    assert_eq!(r.pow.calls(), 0, "layer 1 refuses the branch before any PoW work");
+    assert_eq!(
+        r.pow.calls(),
+        0,
+        "layer 1 refuses the branch before any PoW work"
+    );
     assert_eq!(r.height(), 200);
 }
 
@@ -178,8 +190,13 @@ fn s6_no_more_work_skips_interpreter() {
 #[test]
 fn s0_known_header_skips_interpreter() {
     let (mut r, chain) = synced_rig();
-    let a = r.cm.submit_headers(9, &chain.raw_headers_from(1)).expect("not halted");
-    assert_eq!(a.duplicates, 20, "every one of them is already in the arena");
+    let a =
+        r.cm.submit_headers(9, &chain.raw_headers_from(1))
+            .expect("not halted");
+    assert_eq!(
+        a.duplicates, 20,
+        "every one of them is already in the arena"
+    );
     assert_eq!(a.connected, 0);
     assert_eq!(r.pow.calls(), 0, "dedup is stage 0, not step 7");
 }
@@ -260,7 +277,11 @@ fn an_orphan_header_pool_is_unrepresentable() {
     assert_eq!(a.rejected, 2_000);
     assert_eq!(a.connected, 0);
     assert_eq!(a.staged, 0, "an orphan is never staged either");
-    assert_eq!(r.cm.index().len(), before, "the arena did not grow by one entry");
+    assert_eq!(
+        r.cm.index().len(),
+        before,
+        "the arena did not grow by one entry"
+    );
     assert_eq!(r.pow.calls(), 0);
 }
 
@@ -274,14 +295,21 @@ fn future_drift_not_memoised() {
     let block = next.blocks[6].clone();
 
     r.clock.set_unix(block.rec.time - 601);
-    let a = r.cm.submit_headers(3, &[block.rec.raw]).expect("not halted");
+    let a =
+        r.cm.submit_headers(3, &[block.rec.raw])
+            .expect("not halted");
     assert_eq!(a.rejected, 1);
     assert_eq!(a.connected, 0);
 
     r.clock.set_unix(block.rec.time);
-    let b = r.cm.submit_headers(3, &[block.rec.raw]).expect("not halted");
+    let b =
+        r.cm.submit_headers(3, &[block.rec.raw])
+            .expect("not halted");
     assert_eq!(b.duplicates, 0, "the verdict must not have been memoised");
-    assert_eq!(b.connected, 1, "the same bytes are accepted once the clock is right");
+    assert_eq!(
+        b.connected, 1,
+        "the same bytes are accepted once the clock is right"
+    );
 }
 
 #[test]
@@ -296,11 +324,18 @@ fn pow_failure_is_memoised() {
     r.pow.reject_hash(block.rec.hash);
     r.pow.reset();
 
-    let a = r.cm.submit_headers(3, &[block.rec.raw]).expect("not halted");
+    let a =
+        r.cm.submit_headers(3, &[block.rec.raw])
+            .expect("not halted");
     assert_eq!(a.connected, 0);
     assert_eq!(r.pow.calls(), 1);
-    let b = r.cm.submit_headers(3, &[block.rec.raw]).expect("not halted");
-    assert_eq!(b.duplicates, 1, "a PoW failure is intrinsic, so it is memoised");
+    let b =
+        r.cm.submit_headers(3, &[block.rec.raw])
+            .expect("not halted");
+    assert_eq!(
+        b.duplicates, 1,
+        "a PoW failure is intrinsic, so it is memoised"
+    );
     assert_eq!(r.pow.calls(), 1, "the second offer costs nothing");
 }
 
@@ -315,19 +350,29 @@ fn the_interpreter_budget_binds_in_virtual_time() {
     r.pow.set_cost_micros(3_000);
     r.pow.reset();
 
-    let a = r.cm.submit_headers(2, &long.raw_headers_from(2)).expect("not halted");
+    let a =
+        r.cm.submit_headers(2, &long.raw_headers_from(2))
+            .expect("not halted");
     assert_eq!(
         a.connected, 85,
         "the class budget binds before the per-peer bucket: 83 shared + 2 reserved"
     );
     assert!(r.observed(|c| matches!(
         c,
-        Condition::BudgetExhausted { class: plaine_chain::error::BudgetClass::Interpreter, .. }
+        Condition::BudgetExhausted {
+            class: plaine_chain::error::BudgetClass::Interpreter,
+            ..
+        }
     )));
 
     r.clock.advance_ms(10_000);
-    let b = r.cm.submit_headers(2, &long.raw_headers_from(2)).expect("not halted");
-    assert_eq!(b.connected, 48, "the per-peer bucket is the binding tier once it refills");
+    let b =
+        r.cm.submit_headers(2, &long.raw_headers_from(2))
+            .expect("not halted");
+    assert_eq!(
+        b.connected, 48,
+        "the per-peer bucket is the binding tier once it refills"
+    );
 }
 
 #[test]
@@ -375,5 +420,8 @@ fn tip_regression_resyncs_forward() {
     let longer = chain.clone().extend(5);
     r2.sync(&longer, 8);
     assert_eq!(r2.height(), 15, "it re-synced forward rather than wedging");
-    assert!(matches!(r2.cm.advance().expect("not halted"), Progress::NoChange));
+    assert!(matches!(
+        r2.cm.advance().expect("not halted"),
+        Progress::NoChange
+    ));
 }

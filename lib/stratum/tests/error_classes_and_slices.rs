@@ -27,7 +27,10 @@ fn addr(seed: u8) -> String {
 }
 
 fn harness(mode: Mode, network_diff: u64) -> Harness {
-    let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(network_diff)));
+    let src = Arc::new(MockJobSource::new(
+        184_602,
+        Target::from_difficulty(network_diff),
+    ));
     let results = Arc::new(Mutex::new(Vec::new()));
     let r2 = results.clone();
     let sink: ResultSink = Arc::new(move |r: VerifyResult| r2.lock().unwrap().push(r));
@@ -49,7 +52,12 @@ fn harness(mode: Mode, network_diff: u64) -> Harness {
         caps,
         cfg: ServerConfig::for_mode(mode),
     });
-    Harness { sh, src, results, alloc }
+    Harness {
+        sh,
+        src,
+        results,
+        alloc,
+    }
 }
 
 fn session(h: &Harness, ip: u8, now: u64) -> Session {
@@ -128,9 +136,18 @@ fn malformed_frame_is_error_30_disconnect() {
         out.contains("\"error\":[30"),
         "probe should be a malformed-frame error 30, got: {out}"
     );
-    assert!(!out.contains("\"error\":[23"), "it can never be the 23 it is judged on");
-    assert!(!out.contains("\"error\":[20"), "the comment's claimed 20 is wrong");
-    assert!(!out.contains("\"error\":[25"), "the comment's claimed 25 is wrong");
+    assert!(
+        !out.contains("\"error\":[23"),
+        "it can never be the 23 it is judged on"
+    );
+    assert!(
+        !out.contains("\"error\":[20"),
+        "the comment's claimed 20 is wrong"
+    );
+    assert!(
+        !out.contains("\"error\":[25"),
+        "the comment's claimed 25 is wrong"
+    );
     assert!(
         closed(&s),
         "a bad frame from an authorized peer DISCONNECTS the probe every round"
@@ -153,7 +170,12 @@ fn three_bad_frame_rounds_ban_source() {
         let now = round * round_ms;
 
         let mut s = Session::new(round + 1, ip, now, &h.sh);
-        let _ = feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":["wt"]}"#, now);
+        let _ = feed(
+            &mut s,
+            &h,
+            r#"{"id":1,"method":"mining.subscribe","params":["wt"]}"#,
+            now,
+        );
         let _ = feed(
             &mut s,
             &h,
@@ -208,7 +230,12 @@ fn three_bad_frame_rounds_ban_source() {
 fn well_formed_low_share_is_error_23() {
     let h = harness(Mode::Pool, 1_000_000);
     let mut s = session(&h, 2, 0);
-    feed(&mut s, &h, r#"{"id":1,"method":"mining.subscribe","params":["wt"]}"#, 0);
+    feed(
+        &mut s,
+        &h,
+        r#"{"id":1,"method":"mining.subscribe","params":["wt"]}"#,
+        0,
+    );
 
     let auth = feed(
         &mut s,
@@ -271,7 +298,10 @@ fn foreign_slice_refused_slices_unique() {
         ),
         100,
     );
-    assert!(out.contains("\"error\":[25"), "a sniffed foreign-slice share must be 25: {out}");
+    assert!(
+        out.contains("\"error\":[25"),
+        "a sniffed foreign-slice share must be 25: {out}"
+    );
     assert_eq!(Metrics::get(&h.sh.metrics.shares_verified), 0);
 }
 
@@ -287,7 +317,10 @@ fn reconnect_cannot_keep_old_slice() {
     let mut s2 = session(&h, 5, 2_000);
     let s2wire = subscribe_and_authorize(&mut s2, &h, 5, 2_000);
     let new = s2.e1().unwrap();
-    assert_ne!(old, new, "monotonic-with-skip allocator does not immediately reuse");
+    assert_ne!(
+        old, new,
+        "monotonic-with-skip allocator does not immediately reuse"
+    );
 
     let jid = notify_job_id(&s2wire).unwrap();
     let stale = old.compose(3);
@@ -302,5 +335,8 @@ fn reconnect_cannot_keep_old_slice() {
         ),
         2_100,
     );
-    assert!(out.contains("\"error\":[25"), "old-slice share after reconnect must be 25: {out}");
+    assert!(
+        out.contains("\"error\":[25"),
+        "old-slice share after reconnect must be 25: {out}"
+    );
 }

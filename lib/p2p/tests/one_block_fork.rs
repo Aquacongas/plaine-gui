@@ -157,7 +157,11 @@ fn announced_body_requested() {
     let block = next[0];
     let sync = sim.sync_peer();
     let teller = if sync == Some(a) { b } else { a };
-    assert_ne!(Some(teller), sync, "fixture: the announcer must be undesignated");
+    assert_ne!(
+        Some(teller),
+        sync,
+        "fixture: the announcer must be undesignated"
+    );
     sim.grow_peer(teller, vec![block]);
     sim.announce(teller, vec![block.hash]);
     sim.run(10_000, 250);

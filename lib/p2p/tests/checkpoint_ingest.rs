@@ -1,5 +1,5 @@
-use plaine_p2p::peer::session::{CheckpointAdmit, Session};
 use plaine_p2p::constants::*;
+use plaine_p2p::peer::session::{CheckpointAdmit, Session};
 use plaine_p2p::traits::{Hash32, Mono, PeerId};
 
 fn sess() -> Session {
@@ -15,12 +15,24 @@ fn h(n: u8) -> Hash32 {
 #[test]
 fn repeat_anchor_checked_once() {
     let mut s = sess();
-    assert_eq!(s.admit_checkpoint(100, h(1), Mono(0)), CheckpointAdmit::Accept);
-    assert_eq!(s.admit_checkpoint(100, h(1), Mono(1_000)), CheckpointAdmit::Duplicate);
+    assert_eq!(
+        s.admit_checkpoint(100, h(1), Mono(0)),
+        CheckpointAdmit::Accept
+    );
+    assert_eq!(
+        s.admit_checkpoint(100, h(1), Mono(1_000)),
+        CheckpointAdmit::Duplicate
+    );
 
-    assert_eq!(s.admit_checkpoint(100, h(2), Mono(2_000)), CheckpointAdmit::Accept);
+    assert_eq!(
+        s.admit_checkpoint(100, h(2), Mono(2_000)),
+        CheckpointAdmit::Accept
+    );
 
-    assert_eq!(s.admit_checkpoint(101, h(1), Mono(3_000)), CheckpointAdmit::Accept);
+    assert_eq!(
+        s.admit_checkpoint(101, h(1), Mono(3_000)),
+        CheckpointAdmit::Accept
+    );
 }
 
 #[test]
@@ -41,7 +53,10 @@ fn fifth_checkpoint_scored() {
     );
 
     let after = Mono(CHECKPOINT_RATE_WINDOW_MS + 1);
-    assert_eq!(s.admit_checkpoint(901, h(91), after), CheckpointAdmit::Accept);
+    assert_eq!(
+        s.admit_checkpoint(901, h(91), after),
+        CheckpointAdmit::Accept
+    );
 }
 
 #[test]
@@ -50,11 +65,18 @@ fn dedup_ring_covers_window() {
     let mut s = sess();
     for i in 0..CHECKPOINT_DEDUP_MAX {
         let t = Mono((i as u64 + 1) * (CHECKPOINT_RATE_WINDOW_MS + 1));
-        assert_eq!(s.admit_checkpoint(i as u64, h(i as u8), t), CheckpointAdmit::Accept);
+        assert_eq!(
+            s.admit_checkpoint(i as u64, h(i as u8), t),
+            CheckpointAdmit::Accept
+        );
     }
     let t = Mono((CHECKPOINT_DEDUP_MAX as u64 + 2) * (CHECKPOINT_RATE_WINDOW_MS + 1));
     assert_eq!(
-        s.admit_checkpoint((CHECKPOINT_DEDUP_MAX - 1) as u64, h((CHECKPOINT_DEDUP_MAX - 1) as u8), t),
+        s.admit_checkpoint(
+            (CHECKPOINT_DEDUP_MAX - 1) as u64,
+            h((CHECKPOINT_DEDUP_MAX - 1) as u8),
+            t
+        ),
         CheckpointAdmit::Duplicate,
         "the newest record fell out of a ring that is supposed to hold it"
     );
@@ -99,7 +121,10 @@ fn replayed_checkpoint_deduped() {
     let (mut sim, p) = rig();
     let before = sim.chain.checkpoints_seen();
     for _ in 0..6 {
-        sim.engine_event(Event::Checkpoint { peer: p, cp: cp(900, [9u8; 32]) });
+        sim.engine_event(Event::Checkpoint {
+            peer: p,
+            cp: cp(900, [9u8; 32]),
+        });
     }
     assert_eq!(
         sim.chain.checkpoints_seen() - before,
@@ -120,12 +145,23 @@ fn checkpoint_flood_bounded() {
         let mut h = [0u8; 32];
         h[..8].copy_from_slice(&i.to_le_bytes());
         let acts = sim.engine.on_event(
-            Event::Checkpoint { peer: p, cp: cp(1_000 + i, h) },
+            Event::Checkpoint {
+                peer: p,
+                cp: cp(1_000 + i, h),
+            },
             plaine_p2p::traits::Mono(0),
         );
         scored += acts
             .iter()
-            .filter(|a| matches!(a, Action::Score { offence: Offence::GetCheckpointAbuse, .. }))
+            .filter(|a| {
+                matches!(
+                    a,
+                    Action::Score {
+                        offence: Offence::GetCheckpointAbuse,
+                        ..
+                    }
+                )
+            })
             .count();
     }
     let reached = sim.chain.checkpoints_seen() - before;
@@ -144,7 +180,10 @@ fn checkpoint_flood_bounded() {
 fn advancing_anchor_runs_audit() {
     let (mut sim, p) = rig();
     let before = sim.chain.checkpoints_seen();
-    sim.engine_event(Event::Checkpoint { peer: p, cp: cp(7_000, [3u8; 32]) });
+    sim.engine_event(Event::Checkpoint {
+        peer: p,
+        cp: cp(7_000, [3u8; 32]),
+    });
     assert_eq!(sim.chain.checkpoints_seen() - before, 1);
     assert_eq!(
         plaine_p2p::traits::ChainView::anchor(&*sim.chain).map(|a| a.height),

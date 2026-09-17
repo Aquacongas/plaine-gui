@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use plaine_consensus::constants::{BLOCKS_PER_YEAR, MAGIC_MAIN};
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Network {
     Main,
@@ -123,7 +122,11 @@ pub fn autotune_batch(measured_write_bytes_per_sec: u64) -> u32 {
 
     let up = scaled.next_power_of_two().max(1);
     let down = if up == scaled { up } else { up / 2 };
-    let pow2 = if scaled - down <= up - scaled { down } else { up };
+    let pow2 = if scaled - down <= up - scaled {
+        down
+    } else {
+        up
+    };
     pow2.clamp(2_048, 65_536) as u32
 }
 

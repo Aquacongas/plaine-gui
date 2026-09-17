@@ -22,7 +22,10 @@ pub struct Args {
 
 impl Args {
     fn new() -> Args {
-        Args { write_config: true, ..Default::default() }
+        Args {
+            write_config: true,
+            ..Default::default()
+        }
     }
 }
 
@@ -54,11 +57,17 @@ impl core::fmt::Display for ArgError {
 }
 
 fn err(message: impl Into<String>) -> ArgError {
-    ArgError { message: message.into(), help: None }
+    ArgError {
+        message: message.into(),
+        help: None,
+    }
 }
 
 fn err_help(message: impl Into<String>, help: impl Into<String>) -> ArgError {
-    ArgError { message: message.into(), help: Some(help.into()) }
+    ArgError {
+        message: message.into(),
+        help: Some(help.into()),
+    }
 }
 
 pub fn parse<I, S>(argv: I) -> Result<Action, ArgError>
@@ -128,7 +137,9 @@ where
             "--no-write-config" => args.write_config = false,
             "--print-config" | "--check-config" => {
                 if action.is_some() {
-                    return Err(err("--print-config and --check-config are mutually exclusive"));
+                    return Err(err(
+                        "--print-config and --check-config are mutually exclusive",
+                    ));
                 }
                 action = Some(if arg == "--print-config" {
                     Action::PrintConfig(Args::new())
@@ -156,11 +167,15 @@ where
                          `--config <path>` or `--data-dir <path>`?",
                     ));
                 }
-                let best = FLAGS.iter().min_by_key(|f| edit_distance(other, f)).copied();
+                let best = FLAGS
+                    .iter()
+                    .min_by_key(|f| edit_distance(other, f))
+                    .copied();
                 return Err(match best {
-                    Some(b) if edit_distance(other, b) <= 3 => {
-                        err_help(format!("unknown option `{other}`"), format!("did you mean `{b}`?"))
-                    }
+                    Some(b) if edit_distance(other, b) <= 3 => err_help(
+                        format!("unknown option `{other}`"),
+                        format!("did you mean `{b}`?"),
+                    ),
                     _ => err_help(
                         format!("unknown option `{other}`"),
                         "run `plaine-noded --help` for the list",
@@ -245,13 +260,21 @@ mod tests {
     #[test]
     fn no_args_runs_with_defaults() {
         let a = parse(Vec::<String>::new()).expect("parse");
-        assert_eq!(a, Action::Run(Args { write_config: true, ..Default::default() }));
+        assert_eq!(
+            a,
+            Action::Run(Args {
+                write_config: true,
+                ..Default::default()
+            })
+        );
     }
 
     #[test]
     fn both_flag_spellings_work() {
         for argv in [vec!["--log-level", "debug"], vec!["--log-level=debug"]] {
-            let Action::Run(a) = parse(argv).expect("parse") else { panic!("expected Run") };
+            let Action::Run(a) = parse(argv).expect("parse") else {
+                panic!("expected Run")
+            };
             assert_eq!(a.log_level, Some(LogLevel::Debug));
         }
     }
@@ -283,13 +306,17 @@ mod tests {
 
     #[test]
     fn help_and_version_short_circuit() {
-        assert_eq!(parse(["--help", "--nonsense"]).expect("parse"), Action::Help);
+        assert_eq!(
+            parse(["--help", "--nonsense"]).expect("parse"),
+            Action::Help
+        );
         assert_eq!(parse(["-V", "--nonsense"]).expect("parse"), Action::Version);
     }
 
     #[test]
     fn action_flags_keep_options() {
-        let Action::PrintConfig(a) = parse(["--print-config", "--log-level", "debug"]).expect("parse")
+        let Action::PrintConfig(a) =
+            parse(["--print-config", "--log-level", "debug"]).expect("parse")
         else {
             panic!("expected PrintConfig")
         };
@@ -306,10 +333,19 @@ mod tests {
     fn role_flag_refused_by_name() {
         for argv in [vec!["--role", "edge"], vec!["--role=core"], vec!["--role"]] {
             let e = parse(argv.clone()).expect_err("--role must be refused");
-            assert!(e.message.contains("`--role` does not exist"), "{argv:?}: {e}");
+            assert!(
+                e.message.contains("`--role` does not exist"),
+                "{argv:?}: {e}"
+            );
             let help = e.help.as_deref().unwrap_or("");
-            assert!(help.contains("noded.toml"), "{argv:?}: the refusal must name the alternative");
-            assert!(help.contains("role.env"), "{argv:?}: the refusal must name the stub to delete");
+            assert!(
+                help.contains("noded.toml"),
+                "{argv:?}: the refusal must name the alternative"
+            );
+            assert!(
+                help.contains("role.env"),
+                "{argv:?}: the refusal must name the stub to delete"
+            );
             assert!(
                 !help.contains("did you mean"),
                 "{argv:?}: --role must not be reported as a typo for a flag that exists"
@@ -326,7 +362,10 @@ mod tests {
 
         assert!(u.contains("mining is Stratum only"));
         assert!(u.contains("never holds a private key"));
-        assert!(u.contains("No --role"), "the role decision must be discoverable from --help");
+        assert!(
+            u.contains("No --role"),
+            "the role decision must be discoverable from --help"
+        );
         assert!(u.contains("EXIT CODES"));
     }
 }

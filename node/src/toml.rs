@@ -101,7 +101,9 @@ pub struct Document {
 
 impl Document {
     pub fn get(&self, section: &str, key: &str) -> Option<&Entry> {
-        self.entries.iter().find(|e| e.section == section && e.key == key)
+        self.entries
+            .iter()
+            .find(|e| e.section == section && e.key == key)
     }
 
     #[allow(dead_code)]
@@ -112,7 +114,12 @@ impl Document {
 
 pub fn parse(path: &str, src: &str) -> Result<Document, Diagnostic> {
     let src = src.strip_prefix('\u{feff}').unwrap_or(src);
-    Parser { path, lines: src.lines().collect(), doc: Document::default() }.run()
+    Parser {
+        path,
+        lines: src.lines().collect(),
+        doc: Document::default(),
+    }
+    .run()
 }
 
 struct Parser<'a> {
@@ -178,7 +185,12 @@ impl<'a> Parser<'a> {
 
         if trimmed.starts_with("[[") {
             return Err(self
-                .diag(i, col, trimmed.chars().count(), "arrays of tables are not supported")
+                .diag(
+                    i,
+                    col,
+                    trimmed.chars().count(),
+                    "arrays of tables are not supported",
+                )
                 .with_help(
                     "`[[name]]` declares a repeated table. noded.toml has a fixed, flat schema \
                      with no repeated sections, so there is nothing this could mean.",
@@ -186,7 +198,12 @@ impl<'a> Parser<'a> {
         }
         let Some(close) = trimmed.find(']') else {
             return Err(self
-                .diag(i, col, trimmed.chars().count(), "table header is missing its `]`")
+                .diag(
+                    i,
+                    col,
+                    trimmed.chars().count(),
+                    "table header is missing its `]`",
+                )
                 .with_help("write it as `[section]` on a line of its own"));
         };
         let after = trimmed[close + 1..].trim();
@@ -201,7 +218,12 @@ impl<'a> Parser<'a> {
         let name = trimmed[1..close].trim().to_string();
         if name.contains('.') {
             return Err(self
-                .diag(i, col, close + 1, format!("sub-tables are not supported (`[{name}]`)"))
+                .diag(
+                    i,
+                    col,
+                    close + 1,
+                    format!("sub-tables are not supported (`[{name}]`)"),
+                )
                 .with_help(
                     "noded.toml is exactly one level deep. Every section is a plain name like \
                      [node], [rpc] or [checkpoints].",
@@ -245,7 +267,12 @@ impl<'a> Parser<'a> {
             let head = key.split('.').next().unwrap_or("");
             let tail = key.splitn(2, '.').nth(1).unwrap_or("");
             return Err(self
-                .diag(i, col, key.chars().count(), format!("dotted keys are not supported (`{key}`)"))
+                .diag(
+                    i,
+                    col,
+                    key.chars().count(),
+                    format!("dotted keys are not supported (`{key}`)"),
+                )
                 .with_help(format!(
                     "write it as a section instead:\n\n    [{head}]\n    {tail} = ..."
                 )));
@@ -266,7 +293,12 @@ impl<'a> Parser<'a> {
         }
         let Some(section) = section else {
             return Err(self
-                .diag(i, col, key.chars().count(), format!("`{key}` is not inside any section"))
+                .diag(
+                    i,
+                    col,
+                    key.chars().count(),
+                    format!("`{key}` is not inside any section"),
+                )
                 .with_help(
                     "every setting belongs to a section. The first line of the file should be a \
                      header like [node].",
@@ -281,7 +313,13 @@ impl<'a> Parser<'a> {
         let rest = &trimmed[eq + 1..];
         let (value, consumed) = self.value(i, value_col, rest)?;
         Ok((
-            Entry { section: section.to_string(), key, value, line: i + 1, col },
+            Entry {
+                section: section.to_string(),
+                key,
+                value,
+                line: i + 1,
+                col,
+            },
             consumed,
         ))
     }
@@ -291,10 +329,10 @@ impl<'a> Parser<'a> {
         let col = col + lead;
         let text = rest.trim_start();
         if text.is_empty() {
-            return Err(self
-                .diag(i, col, 1, "missing value after `=`")
-                .with_help("if you meant to disable a setting, give it its empty value explicitly, \
-                            or delete the line to take the default"));
+            return Err(self.diag(i, col, 1, "missing value after `=`").with_help(
+                "if you meant to disable a setting, give it its empty value explicitly, \
+                            or delete the line to take the default",
+            ));
         }
         match text.as_bytes()[0] {
             b'"' if text.starts_with("\"\"\"") => Err(self
@@ -360,14 +398,24 @@ impl<'a> Parser<'a> {
             }
         }
         Err(self
-            .diag(i, col, text.chars().count(), "string is missing its closing quote")
+            .diag(
+                i,
+                col,
+                text.chars().count(),
+                "string is missing its closing quote",
+            )
             .with_help("strings are written \"like this\""))
     }
 
     fn literal_string(&self, i: usize, col: usize, text: &str) -> Result<Value, Diagnostic> {
         let Some(end) = text[1..].find('\'').map(|p| p + 1) else {
             return Err(self
-                .diag(i, col, text.chars().count(), "literal string is missing its closing quote")
+                .diag(
+                    i,
+                    col,
+                    text.chars().count(),
+                    "literal string is missing its closing quote",
+                )
                 .with_help("literal strings are written 'like this' and contain no escapes"));
         };
         let after = text[end + 1..].trim();
@@ -395,7 +443,8 @@ impl<'a> Parser<'a> {
         }
 
         if token.contains('.')
-            || ((token.contains('e') || token.contains('E')) && token.starts_with(|c: char| c.is_ascii_digit()))
+            || ((token.contains('e') || token.contains('E'))
+                && token.starts_with(|c: char| c.is_ascii_digit()))
         {
             return Err(self
                 .diag(i, col, span, format!("`{token}` is a fractional number"))
@@ -424,7 +473,12 @@ impl<'a> Parser<'a> {
         }
         if token.starts_with(|c: char| c.is_ascii_digit()) || token.starts_with('-') {
             return Err(self
-                .diag(i, col, span, format!("`{token}` is not a whole number this node can hold"))
+                .diag(
+                    i,
+                    col,
+                    span,
+                    format!("`{token}` is not a whole number this node can hold"),
+                )
                 .with_help("integers range from -9223372036854775808 to 9223372036854775807"));
         }
         Err(self
@@ -476,7 +530,10 @@ impl<'a> Parser<'a> {
         }
         let inner = &joined[1..close];
 
-        if brackets.iter().any(|(i, c)| *c == '[' && *i > 0 && *i < close) {
+        if brackets
+            .iter()
+            .any(|(i, c)| *c == '[' && *i > 0 && *i < close)
+        {
             return Err(self
                 .diag(start, col, 1, "nested arrays are not supported")
                 .with_help("no setting in noded.toml takes a list of lists"));
@@ -616,22 +673,28 @@ mod tests {
 
     #[test]
     fn bom_is_stripped() {
-
         let d = ok("\u{feff}[node]\nnetwork = \"main\"\n");
-        assert_eq!(d.get("node", "network").unwrap().value, Value::Str("main".into()));
+        assert_eq!(
+            d.get("node", "network").unwrap().value,
+            Value::Str("main".into())
+        );
 
         let d = ok("[node]\ndata_dir = \"\u{feff}x\"\n");
-        assert_eq!(d.get("node", "data_dir").unwrap().value, Value::Str("\u{feff}x".into()));
+        assert_eq!(
+            d.get("node", "data_dir").unwrap().value,
+            Value::Str("\u{feff}x".into())
+        );
     }
 
     #[test]
     fn ipv6_seed_not_nested_array() {
-
         let d = ok(r#"
 [p2p]
 seeds = ["[2001:db8::1]:9256", "seed.example:9256"]
 "#);
-        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else { panic!("not an array") };
+        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else {
+            panic!("not an array")
+        };
         assert_eq!(arr.len(), 2);
         assert_eq!(arr[0], Value::Str("[2001:db8::1]:9256".into()));
 
@@ -642,11 +705,15 @@ seeds = [
   "[::1]:9256",
 ]
 "#);
-        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else { panic!("not an array") };
+        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else {
+            panic!("not an array")
+        };
         assert_eq!(arr.len(), 2);
 
         let d = ok("[p2p]\nseeds = [\"a:1\"]   # see [docs] for the format\n");
-        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else { panic!("not an array") };
+        let Value::Arr(arr) = &d.get("p2p", "seeds").unwrap().value else {
+            panic!("not an array")
+        };
         assert_eq!(arr.len(), 1);
 
         let e = err("[p2p]\nseeds = [[\"a\"], [\"b\"]]\n");
@@ -655,7 +722,6 @@ seeds = [
 
     #[test]
     fn unclosed_array_stops_at_eof() {
-
         let e = err("[p2p]\nseeds = [\"a\"\n\n[rpc]\nlisten = \"127.0.0.1:9257\"\n");
         assert!(e.message.contains("closing `]`"), "{}", e.message);
         assert_eq!(e.line, 2, "the caret must sit on the array, not at EOF");
@@ -681,13 +747,19 @@ seeds = [
   "seed2.plaine.example:9256",
 ]
 "#);
-        assert_eq!(d.get("node", "network").unwrap().value, Value::Str("main".into()));
+        assert_eq!(
+            d.get("node", "network").unwrap().value,
+            Value::Str("main".into())
+        );
         assert_eq!(
             d.get("node", "data_dir").unwrap().value,
             Value::Str(r"C:\Users\me\.plaine".into())
         );
         assert_eq!(d.get("node", "prune").unwrap().value, Value::Bool(true));
-        assert_eq!(d.get("mempool", "relay_fee_mile").unwrap().value, Value::Int(1));
+        assert_eq!(
+            d.get("mempool", "relay_fee_mile").unwrap().value,
+            Value::Int(1)
+        );
         let Value::Arr(seeds) = &d.get("p2p", "seeds").unwrap().value else {
             panic!("seeds should be an array");
         };
@@ -704,7 +776,10 @@ seeds = [
     fn presence_differs_from_absence() {
         let d = ok("[checkpoints]\nkeys = []\n");
         assert!(d.has("checkpoints", "keys"));
-        assert_eq!(d.get("checkpoints", "keys").unwrap().value, Value::Arr(vec![]));
+        assert_eq!(
+            d.get("checkpoints", "keys").unwrap().value,
+            Value::Arr(vec![])
+        );
         let d2 = ok("[checkpoints]\nenabled = true\n");
         assert!(!d2.has("checkpoints", "keys"));
     }
@@ -722,26 +797,42 @@ seeds = [
     fn caret_under_offending_text() {
         let e = err("[mempool]\nrelay_fee_mile = 0.5\n");
         let rendered = e.to_string();
-        let caret_line = rendered.lines().find(|l| l.contains('^')).expect("a caret line");
-        let value_line = rendered.lines().find(|l| l.starts_with("2 | ")).expect("the source line");
+        let caret_line = rendered
+            .lines()
+            .find(|l| l.contains('^'))
+            .expect("a caret line");
+        let value_line = rendered
+            .lines()
+            .find(|l| l.starts_with("2 | "))
+            .expect("the source line");
         let caret_at = caret_line.find('^').expect("caret");
         let value_at = value_line.find("0.5").expect("value");
-        assert_eq!(caret_at, value_at, "caret must sit under the value:\n{rendered}");
+        assert_eq!(
+            caret_at, value_at,
+            "caret must sit under the value:\n{rendered}"
+        );
     }
 
     #[test]
     fn dotted_keys_redirected() {
         let e = err("[node]\nrpc.listen = \"x\"\n");
         assert!(e.message.contains("dotted keys"));
-        assert!(e.help.unwrap().contains("[rpc]"), "the help must show the fix");
+        assert!(
+            e.help.unwrap().contains("[rpc]"),
+            "the help must show the fix"
+        );
     }
 
     #[test]
     fn unsupported_tables_each_named() {
         assert!(err("[a.b]\nx = 1\n").message.contains("sub-tables"));
         assert!(err("[[a]]\nx = 1\n").message.contains("arrays of tables"));
-        assert!(err("[a]\nx = { y = 1 }\n").message.contains("inline tables"));
-        assert!(err("[a]\nx = \"\"\"y\"\"\"\n").message.contains("multi-line"));
+        assert!(err("[a]\nx = { y = 1 }\n")
+            .message
+            .contains("inline tables"));
+        assert!(err("[a]\nx = \"\"\"y\"\"\"\n")
+            .message
+            .contains("multi-line"));
     }
 
     #[test]
@@ -783,14 +874,21 @@ data_dir = "C:\Users\me\.plaine"
 
     #[test]
     fn unterminated_array_or_string_named() {
-        assert!(err("[p2p]\nseeds = [\"a\",\n").message.contains("closing `]`"));
-        assert!(err("[node]\nnetwork = \"main\n").message.contains("closing quote"));
+        assert!(err("[p2p]\nseeds = [\"a\",\n")
+            .message
+            .contains("closing `]`"));
+        assert!(err("[node]\nnetwork = \"main\n")
+            .message
+            .contains("closing quote"));
     }
 
     #[test]
     fn hash_in_string_not_comment() {
         let d = ok("[rpc]\ntoken = \"abc#def\"\n");
-        assert_eq!(d.get("rpc", "token").unwrap().value, Value::Str("abc#def".into()));
+        assert_eq!(
+            d.get("rpc", "token").unwrap().value,
+            Value::Str("abc#def".into())
+        );
     }
 
     #[test]

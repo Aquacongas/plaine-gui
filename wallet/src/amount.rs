@@ -151,7 +151,10 @@ mod tests {
         assert_eq!(parse_mile("1plne").unwrap(), 1_000_000);
         assert_eq!(parse_mile("1PLNE").unwrap(), 1_000_000);
         assert_eq!(parse_mile("1000000mile").unwrap(), 1_000_000);
-        assert_eq!(parse_mile("1plne").unwrap(), parse_mile("1000000mile").unwrap());
+        assert_eq!(
+            parse_mile("1plne").unwrap(),
+            parse_mile("1000000mile").unwrap()
+        );
     }
 
     #[test]

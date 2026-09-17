@@ -2,9 +2,9 @@
 
 #[cfg(feature = "author-tools")]
 use plaine_consensus::codec::AnnouncementTx;
-use plaine_consensus::{crypto, hex};
 #[cfg(feature = "author-tools")]
 use plaine_consensus::tx;
+use plaine_consensus::{crypto, hex};
 
 const NET: plaine_consensus::constants::Network = plaine_consensus::constants::Network::Main;
 
@@ -104,8 +104,16 @@ fn make_key(d: &Dir, name: &str, role: &str, tag: &[u8]) -> (String, String, Str
     let out = d.s(name);
     let r = wallet(
         &[
-            "new", "--out", &out, "--role", role, "--seed-stdin", "--passphrase-file", &pass,
-            "--kdf-iters", "1024",
+            "new",
+            "--out",
+            &out,
+            "--role",
+            role,
+            "--seed-stdin",
+            "--passphrase-file",
+            &pass,
+            "--kdf-iters",
+            "1024",
         ],
         seed_hex(tag).as_bytes(),
     );
@@ -120,13 +128,29 @@ fn make_key(d: &Dir, name: &str, role: &str, tag: &[u8]) -> (String, String, Str
 fn journal_refuses_fee_or_encoding_change_at_nonce() {
     let d = Dir::new("journal-fee");
     let (key, _, pubkey) = make_key(&d, "author.plnekey", "author", b"journal fee change");
-    std::fs::write(d.path("msg.txt"), "EMERGENCY: switch to Isochron v2 at 100000").unwrap();
+    std::fs::write(
+        d.path("msg.txt"),
+        "EMERGENCY: switch to Isochron v2 at 100000",
+    )
+    .unwrap();
 
     let sign_with = |fee: &str, encoding: &str, extra: &[&str]| -> Run {
         let mut v = vec![
-            "announce", "--in", &key, "--author-pubkey", &pubkey,
-            "--payload-file", &d.s("msg.txt"), "--encoding", encoding,
-            "--fee", fee, "--nonce", "42", "--passphrase-file", &d.s("pass.txt"),
+            "announce",
+            "--in",
+            &key,
+            "--author-pubkey",
+            &pubkey,
+            "--payload-file",
+            &d.s("msg.txt"),
+            "--encoding",
+            encoding,
+            "--fee",
+            fee,
+            "--nonce",
+            "42",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ]
         .iter()
         .map(|s| s.to_string())
@@ -140,17 +164,35 @@ fn journal_refuses_fee_or_encoding_change_at_nonce() {
     a.ok();
 
     let bumped = sign_with("900000mile", "1", &[]);
-    assert_ne!(bumped.code, 0, "a fee bump at a used nonce must be refused:\n{}", bumped.all());
+    assert_ne!(
+        bumped.code,
+        0,
+        "a fee bump at a used nonce must be refused:\n{}",
+        bumped.all()
+    );
     assert!(bumped.err.contains("nonce 42"), "{}", bumped.err);
-    assert!(bumped.err.contains("different announcement"), "{}", bumped.err);
+    assert!(
+        bumped.err.contains("different announcement"),
+        "{}",
+        bumped.err
+    );
 
     let recoded = sign_with("50000mile", "2", &[]);
-    assert_ne!(recoded.code, 0, "an encoding change must be refused:\n{}", recoded.all());
+    assert_ne!(
+        recoded.code,
+        0,
+        "an encoding change must be refused:\n{}",
+        recoded.all()
+    );
     assert!(recoded.err.contains("nonce 42"), "{}", recoded.err);
 
     let retry = sign_with("50000mile", "1", &[]);
     retry.ok();
-    assert_eq!(retry.field("hex"), a.field("hex"), "a retry is byte-identical");
+    assert_eq!(
+        retry.field("hex"),
+        a.field("hex"),
+        "a retry is byte-identical"
+    );
 
     let forced = sign_with("900000mile", "1", &["--reuse-nonce"]);
     forced.ok();
@@ -165,13 +207,19 @@ fn journal_refuses_fee_or_encoding_change_at_nonce() {
     assert_ne!(ta.txid().unwrap(), tb.txid().unwrap());
 
     let jnl = std::fs::read_to_string(format!("{key}.journal")).unwrap();
-    assert!(jnl.contains("msg_b3="), "the journal must record the signed message: {jnl}");
+    assert!(
+        jnl.contains("msg_b3="),
+        "the journal must record the signed message: {jnl}"
+    );
     let msg_hashes: Vec<&str> = jnl
         .split_whitespace()
         .filter_map(|f| f.strip_prefix("msg_b3="))
         .collect();
     assert_eq!(msg_hashes.len(), 3, "one per signed announcement: {jnl}");
-    assert_ne!(msg_hashes[0], msg_hashes[2], "the fee bump is a different message");
+    assert_ne!(
+        msg_hashes[0], msg_hashes[2],
+        "the fee bump is a different message"
+    );
 }
 
 #[cfg(feature = "author-tools")]
@@ -185,9 +233,21 @@ fn rotation_carries_the_journal() {
     let announce = |key: &str, payload: &str| -> Run {
         wallet(
             &[
-                "announce", "--in", key, "--author-pubkey", &pubkey, "--payload-file", payload,
-                "--encoding", "1", "--fee", "50000mile", "--nonce", "9",
-                "--passphrase-file", &d.s("pass.txt"),
+                "announce",
+                "--in",
+                key,
+                "--author-pubkey",
+                &pubkey,
+                "--payload-file",
+                payload,
+                "--encoding",
+                "1",
+                "--fee",
+                "50000mile",
+                "--nonce",
+                "9",
+                "--passphrase-file",
+                &d.s("pass.txt"),
             ],
             b"",
         )
@@ -203,10 +263,17 @@ fn rotation_carries_the_journal() {
     let new_key = d.s("author-rotated.plnekey");
     let rot = wallet(
         &[
-            "passphrase", "--in", &old_key, "--out", &new_key,
-            "--old-passphrase-file", &d.s("pass.txt"),
-            "--new-passphrase-file", &d.s("pass.txt"),
-            "--kdf-iters", "1024",
+            "passphrase",
+            "--in",
+            &old_key,
+            "--out",
+            &new_key,
+            "--old-passphrase-file",
+            &d.s("pass.txt"),
+            "--new-passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            "1024",
         ],
         b"",
     );
@@ -229,7 +296,8 @@ fn rotation_carries_the_journal() {
 
     let second = announce(&new_key, &d.s("b.txt"));
     assert_ne!(
-        second.code, 0,
+        second.code,
+        0,
         "the journal defence must survive rotation:\n{}",
         second.all()
     );
@@ -237,29 +305,46 @@ fn rotation_carries_the_journal() {
 
     let retry = announce(&new_key, &d.s("a.txt"));
     retry.ok();
-    assert_eq!(retry.field("hex"), first.field("hex"), "same key, same message");
+    assert_eq!(
+        retry.field("hex"),
+        first.field("hex"),
+        "same key, same message"
+    );
 
     let ta = AnnouncementTx::decode(&hex::decode(&first.field("hex")).unwrap()).unwrap();
     let tb = AnnouncementTx::decode(&hex::decode(&retry.field("hex")).unwrap()).unwrap();
     let author = <[u8; 32]>::try_from(hex::decode(&pubkey).unwrap().as_slice()).unwrap();
     tx::check_announcement_stateless(NET, &ta, &author).unwrap();
     tx::check_announcement_stateless(NET, &tb, &author).unwrap();
-    assert_eq!(ta.from_pub, tb.from_pub, "the rotated key is the same account");
+    assert_eq!(
+        ta.from_pub, tb.from_pub,
+        "the rotated key is the same account"
+    );
 
     let third = d.s("author-third.plnekey");
     std::fs::write(format!("{third}.journal"), "").unwrap();
     let clash = wallet(
         &[
-            "passphrase", "--in", &old_key, "--out", &third,
-            "--old-passphrase-file", &d.s("pass.txt"),
-            "--new-passphrase-file", &d.s("pass.txt"),
-            "--kdf-iters", "1024",
+            "passphrase",
+            "--in",
+            &old_key,
+            "--out",
+            &third,
+            "--old-passphrase-file",
+            &d.s("pass.txt"),
+            "--new-passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            "1024",
         ],
         b"",
     );
     assert_ne!(clash.code, 0, "{}", clash.all());
     assert!(clash.err.contains("journal"), "{}", clash.err);
-    assert!(!std::path::Path::new(&third).exists(), "nothing may be created");
+    assert!(
+        !std::path::Path::new(&third).exists(),
+        "nothing may be created"
+    );
 }
 
 #[test]
@@ -284,12 +369,18 @@ fn non_canonical_keyfile_is_refused() {
         let err = KeyFile::parse(&text)
             .err()
             .unwrap_or_else(|| panic!("version {bogus} must be refused"));
-        assert!(err.to_string().contains(bogus), "the refusal must name it: {err}");
+        assert!(
+            err.to_string().contains(bogus),
+            "the refusal must name it: {err}"
+        );
     }
 
     for (name, text) in [
         ("appended line", format!("{good}pwned: yes\n")),
-        ("leading zeros", good.replacen("version: 1\n", "version: 001\n", 1)),
+        (
+            "leading zeros",
+            good.replacen("version: 1\n", "version: 001\n", 1),
+        ),
         (
             "uppercase hex",
             good.replacen(
@@ -307,7 +398,11 @@ fn non_canonical_keyfile_is_refused() {
     std::fs::write(&path, &good).unwrap();
     wallet(&["inspect", "--in", &path], b"").ok();
     let bogus_path = d.s("bogus.plnekey");
-    std::fs::write(&bogus_path, good.replacen("version: 1\n", "version: 4294967297\n", 1)).unwrap();
+    std::fs::write(
+        &bogus_path,
+        good.replacen("version: 1\n", "version: 4294967297\n", 1),
+    )
+    .unwrap();
     let r = wallet(&["inspect", "--in", &bogus_path], b"");
     assert_ne!(r.code, 0, "{}", r.all());
     assert!(r.err.contains("4294967297"), "{}", r.err);
@@ -329,7 +424,13 @@ fn absurd_iter_count_in_file_is_refused() {
     for argv in [
         vec!["inspect", "--in", &bogus],
         vec!["address", "--in", &bogus],
-        vec!["verify", "--in", &bogus, "--passphrase-file", &d.s("pass.txt")],
+        vec![
+            "verify",
+            "--in",
+            &bogus,
+            "--passphrase-file",
+            &d.s("pass.txt"),
+        ],
     ] {
         let r = wallet_bounded(&argv, b"", 20).unwrap_or_else(|| {
             panic!(
@@ -341,13 +442,26 @@ fn absurd_iter_count_in_file_is_refused() {
         });
         assert_ne!(r.code, 0, "{} must be refused:\n{}", argv[0], r.all());
         assert!(r.err.contains("kdf_iters"), "{}: {}", argv[0], r.err);
-        assert!(r.err.contains(&u64::MAX.to_string()), "{}: {}", argv[0], r.err);
+        assert!(
+            r.err.contains(&u64::MAX.to_string()),
+            "{}: {}",
+            argv[0],
+            r.err
+        );
     }
 
     let r = wallet_bounded(
         &[
-            "new", "--out", &d.s("huge.plnekey"), "--role", "spend", "--seed-stdin",
-            "--passphrase-file", &d.s("pass.txt"), "--kdf-iters", &u64::MAX.to_string(),
+            "new",
+            "--out",
+            &d.s("huge.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
+            "--passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            &u64::MAX.to_string(),
         ],
         seed_hex(b"iters on cli").as_bytes(),
         20,
@@ -370,7 +484,11 @@ fn one_char_typo_in_backup_is_refused() {
 
     let b = wallet(
         &[
-            "backup", "--in", &key, "--passphrase-file", &d.s("pass.txt"),
+            "backup",
+            "--in",
+            &key,
+            "--passphrase-file",
+            &d.s("pass.txt"),
             "--i-understand-this-prints-a-secret",
         ],
         b"",
@@ -390,13 +508,25 @@ fn one_char_typo_in_backup_is_refused() {
 
     let good = wallet(
         &[
-            "import", "--out", &d.s("good.plnekey"), "--role", "spend", "--seed-stdin",
-            "--passphrase-file", &d.s("pass.txt"), "--kdf-iters", "1024",
+            "import",
+            "--out",
+            &d.s("good.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
+            "--passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            "1024",
         ],
         printed.as_bytes(),
     );
     good.ok();
-    assert_eq!(good.field("address"), addr, "an exact restore must be identical");
+    assert_eq!(
+        good.field("address"),
+        addr,
+        "an exact restore must be identical"
+    );
 
     let digits = b"0123456789abcdef";
     let mut refused = 0usize;
@@ -411,19 +541,31 @@ fn one_char_typo_in_backup_is_refused() {
             let out = d.s(&format!("typo-{pos}-{dig}.plnekey"));
             let bad = wallet(
                 &[
-                    "import", "--out", &out, "--role", "spend", "--seed-stdin",
+                    "import",
+                    "--out",
+                    &out,
+                    "--role",
+                    "spend",
+                    "--seed-stdin",
                     "--no-passphrase",
                 ],
                 typo.as_bytes(),
             );
             assert_ne!(
-                bad.code, 0,
+                bad.code,
+                0,
                 "a one-character slip at {pos} was accepted and restored a different \
                  wallet:\n{}",
                 bad.all()
             );
-            assert!(!std::path::Path::new(&out).exists(), "nothing may be created");
-            assert!(!bad.all().contains(&typo), "the refusal must not echo the material");
+            assert!(
+                !std::path::Path::new(&out).exists(),
+                "nothing may be created"
+            );
+            assert!(
+                !bad.all().contains(&typo),
+                "the refusal must not echo the material"
+            );
             refused += 1;
         }
     }
@@ -432,18 +574,32 @@ fn one_char_typo_in_backup_is_refused() {
     let bare = &printed[..64];
     let r = wallet(
         &[
-            "import", "--out", &d.s("bare.plnekey"), "--role", "spend", "--seed-stdin",
+            "import",
+            "--out",
+            &d.s("bare.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
             "--no-passphrase",
         ],
         bare.as_bytes(),
     );
     assert_ne!(r.code, 0, "{}", r.all());
     assert!(r.err.contains("checksum"), "{}", r.err);
-    assert!(r.err.contains("new"), "the refusal must name the way out: {}", r.err);
+    assert!(
+        r.err.contains("new"),
+        "the refusal must name the way out: {}",
+        r.err
+    );
 
     let n = wallet(
         &[
-            "new", "--out", &d.s("bare-new.plnekey"), "--role", "spend", "--seed-stdin",
+            "new",
+            "--out",
+            &d.s("bare-new.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
             "--no-passphrase",
         ],
         bare.as_bytes(),
@@ -461,20 +617,32 @@ fn extra_leading_dashes_refused_nothing_signed() {
 
     let r = wallet(
         &[
-            "transfer", "--in", &key, "--to", &to, "--amount", "1plne",
-            "----fee", "1000mile", "--------nonce", "3",
-            "--passphrase-file", &d.s("pass.txt"),
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1plne",
+            "----fee",
+            "1000mile",
+            "--------nonce",
+            "3",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
     assert_eq!(r.code, 2, "a usage error exits 2:\n{}", r.all());
     assert!(r.err.contains("unknown option ----fee"), "{}", r.err);
-    assert!(!r.out.contains("signed"), "nothing may be signed:\n{}", r.out);
+    assert!(
+        !r.out.contains("signed"),
+        "nothing may be signed:\n{}",
+        r.out
+    );
 
     #[cfg_attr(not(feature = "author-tools"), allow(unused_mut))]
-    let mut cases: Vec<Vec<&str>> = vec![
-        vec!["transfer", "--in", &key, "----fee=1000mile"],
-    ];
+    let mut cases: Vec<Vec<&str>> = vec![vec!["transfer", "--in", &key, "----fee=1000mile"]];
 
     #[cfg(feature = "author-tools")]
     cases.push(vec!["announce", "--in", &key, "----reuse-nonce"]);
@@ -486,8 +654,19 @@ fn extra_leading_dashes_refused_nothing_signed() {
 
     wallet(
         &[
-            "transfer", "--in", &key, "--to", &to, "--amount", "1plne",
-            "--fee", "1000mile", "--nonce", "3", "--passphrase-file", &d.s("pass.txt"),
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "3",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     )
@@ -518,9 +697,11 @@ fn slow_file_warns_before_it_goes_quiet() {
     assert!(big > kdf::NOTICE_ABOVE_ITERS && big < kdf::MAX_ITERS);
     std::fs::write(
         &slow,
-        std::fs::read_to_string(&key)
-            .unwrap()
-            .replacen("kdf_iters: 1024", &format!("kdf_iters: {big}"), 1),
+        std::fs::read_to_string(&key).unwrap().replacen(
+            "kdf_iters: 1024",
+            &format!("kdf_iters: {big}"),
+            1,
+        ),
     )
     .unwrap();
 
@@ -569,9 +750,16 @@ fn amount_parser_battery() {
     use plaine_wallet::amount::MAX_PARSE_MILE;
 
     let must_refuse = [
-        "1e18", "1e18plne", "1E18plne", "1e18mile",
+        "1e18",
+        "1e18plne",
+        "1E18plne",
+        "1e18mile",
         "0.1000000000000000001plne",
-        "+1plne", "+1mile", "-1plne", "-1mile", "-0plne",
+        "+1plne",
+        "+1mile",
+        "-1plne",
+        "-1mile",
+        "-0plne",
         "\u{FF11}plne",
         "\u{0661}plne",
         "\u{06F1}plne",
@@ -580,11 +768,27 @@ fn amount_parser_battery() {
         "1\u{200B}plne",
         "1plne\u{0000}",
         "5",
-        "5 plne", "5_plne", "5\u{9}plne", " 5plne", "5plne ", "5plne\n",
-        "1_000plne", "1,000plne", "1 000plne", "1.2.3plne",
-        "0.1mile", "0.5mile",
+        "5 plne",
+        "5_plne",
+        "5\u{9}plne",
+        " 5plne",
+        "5plne ",
+        "5plne\n",
+        "1_000plne",
+        "1,000plne",
+        "1 000plne",
+        "1.2.3plne",
+        "0.1mile",
+        "0.5mile",
         "1.0000000000000000001plne",
-        "abcplne", "1.2xplne", "plne", "mile", "", "..plne", "0x10mile", "1nplne",
+        "abcplne",
+        "1.2xplne",
+        "plne",
+        "mile",
+        "",
+        "..plne",
+        "0x10mile",
+        "1nplne",
         "1PLNEplne",
         "340282366920938463463374607431768211455mile",
         "340282366920938463463374607431768211455plne",
@@ -598,11 +802,17 @@ fn amount_parser_battery() {
         );
     }
 
-    assert_eq!(parse_mile(&format!("{MAX_PARSE_MILE}mile")).unwrap(), MAX_PARSE_MILE);
+    assert_eq!(
+        parse_mile(&format!("{MAX_PARSE_MILE}mile")).unwrap(),
+        MAX_PARSE_MILE
+    );
     assert!(parse_mile(&format!("{}mile", MAX_PARSE_MILE + 1)).is_err());
 
     let max_plne = plaine_wallet::amount::format_plne(MAX_PARSE_MILE);
-    assert_eq!(parse_mile(&format!("{max_plne}plne")).unwrap(), MAX_PARSE_MILE);
+    assert_eq!(
+        parse_mile(&format!("{max_plne}plne")).unwrap(),
+        MAX_PARSE_MILE
+    );
 
     assert_eq!(parse_mile("1plne").unwrap(), 1_000_000);
     assert_eq!(parse_mile("0.1plne").unwrap(), 100_000);
@@ -616,17 +826,34 @@ fn amount_parser_battery() {
     assert_eq!(a + b, parse_mile("0.3plne").unwrap());
 
     for w in [
-        0u128, 1, 2, 999, 10u128.pow(6), 10u128.pow(9) - 1, 10u128.pow(9),
-        10u128.pow(12) + 1, MAX_PARSE_MILE - 1, MAX_PARSE_MILE,
+        0u128,
+        1,
+        2,
+        999,
+        10u128.pow(6),
+        10u128.pow(9) - 1,
+        10u128.pow(9),
+        10u128.pow(12) + 1,
+        MAX_PARSE_MILE - 1,
+        MAX_PARSE_MILE,
     ] {
         let s = format!("{}plne", plaine_wallet::amount::format_plne(w));
         assert_eq!(parse_mile(&s).unwrap(), w, "roundtrip {w}");
     }
 
     for junk in [
-        "\u{0}", "\u{10FFFF}plne", &"9".repeat(4096), &format!("{}plne", "9".repeat(4096)),
-        &format!("0.{}plne", "9".repeat(4096)), &format!(".{}mile", "0".repeat(64)),
-        "..", "...plne", "-.plne", "+.mile", &"plne".repeat(64), &"mile".repeat(64),
+        "\u{0}",
+        "\u{10FFFF}plne",
+        &"9".repeat(4096),
+        &format!("{}plne", "9".repeat(4096)),
+        &format!("0.{}plne", "9".repeat(4096)),
+        &format!(".{}mile", "0".repeat(64)),
+        "..",
+        "...plne",
+        "-.plne",
+        "+.mile",
+        &"plne".repeat(64),
+        &"mile".repeat(64),
     ] {
         let _ = parse_mile(junk);
     }
@@ -638,7 +865,11 @@ fn restore_is_byte_identical_bad_backups_refused() {
     let (key, addr, pubkey) = make_key(&d, "spend.plnekey", "spend", b"restore roundtrip");
     let b = wallet(
         &[
-            "backup", "--in", &key, "--passphrase-file", &d.s("pass.txt"),
+            "backup",
+            "--in",
+            &key,
+            "--passphrase-file",
+            &d.s("pass.txt"),
             "--i-understand-this-prints-a-secret",
         ],
         b"",
@@ -654,8 +885,16 @@ fn restore_is_byte_identical_bad_backups_refused() {
     std::fs::write(d.path("other.txt"), "an entirely different passphrase").unwrap();
     let r = wallet(
         &[
-            "import", "--out", &d.s("r1.plnekey"), "--role", "author", "--seed-stdin",
-            "--passphrase-file", &d.s("other.txt"), "--kdf-iters", "2048",
+            "import",
+            "--out",
+            &d.s("r1.plnekey"),
+            "--role",
+            "author",
+            "--seed-stdin",
+            "--passphrase-file",
+            &d.s("other.txt"),
+            "--kdf-iters",
+            "2048",
         ],
         printed.as_bytes(),
     );
@@ -665,7 +904,12 @@ fn restore_is_byte_identical_bad_backups_refused() {
 
     let r2 = wallet(
         &[
-            "import", "--out", &d.s("r2.plnekey"), "--role", "spend", "--seed-stdin",
+            "import",
+            "--out",
+            &d.s("r2.plnekey"),
+            "--role",
+            "spend",
+            "--seed-stdin",
             "--no-passphrase",
         ],
         printed.as_bytes(),
@@ -686,14 +930,25 @@ fn restore_is_byte_identical_bad_backups_refused() {
         let out = d.s(&format!("bad-{}.plnekey", bad.len()));
         let r = wallet(
             &[
-                "import", "--out", &out, "--role", "spend", "--seed-stdin",
+                "import",
+                "--out",
+                &out,
+                "--role",
+                "spend",
+                "--seed-stdin",
                 "--no-passphrase",
             ],
             bad.as_bytes(),
         );
         assert_ne!(r.code, 0, "bad backup {bad:?} must be refused");
-        assert!(!std::path::Path::new(&out).exists(), "nothing may be created");
-        assert!(!r.all().contains(&bad) || bad.is_empty(), "the error must not echo the material");
+        assert!(
+            !std::path::Path::new(&out).exists(),
+            "nothing may be created"
+        );
+        assert!(
+            !r.all().contains(&bad) || bad.is_empty(),
+            "the error must not echo the material"
+        );
     }
 }
 
@@ -710,7 +965,15 @@ fn signing_preimage_is_unambiguous() {
 
     let mut seen: HashMap<[u8; 32], (String, u128, u128, u64)> = HashMap::new();
     for to in [&to_a, &to_b] {
-        for amount in [0u128, 1, 255, 256, u64::MAX as u128, (u64::MAX as u128) + 1, 1u128 << 100] {
+        for amount in [
+            0u128,
+            1,
+            255,
+            256,
+            u64::MAX as u128,
+            (u64::MAX as u128) + 1,
+            1u128 << 100,
+        ] {
             for fee in [1u128, 255, 256, 1 << 64] {
                 for nonce in [0u64, 1, 255, 256, u64::MAX] {
                     let payload = crypto::decode_address(to).unwrap();
@@ -736,8 +999,8 @@ fn signing_preimage_is_unambiguous() {
                     vec![0x41; 1024],
                     vec![0x41; 1023],
                 ] {
-                    let m =
-                        crypto::announcement_signing_message(NET, &pk, fee, nonce, enc, &p).unwrap();
+                    let m = crypto::announcement_signing_message(NET, &pk, fee, nonce, enc, &p)
+                        .unwrap();
                     let d = format!("{enc}/{fee}/{nonce}/{p:?}");
                     if let Some(prev) = ann.insert(m, d.clone()) {
                         panic!("announcement-message collision: {prev} vs {d}");
@@ -751,13 +1014,22 @@ fn signing_preimage_is_unambiguous() {
     let a = crypto::announcement_signing_message(NET, &pk, 1, 1, 1, b"x").unwrap();
     assert_ne!(t, a);
 
-    assert!(txbuild::build_transfer(NET, &sk, &to_a, 1, 0, 0).is_err(), "fee below floor");
+    assert!(
+        txbuild::build_transfer(NET, &sk, &to_a, 1, 0, 0).is_err(),
+        "fee below floor"
+    );
     assert!(txbuild::build_transfer(NET, &sk, "not-an-address", 1, 1, 0).is_err());
-    assert!(txbuild::build_transfer(NET, &sk, &to_a.to_uppercase(), 1, 1, 0).is_ok(), "bech32 uppercase is legal");
+    assert!(
+        txbuild::build_transfer(NET, &sk, &to_a.to_uppercase(), 1, 1, 0).is_ok(),
+        "bech32 uppercase is legal"
+    );
 
     let lo = txbuild::build_transfer(NET, &sk, &to_a, 5, 1, 0).unwrap();
     let up = txbuild::build_transfer(NET, &sk, &to_a.to_uppercase(), 5, 1, 0).unwrap();
-    assert_eq!(lo, up, "the same address in two cases must sign identically");
+    assert_eq!(
+        lo, up,
+        "the same address in two cases must sign identically"
+    );
 }
 
 #[test]
@@ -774,14 +1046,28 @@ fn no_secret_reaches_argv_env_or_temp_file() {
 
     wallet(
         &[
-            "new", "--out", &key, "--role", "spend", "--seed-stdin",
-            "--passphrase-file", &d.s("pass.txt"), "--kdf-iters", "1024",
+            "new",
+            "--out",
+            &key,
+            "--role",
+            "spend",
+            "--seed-stdin",
+            "--passphrase-file",
+            &d.s("pass.txt"),
+            "--kdf-iters",
+            "1024",
         ],
         seed.as_bytes(),
     )
     .ok();
     wallet(
-        &["verify", "--in", &key, "--passphrase-file", &d.s("pass.txt")],
+        &[
+            "verify",
+            "--in",
+            &key,
+            "--passphrase-file",
+            &d.s("pass.txt"),
+        ],
         b"",
     )
     .ok();
@@ -808,10 +1094,18 @@ fn no_secret_reaches_argv_env_or_temp_file() {
     }
 
     for bad in [
-        "--passphrase", "--pass", "--password", "--seed", "--seed-hex",
-        "--private-key", "--secret",
+        "--passphrase",
+        "--pass",
+        "--password",
+        "--seed",
+        "--seed-hex",
+        "--private-key",
+        "--secret",
     ] {
-        for form in [vec![bad.to_string(), seed.clone()], vec![format!("{bad}={seed}")]] {
+        for form in [
+            vec![bad.to_string(), seed.clone()],
+            vec![format!("{bad}={seed}")],
+        ] {
             let mut argv = vec!["new".to_string(), "--out".to_string(), d.s("nope")];
             argv.extend(form);
             let refs: Vec<&str> = argv.iter().map(|s| s.as_str()).collect();
@@ -847,8 +1141,22 @@ fn junk_argv_never_panics() {
         vec!["transfer"],
         vec!["transfer", "--in"],
         vec!["transfer", "--in", "/nonexistent"],
-        vec!["transfer", "--in", &key, "--to", "", "--amount", "", "--fee", "", "--nonce", ""],
-        vec!["transfer", "--in", &key, "--to", "plne1", "--amount", "1plne", "--fee", "1mile", "--nonce", "18446744073709551616"],
+        vec![
+            "transfer", "--in", &key, "--to", "", "--amount", "", "--fee", "", "--nonce", "",
+        ],
+        vec![
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            "plne1",
+            "--amount",
+            "1plne",
+            "--fee",
+            "1mile",
+            "--nonce",
+            "18446744073709551616",
+        ],
         vec!["decode", "--hex", ""],
         vec!["decode", "--hex", "00"],
         vec!["decode", "--hex", "01"],
@@ -863,15 +1171,54 @@ fn junk_argv_never_panics() {
         vec!["backup"],
         vec!["passphrase", "--in", &key, "--out", &key],
         vec!["new", "--out", &key, "--role", "nope"],
-        vec!["new", "--out", &zpath, "--role", "spend", "--seed-stdin", "--kdf-iters", "18446744073709551615", "--no-passphrase"],
+        vec![
+            "new",
+            "--out",
+            &zpath,
+            "--role",
+            "spend",
+            "--seed-stdin",
+            "--kdf-iters",
+            "18446744073709551615",
+            "--no-passphrase",
+        ],
         vec!["\u{feff}transfer"],
         vec!["TRANSFER"],
     ];
 
     #[cfg(feature = "author-tools")]
     {
-        junk.push(vec!["announce", "--in", &key, "--author-pubkey", &pubkey, "--payload-hex", "", "--encoding", "0", "--fee", "1mile", "--nonce", "0", "--no-passphrase"]);
-        junk.push(vec!["announce", "--in", &key, "--author-pubkey", "zz", "--payload-hex", "41", "--encoding", "999", "--fee", "1mile", "--nonce", "0"]);
+        junk.push(vec![
+            "announce",
+            "--in",
+            &key,
+            "--author-pubkey",
+            &pubkey,
+            "--payload-hex",
+            "",
+            "--encoding",
+            "0",
+            "--fee",
+            "1mile",
+            "--nonce",
+            "0",
+            "--no-passphrase",
+        ]);
+        junk.push(vec![
+            "announce",
+            "--in",
+            &key,
+            "--author-pubkey",
+            "zz",
+            "--payload-hex",
+            "41",
+            "--encoding",
+            "999",
+            "--fee",
+            "1mile",
+            "--nonce",
+            "0",
+        ]);
     }
     for argv in junk {
         let r = wallet(&argv, b"not hex\n\n\n");
@@ -885,8 +1232,19 @@ fn junk_argv_never_panics() {
     let to = crypto::address_from_pubkey(&plaine_consensus::blake3::hash(b"fuzz payee"));
     let t = wallet(
         &[
-            "transfer", "--in", &key, "--to", &to, "--amount", "1plne", "--fee",
-            "1000mile", "--nonce", "0", "--passphrase-file", &d.s("pass.txt"),
+            "transfer",
+            "--in",
+            &key,
+            "--to",
+            &to,
+            "--amount",
+            "1plne",
+            "--fee",
+            "1000mile",
+            "--nonce",
+            "0",
+            "--passphrase-file",
+            &d.s("pass.txt"),
         ],
         b"",
     );
@@ -901,7 +1259,11 @@ fn junk_argv_never_panics() {
         v[i] = if v[i] == 'f' { '0' } else { 'f' };
         let s: String = v.into_iter().collect();
         let r = wallet(&["decode", "--hex", &s], b"");
-        assert!(r.code == 0 || r.code == 1, "corruption at {i} gave {}", r.code);
+        assert!(
+            r.code == 0 || r.code == 1,
+            "corruption at {i} gave {}",
+            r.code
+        );
     }
 }
 
@@ -929,7 +1291,11 @@ fn keyfile_parser_survives_hostile_files() {
         if let Ok(t) = String::from_utf8(v) {
             if let Ok(p) = KeyFile::parse(&t) {
                 if let Ok(s) = p.open(Some(&pass)) {
-                    assert_eq!(s.expose(), seed.expose(), "deletion at {i} opened a different seed");
+                    assert_eq!(
+                        s.expose(),
+                        seed.expose(),
+                        "deletion at {i} opened a different seed"
+                    );
                 }
             }
         }

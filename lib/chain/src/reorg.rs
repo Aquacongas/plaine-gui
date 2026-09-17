@@ -12,9 +12,7 @@ pub type ValidatedBranch = (Vec<CommitBlock>, Vec<(crate::types::Address, u64)>)
 pub enum Base {
     UndoWindow,
 
-    DeepReplay {
-        rewind_to: u64,
-    },
+    DeepReplay { rewind_to: u64 },
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -47,9 +45,13 @@ pub fn rewind_to_fork<S: Store + ?Sized>(
             overlay.apply_undo(&recs);
         }
     } else {
-        let rewind_to = store.checkpoint_at_or_below(fork_height).ok_or(
-            Reject::ResyncRequired { fork_height, replay_floor: store.replay_floor() },
-        )?;
+        let rewind_to =
+            store
+                .checkpoint_at_or_below(fork_height)
+                .ok_or(Reject::ResyncRequired {
+                    fork_height,
+                    replay_floor: store.replay_floor(),
+                })?;
         if rewind_to < store.replay_floor() {
             observe(Condition::ResyncRequired {
                 fork_height,
@@ -60,10 +62,12 @@ pub fn rewind_to_fork<S: Store + ?Sized>(
                 replay_floor: store.replay_floor(),
             });
         }
-        let snapshot = store.state_snapshot(rewind_to).ok_or(Reject::ResyncRequired {
-            fork_height,
-            replay_floor: store.replay_floor(),
-        })?;
+        let snapshot = store
+            .state_snapshot(rewind_to)
+            .ok_or(Reject::ResyncRequired {
+                fork_height,
+                replay_floor: store.replay_floor(),
+            })?;
         overlay.seed(snapshot);
 
         let mut replayed = 0u64;
@@ -81,8 +85,9 @@ pub fn rewind_to_fork<S: Store + ?Sized>(
                 .header();
             let mut throwaway = CoinbaseLedger::new();
             let rec = store.header_at(h).expect("checked above");
-            let v = validate_block_body(overlay, &mut throwaway, &hdr, &raw, params, Trust::OurStore)
-                .map_err(|e| Reject::BranchInvalid {
+            let v =
+                validate_block_body(overlay, &mut throwaway, &hdr, &raw, params, Trust::OurStore)
+                    .map_err(|e| Reject::BranchInvalid {
                     height: h,
                     hash: rec.hash,
                     cause: Box::new(e),
@@ -117,13 +122,17 @@ pub fn build_ledger<S: Store + ?Sized>(store: &S, at: u64) -> Result<CoinbaseLed
     // Only the last maturity window can still be immature at `at`.
     let from = at.saturating_sub(COINBASE_MATURITY - 1);
     for h in from..=at {
-        let Some(raw) = store.body_at(h) else { continue };
-        let Ok(body) = plaine_consensus::codec::BlockBody::parse(&raw) else { continue };
+        let Some(raw) = store.body_at(h) else {
+            continue;
+        };
+        let Ok(body) = plaine_consensus::codec::BlockBody::parse(&raw) else {
+            continue;
+        };
         let Some(Ok(plaine_consensus::codec::Tx::Coinbase(cb))) = body.decode_tx(0) else {
             continue;
         };
-        let credit = plaine_consensus::tx::coinbase_credit(&cb)
-            .map_err(|_| Reject::ArithmeticOverflow)?;
+        let credit =
+            plaine_consensus::tx::coinbase_credit(&cb).map_err(|_| Reject::ArithmeticOverflow)?;
         ledger.push(h, cb.to, credit);
     }
     Ok(ledger)
@@ -145,7 +154,10 @@ pub fn validate_branch<S: Store + ?Sized>(
         let hdr = rec.header();
         let v = validate_block_body(overlay, ledger, &hdr, raw, params, Trust::Untrusted).map_err(
             |cause| {
-                observe(Condition::BranchInvalidAt { height: rec.height, hash: rec.hash });
+                observe(Condition::BranchInvalidAt {
+                    height: rec.height,
+                    hash: rec.hash,
+                });
                 Reject::BranchInvalid {
                     height: rec.height,
                     hash: rec.hash,
@@ -155,7 +167,9 @@ pub fn validate_branch<S: Store + ?Sized>(
         )?;
         if overlay.exhausted() && !reported {
             reported = true;
-            observe(Condition::ReorgOverlayExhausted { accounts: overlay.len() });
+            observe(Condition::ReorgOverlayExhausted {
+                accounts: overlay.len(),
+            });
         }
         debug_assert_eq!(
             v.deltas.len(),

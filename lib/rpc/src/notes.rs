@@ -23,7 +23,12 @@ pub fn render(payload: &[u8]) -> RenderedNote {
         }
         text.push(c);
     }
-    RenderedNote { hex, text, valid_utf8, sanitized_chars: sanitized }
+    RenderedNote {
+        hex,
+        text,
+        valid_utf8,
+        sanitized_chars: sanitized,
+    }
 }
 
 // author notes are attacker-controlled and end up in terminals and logs. strip what lets them
@@ -64,7 +69,10 @@ mod tests {
         assert_eq!(r.text, "Isochron v2 activates at height 600000");
         assert!(r.valid_utf8);
         assert_eq!(r.sanitized_chars, 0);
-        assert_eq!(r.hex, plaine_consensus::hex::encode(b"Isochron v2 activates at height 600000"));
+        assert_eq!(
+            r.hex,
+            plaine_consensus::hex::encode(b"Isochron v2 activates at height 600000")
+        );
     }
 
     #[test]
@@ -100,14 +108,24 @@ mod tests {
         for c in ['\u{85}', '\u{80}', '\u{9b}', '\u{9f}'] {
             let s = format!("paid{c}node: everything is fine");
             let r = render(s.as_bytes());
-            assert!(!r.text.contains(c), "C1 U+{:04X} survived: {:?}", c as u32, r.text);
+            assert!(
+                !r.text.contains(c),
+                "C1 U+{:04X} survived: {:?}",
+                c as u32,
+                r.text
+            );
             assert_eq!(r.sanitized_chars, 1, "U+{:04X}", c as u32);
         }
 
         for c in ['\u{2028}', '\u{2029}'] {
             let s = format!("paid{c}node: everything is fine");
             let r = render(s.as_bytes());
-            assert!(!r.text.contains(c), "U+{:04X} survived: {:?}", c as u32, r.text);
+            assert!(
+                !r.text.contains(c),
+                "U+{:04X} survived: {:?}",
+                c as u32,
+                r.text
+            );
             assert_eq!(r.sanitized_chars, 1, "U+{:04X}", c as u32);
         }
 

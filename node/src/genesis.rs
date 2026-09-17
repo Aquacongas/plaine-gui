@@ -15,10 +15,7 @@ pub enum GenesisError {
     Refused(String),
     PowFailed,
 
-    WrongNetwork {
-        found: [u8; 32],
-        expected: [u8; 32],
-    },
+    WrongNetwork { found: [u8; 32], expected: [u8; 32] },
 }
 
 impl core::fmt::Display for GenesisError {
@@ -57,7 +54,11 @@ pub fn mainnet() -> Result<Genesis, GenesisError> {
 // expected hash cannot drift away from the embedded input.
 pub fn mainnet_genesis_hash() -> [u8; 32] {
     static CELL: std::sync::OnceLock<[u8; 32]> = std::sync::OnceLock::new();
-    *CELL.get_or_init(|| mainnet().expect("the embedded mainnet genesis must build").block_hash)
+    *CELL.get_or_init(|| {
+        mainnet()
+            .expect("the embedded mainnet genesis must build")
+            .block_hash
+    })
 }
 
 // Create-path only. The single check here that consults a wall clock, so it stays
@@ -218,7 +219,10 @@ mod tests {
              new one as another network's data directory."
         );
         assert_eq!(g.header.height, 0);
-        assert_eq!(g.header.time, 1_789_556_400, "the genesis timestamp is frozen");
+        assert_eq!(
+            g.header.time, 1_789_556_400,
+            "the genesis timestamp is frozen"
+        );
         assert_eq!(g.header.nonce, 66_048, "the mined nonce is frozen");
         assert_eq!(g.header.bits, plaine_consensus::constants::GENESIS_BITS);
 

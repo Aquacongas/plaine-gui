@@ -122,7 +122,9 @@ pub fn passphrase(
     if from_stdin {
         let first = s.next_stdin_line()?;
         if first.is_empty() {
-            return Err(WalletError::usage("the passphrase read from stdin is empty"));
+            return Err(WalletError::usage(
+                "the passphrase read from stdin is empty",
+            ));
         }
         if mode == PassMode::Create {
             // read twice and compare: there is no echo-off prompt without a
@@ -336,7 +338,8 @@ mod tests {
     #[test]
     fn restoring_demands_checksummed_form() {
         let args = parse(&a(&["--seed-stdin"]), &SPEC).unwrap();
-        let raw = crate::secret::Secret32::from_bytes(plaine_consensus::blake3::hash(b"ui restore"));
+        let raw =
+            crate::secret::Secret32::from_bytes(plaine_consensus::blake3::hash(b"ui restore"));
         let bare = crate::sechex::encode(raw.expose());
         let checked = crate::sechex::encode_backup(&raw);
 
@@ -357,7 +360,10 @@ mod tests {
             let err = seed(&args, s, true).unwrap_err();
             assert_eq!(err.kind(), "refused");
             assert!(err.to_string().contains("new"), "{err}");
-            assert!(!err.to_string().contains(&bare), "the refusal must not echo it");
+            assert!(
+                !err.to_string().contains(&bare),
+                "the refusal must not echo it"
+            );
         });
 
         let mut v: Vec<u8> = checked.as_bytes().to_vec();
@@ -370,7 +376,10 @@ mod tests {
                     err.to_string().contains("checksum") || err.to_string().contains("hexadecimal"),
                     "{err}"
                 );
-                assert!(!err.to_string().contains(&typo), "the refusal must not echo it");
+                assert!(
+                    !err.to_string().contains(&typo),
+                    "the refusal must not echo it"
+                );
             });
         }
     }

@@ -80,7 +80,13 @@ pub struct Vardiff {
 }
 
 impl Vardiff {
-    pub fn new(start_diff: u64, min_diff: u64, max_diff: u64, setpoint: f64, now_ms: u64) -> Vardiff {
+    pub fn new(
+        start_diff: u64,
+        min_diff: u64,
+        max_diff: u64,
+        setpoint: f64,
+        now_ms: u64,
+    ) -> Vardiff {
         let cur = start_diff.clamp(min_diff.min(max_diff), max_diff.max(min_diff));
         Vardiff {
             dsps: [0.0; 3],
@@ -106,7 +112,10 @@ impl Vardiff {
     }
 
     pub fn pin(&mut self, d: u64) {
-        let d = d.clamp(self.min_diff.min(self.max_diff), self.max_diff.max(self.min_diff));
+        let d = d.clamp(
+            self.min_diff.min(self.max_diff),
+            self.max_diff.max(self.min_diff),
+        );
         self.pinned = Some(d);
         self.cur = d;
     }
@@ -526,7 +535,10 @@ mod tests {
         for i in 1..40u64 {
             assert_eq!(v.on_share(START_DIFF * 3, i * 1_000), None);
         }
-        assert_eq!(v.retargets, before, "stale-difficulty shares moved the loop");
+        assert_eq!(
+            v.retargets, before,
+            "stale-difficulty shares moved the loop"
+        );
     }
 
     #[test]
@@ -568,7 +580,10 @@ mod tests {
         let v = posed(100_000, [2.0, 3.0, 4.0], 0);
         for (i, r) in [2.0, 3.0, 4.0].iter().enumerate() {
             let got = v.want(i, POSE_NOW_MS) / 100_000.0;
-            assert!((got - r).abs() < 1e-3, "horizon {i} asks x{got}, posed x{r}");
+            assert!(
+                (got - r).abs() < 1e-3,
+                "horizon {i} asks x{got}, posed x{r}"
+            );
         }
     }
 
@@ -613,18 +628,32 @@ mod tests {
         let mut v = posed(100_000, [1.6; 3], WARMUP_SHARES);
         v.shares_since_retarget = 0;
         v.last_retarget_ms = POSE_NOW_MS;
-        assert_eq!(v.decide(POSE_NOW_MS, false), None, "retargeted with the gate shut");
+        assert_eq!(
+            v.decide(POSE_NOW_MS, false),
+            None,
+            "retargeted with the gate shut"
+        );
         v.shares_since_retarget = RETARGET_GATE_SHARES - 1;
-        assert_eq!(v.decide(POSE_NOW_MS, false), None, "one share short of the gate");
+        assert_eq!(
+            v.decide(POSE_NOW_MS, false),
+            None,
+            "one share short of the gate"
+        );
         v.shares_since_retarget = RETARGET_GATE_SHARES;
-        assert!(v.decide(POSE_NOW_MS, false).is_some(), "the gate never opened on shares");
+        assert!(
+            v.decide(POSE_NOW_MS, false).is_some(),
+            "the gate never opened on shares"
+        );
 
         let mut t = posed(100_000, [1.6; 3], WARMUP_SHARES);
         t.shares_since_retarget = 0;
         t.last_retarget_ms = POSE_NOW_MS;
         assert_eq!(t.decide(POSE_NOW_MS, false), None);
         let later = POSE_NOW_MS + (RETARGET_GATE_SECS as u64) * 1_000;
-        assert!(t.decide(later, false).is_some(), "the gate never opened on time");
+        assert!(
+            t.decide(later, false).is_some(),
+            "the gate never opened on time"
+        );
     }
 
     #[test]
@@ -663,23 +692,40 @@ mod tests {
     #[test]
     fn bounds_enforced_at_construction_and_move() {
         let sp = VARDIFF_SETPOINT_SECS;
-        assert_eq!(Vardiff::new(50, MIN_DIFF, 1_000_000, sp, 0).current(), MIN_DIFF);
-        assert_eq!(Vardiff::new(u64::MAX, MIN_DIFF, 1_000_000, sp, 0).current(), 1_000_000);
+        assert_eq!(
+            Vardiff::new(50, MIN_DIFF, 1_000_000, sp, 0).current(),
+            MIN_DIFF
+        );
+        assert_eq!(
+            Vardiff::new(u64::MAX, MIN_DIFF, 1_000_000, sp, 0).current(),
+            1_000_000
+        );
 
         let _ = Vardiff::new(START_DIFF, 1_000_000, MIN_DIFF, sp, 0);
 
         let mut v = fresh(1_000_000);
         v.set_bounds(MIN_DIFF, 100_000);
-        assert_eq!(v.current(), 100_000, "a difficulty above the new maximum survived");
+        assert_eq!(
+            v.current(),
+            100_000,
+            "a difficulty above the new maximum survived"
+        );
         v.set_bounds(500_000, 1_000_000);
-        assert_eq!(v.current(), 500_000, "a difficulty below the new minimum survived");
+        assert_eq!(
+            v.current(),
+            500_000,
+            "a difficulty below the new minimum survived"
+        );
     }
 
     #[test]
     fn retarget_resets_its_window() {
         let mut v = posed(100_000, [4.0; 3], VARDIFF_MATURE_SHARES);
         assert_eq!(v.decide(POSE_NOW_MS, false), Some(200_000));
-        assert_eq!(v.shares_since_retarget, 0, "the window survived its own retarget");
+        assert_eq!(
+            v.shares_since_retarget, 0,
+            "the window survived its own retarget"
+        );
         assert_eq!(v.last_retarget_ms, POSE_NOW_MS);
         assert_eq!(v.retargets, 1);
 
@@ -713,9 +759,21 @@ mod tests {
         let mut v = fresh(START_DIFF);
         v.on_share(v.current(), 1_000);
         v.on_share(v.current(), 1_000);
-        assert!(v.dsps.iter().all(|d| d.is_finite()), "dsps went non-finite: {:?}", v.dsps);
-        assert_eq!(v.on_tick(1_000), None, "a repeated tick timestamp retargeted");
-        assert!(v.dsps.iter().all(|d| d.is_finite()), "dsps went non-finite: {:?}", v.dsps);
+        assert!(
+            v.dsps.iter().all(|d| d.is_finite()),
+            "dsps went non-finite: {:?}",
+            v.dsps
+        );
+        assert_eq!(
+            v.on_tick(1_000),
+            None,
+            "a repeated tick timestamp retargeted"
+        );
+        assert!(
+            v.dsps.iter().all(|d| d.is_finite()),
+            "dsps went non-finite: {:?}",
+            v.dsps
+        );
         assert!(v.current() > 0);
     }
 
@@ -732,7 +790,11 @@ mod tests {
             }
         }
         let first = first.expect("silence never lowered at all");
-        assert_eq!(v.on_tick(t), None, "the same millisecond retargeted a second time");
+        assert_eq!(
+            v.on_tick(t),
+            None,
+            "the same millisecond retargeted a second time"
+        );
         assert_eq!(v.current(), first);
     }
 
@@ -765,7 +827,11 @@ mod pin_bounds {
     #[test]
     fn pinning_survives_inverted_bounds() {
         let mut v = Vardiff::new(4096, 8192, 16, VARDIFF_SETPOINT_SECS, 0);
-        assert_eq!((v.min_diff, v.max_diff), (8192, 16), "the inversion is stored as given");
+        assert_eq!(
+            (v.min_diff, v.max_diff),
+            (8192, 16),
+            "the inversion is stored as given"
+        );
         v.pin(4096);
         let got = v.current();
         assert!(

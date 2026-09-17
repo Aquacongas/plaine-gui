@@ -195,7 +195,12 @@ fn main() {
             .peer_rows()
             .iter()
             .filter(|r| r.outbound)
-            .map(|r| format!("{}.{}.{}.{}:{}", r.ip[12], r.ip[13], r.ip[14], r.ip[15], r.port))
+            .map(|r| {
+                format!(
+                    "{}.{}.{}.{}:{}",
+                    r.ip[12], r.ip[13], r.ip[14], r.ip[15], r.port
+                )
+            })
             .collect();
         println!(
             "STAT name={} t={:.1} height={} tip={} peers={} out={} in={} \

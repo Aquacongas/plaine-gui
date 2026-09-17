@@ -119,8 +119,11 @@ impl HeaderIndex {
         debug_assert_eq!(rec.height, p.height + 1, "height gate runs before insert");
         // Fork depth is tip_height - branch_base_height, the last canonical height
         // this branch agreed with.
-        let branch_base_height =
-            if self.is_canonical(parent) { p.height } else { p.branch_base_height };
+        let branch_base_height = if self.is_canonical(parent) {
+            p.height
+        } else {
+            p.branch_base_height
+        };
         let inherited_invalid = p.invalid();
         let idx = self.nodes.len() as u32;
         let mut flags = 0u8;
@@ -163,7 +166,8 @@ impl HeaderIndex {
         let mut poisoned = 0u64;
         for i in (idx as usize + 1)..self.nodes.len() {
             let prev = self.nodes[i].prev;
-            if prev != NO_PARENT && self.nodes[prev as usize].invalid() && !self.nodes[i].invalid() {
+            if prev != NO_PARENT && self.nodes[prev as usize].invalid() && !self.nodes[i].invalid()
+            {
                 self.nodes[i].flags |= FLAG_INVALID;
                 poisoned += 1;
             }

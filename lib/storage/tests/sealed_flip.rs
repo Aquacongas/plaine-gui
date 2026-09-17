@@ -29,18 +29,28 @@ fn seed(name: &str) -> Scratch {
 }
 
 fn hseg(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 fn bseg(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bseg"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bseg"))
 }
 fn bidx(s: &Scratch, seg: u32) -> PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bidx"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bidx"))
 }
 
 fn flip_bit(p: &Path, off: u64, bit: u8) {
     use std::io::{Read, Seek, SeekFrom, Write};
-    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(p).unwrap();
+    let mut f = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(p)
+        .unwrap();
     let mut b = [0u8; 1];
     f.seek(SeekFrom::Start(off)).unwrap();
     f.read_exact(&mut b).unwrap();
@@ -57,8 +67,15 @@ fn flip_bit(p: &Path, off: u64, bit: u8) {
         g.read_exact(&mut v).unwrap();
         v[0]
     };
-    assert_ne!(before, back, "the flip at offset {off} did not reach the file");
-    assert_eq!(back, before ^ (1u8 << bit), "the file holds something other than the flip");
+    assert_ne!(
+        before, back,
+        "the flip at offset {off} did not reach the file"
+    );
+    assert_eq!(
+        back,
+        before ^ (1u8 << bit),
+        "the file holds something other than the flip"
+    );
 }
 
 fn slot(s: &Scratch, seg: u32, slot: usize) -> (u64, u32) {
@@ -90,8 +107,14 @@ fn sealed_crc_flip_known_bad() {
     {
         let (c, r, _) = open(cfg_of(&s)).expect("open");
         let (ok, bad, unjudged) = sweep(&r);
-        assert!(bad.is_empty(), "the pristine store is already mismatched: {bad:?}");
-        assert!(ok >= 1, "no sealed segment was JUDGED at all: ok={ok} unjudged={unjudged}");
+        assert!(
+            bad.is_empty(),
+            "the pristine store is already mismatched: {bad:?}"
+        );
+        assert!(
+            ok >= 1,
+            "no sealed segment was JUDGED at all: ok={ok} unjudged={unjudged}"
+        );
         drop(c);
         drop(r);
     }
@@ -179,7 +202,10 @@ fn interior_header_flip_invisible_to_l1l2() {
     assert!(ok >= 1, "nothing was judged: ok={ok} unjudged={unjudged}");
 
     let after = r.header_at(h).unwrap().expect("header still served");
-    assert_ne!(after, before, "the flip did not reach the header the reader serves");
+    assert_ne!(
+        after, before,
+        "the flip did not reach the header the reader serves"
+    );
 
     let child = r.header_at(h + 1).unwrap().expect("child present");
     let mine = plaine_consensus::crypto::header_hash(&after);

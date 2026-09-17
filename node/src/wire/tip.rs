@@ -48,7 +48,10 @@ mod tests {
     fn publish_does_not_mutate_old_snapshot() {
         let cell = TipCell::default();
         let old = cell.get();
-        cell.publish(TipView { height: 7, ..TipView::default() });
+        cell.publish(TipView {
+            height: 7,
+            ..TipView::default()
+        });
 
         assert_eq!(old.height, 0);
         assert_eq!(cell.height(), 7);

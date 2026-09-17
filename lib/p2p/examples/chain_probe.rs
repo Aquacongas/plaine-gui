@@ -18,7 +18,11 @@ fn arg(name: &str, def: &str) -> String {
 
 fn four(s: &str) -> [u8; 4] {
     let b = s.as_bytes();
-    assert!(b.len() == 4, "a chain id is exactly four bytes, got {:?}", s);
+    assert!(
+        b.len() == 4,
+        "a chain id is exactly four bytes, got {:?}",
+        s
+    );
     [b[0], b[1], b[2], b[3]]
 }
 
@@ -40,7 +44,8 @@ fn main() {
             return;
         }
     };
-    sock.set_read_timeout(Some(Duration::from_millis(wait_ms))).expect("timeout");
+    sock.set_read_timeout(Some(Duration::from_millis(wait_ms)))
+        .expect("timeout");
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -89,7 +94,8 @@ fn main() {
                     frames += 1;
                     match decode(cmd, &payload) {
                         Ok(Msg::Hello(h)) => {
-                            let ack = encode_frame(&magic, plaine_p2p::wire::cmd::Cmd::HelloAck, &[]);
+                            let ack =
+                                encode_frame(&magic, plaine_p2p::wire::cmd::Cmd::HelloAck, &[]);
                             let _ = sock.write_all(&ack);
                             theirs = Some(h);
                         }

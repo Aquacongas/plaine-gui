@@ -20,10 +20,19 @@ fn masks_cover_whole_pad() {
 fn opcode_table_is_consistent() {
     assert_eq!(ALL_OPS.len(), OP_COUNT);
     for (i, op) in ALL_OPS.iter().enumerate() {
-        assert_eq!(op.index() as usize, i, "{} has the wrong discriminant", op.name());
+        assert_eq!(
+            op.index() as usize,
+            i,
+            "{} has the wrong discriminant",
+            op.name()
+        );
         assert_eq!(Op::from_u8(i as u8), Some(*op));
     }
-    assert_eq!(Op::from_u8(OP_COUNT as u8), None, "decode must be range-checked");
+    assert_eq!(
+        Op::from_u8(OP_COUNT as u8),
+        None,
+        "decode must be range-checked"
+    );
     assert_eq!(Op::from_u8(255), None);
 
     let mut seen = [0u32; OP_COUNT];
@@ -41,7 +50,12 @@ fn opcode_table_is_consistent() {
         }
     }
     for (i, n) in seen.iter().enumerate() {
-        assert_eq!(*n, 1, "{} appears in {n} class pools, want 1", ALL_OPS[i].name());
+        assert_eq!(
+            *n,
+            1,
+            "{} appears in {n} class pools, want 1",
+            ALL_OPS[i].name()
+        );
     }
 }
 
@@ -51,7 +65,11 @@ fn frozen_tables_shape() {
     for &k in PER_BLOCK.iter() {
         per_class[k as usize] += 1;
     }
-    assert_eq!(per_class, [6, 1, 1, 5, 1, 2], "frozen per-block class layout");
+    assert_eq!(
+        per_class,
+        [6, 1, 1, 5, 1, 2],
+        "frozen per-block class layout"
+    );
     assert_eq!(PER_BLOCK.len() * 32, PROG_INSTR);
 
     assert_eq!(HIST.iter().sum::<u32>() as usize, PROG_INSTR);
@@ -88,7 +106,9 @@ fn mulhi_high_half_of_odd_product() {
         let lh = al * bh;
         let hl = ah * bl;
         let hh = ah * bh;
-        let mid = (ll >> 32).wrapping_add(lh & 0xFFFF_FFFF).wrapping_add(hl & 0xFFFF_FFFF);
+        let mid = (ll >> 32)
+            .wrapping_add(lh & 0xFFFF_FFFF)
+            .wrapping_add(hl & 0xFFFF_FFFF);
         hh.wrapping_add(lh >> 32)
             .wrapping_add(hl >> 32)
             .wrapping_add(mid >> 32)
@@ -107,11 +127,7 @@ fn mulhi_high_half_of_odd_product() {
     ];
     for &a in &vals {
         for &b in &vals {
-            assert_eq!(
-                mulhi(a, b),
-                mulhi_ref(a, b),
-                "MULHI({a:016x}, {b:016x})"
-            );
+            assert_eq!(mulhi(a, b), mulhi_ref(a, b), "MULHI({a:016x}, {b:016x})");
         }
     }
     assert_eq!(mulhi(u64::MAX, u64::MAX), u64::MAX - 1);
@@ -177,7 +193,11 @@ fn build_program_deterministic() {
     let p2 = build_program(0xFEDC_BA09_8765_4321);
     let p3 = build_program(0xFEDC_BA09_8765_4322);
     assert_eq!(p1.slots(), p2.slots(), "same program seed, same program");
-    assert_ne!(p1.slots(), p3.slots(), "program seed+1 must change the program");
+    assert_ne!(
+        p1.slots(),
+        p3.slots(),
+        "program seed+1 must change the program"
+    );
 }
 
 #[test]
@@ -185,8 +205,8 @@ fn unsafe_stays_in_its_four_files() {
     const CLEAN: [&str; 5] = ["consts.rs", "op.rs", "rng.rs", "program.rs", "scratch.rs"];
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     for name in CLEAN {
-        let text = std::fs::read_to_string(src.join(name))
-            .unwrap_or_else(|e| panic!("src/{name}: {e}"));
+        let text =
+            std::fs::read_to_string(src.join(name)).unwrap_or_else(|e| panic!("src/{name}: {e}"));
         for (n, line) in text.lines().enumerate() {
             let code = line.trim_start();
             if code.starts_with("//") || code.starts_with("///") {
@@ -258,7 +278,10 @@ fn reused_pad_changes_digest() {
     let seed = 0x1234_5678_9ABC_DEF0u64;
     let first = iso.verify_hash(&mut pad, seed);
     let again = iso.verify_hash(&mut pad, seed);
-    assert_eq!(first, again, "verify_hash must be a pure function of the seed");
+    assert_eq!(
+        first, again,
+        "verify_hash must be a pure function of the seed"
+    );
 
     let prog = build_program(iso.fill(&mut pad, seed ^ 1));
     let wrong = iso.interp(&prog, &mut pad, seed);

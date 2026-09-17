@@ -1,7 +1,5 @@
 use plaine_consensus::asert::{asert_next_bits, Target, POW_LIMIT};
-use plaine_consensus::constants::{
-    ASERT_HALF_LIFE_SECS, ASERT_TARGET_SPACING_SECS, GENESIS_BITS,
-};
+use plaine_consensus::constants::{ASERT_HALF_LIFE_SECS, ASERT_TARGET_SPACING_SECS, GENESIS_BITS};
 use plaine_wallet::genesis::{launch_window, LaunchWindow};
 
 fn blocks_pinned_at_the_floor(late: i64, blocks: u64) -> u64 {
@@ -12,9 +10,7 @@ fn blocks_pinned_at_the_floor(late: i64, blocks: u64) -> u64 {
         let parent_time = if parent_height == 0 {
             genesis_time
         } else {
-            (genesis_time as i64
-                + late
-                + ASERT_TARGET_SPACING_SECS * (parent_height as i64 - 1))
+            (genesis_time as i64 + late + ASERT_TARGET_SPACING_SECS * (parent_height as i64 - 1))
                 as u64
         };
         let bits = asert_next_bits(
@@ -93,10 +89,15 @@ fn launch_window_is_one_half_life() {
     let launch_gap = 231 * 86_400;
     assert_eq!(
         launch_window(now - launch_gap, now),
-        LaunchWindow::TooEarly { by_secs: launch_gap }
+        LaunchWindow::TooEarly {
+            by_secs: launch_gap
+        }
     );
 
-    assert!(matches!(launch_window(0, now), LaunchWindow::TooEarly { .. }));
+    assert!(matches!(
+        launch_window(0, now),
+        LaunchWindow::TooEarly { .. }
+    ));
 }
 
 #[test]
@@ -104,7 +105,10 @@ fn verdict_explains_itself_in_hash_rate() {
     let now: u64 = 1_800_000_000;
     let one_day_early = launch_window(now - 86_400, now);
     let text = one_day_early.explain();
-    assert!(text.contains("86400"), "must name the gap in seconds: {text}");
+    assert!(
+        text.contains("86400"),
+        "must name the gap in seconds: {text}"
+    );
 
     assert!(
         text.contains("24"),

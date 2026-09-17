@@ -232,7 +232,10 @@ pub fn insert(
     if let Some(old) = t.get(seg)? {
         let same = *old.value() == *v;
         drop(old);
-        debug_assert!(same, "anchor for segment {seg:06x} rewritten with different bytes");
+        debug_assert!(
+            same,
+            "anchor for segment {seg:06x} rewritten with different bytes"
+        );
         if !same {
             return Err(StoreError::BadPlan(
                 "an anchor row was rewritten: minting is once per segment, never a repair",
@@ -263,7 +266,10 @@ pub fn delete_above_watermark(
     Ok(doomed.len() as u32)
 }
 
-pub fn delete_below_segment(txn: &redb::WriteTransaction, floor_seg: u32) -> Result<u32, StoreError> {
+pub fn delete_below_segment(
+    txn: &redb::WriteTransaction,
+    floor_seg: u32,
+) -> Result<u32, StoreError> {
     let mut t = txn.open_table(BODY_ANCHOR)?;
     let doomed: Vec<u32> = t
         .range(..floor_seg)?
@@ -366,12 +372,8 @@ pub(crate) fn verify_sealed(
                 } else if grade == GRADE_SEALED_HERE {
                     pass.verified += 1;
                 } else {
-                    pass.unverifiable.push((
-                        seg,
-                        UnverifiableCause::UnchangedSince {
-                            anchor_floor,
-                        },
-                    ));
+                    pass.unverifiable
+                        .push((seg, UnverifiableCause::UnchangedSince { anchor_floor }));
                 }
             }
             None => {

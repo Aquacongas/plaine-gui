@@ -166,7 +166,10 @@ mod tests {
         );
         let e = rec(1, Table::Tried);
         let bytes = encode(&[e], CHAIN_ID);
-        assert_eq!(bytes.len(), PEERS_HEADER_BYTES + PEERS_REC_BYTES + PEERS_DIGEST_BYTES);
+        assert_eq!(
+            bytes.len(),
+            PEERS_HEADER_BYTES + PEERS_REC_BYTES + PEERS_DIGEST_BYTES
+        );
         let back = decode(&bytes, CHAIN_ID).expect("round trip");
 
         let PeerRec {
@@ -177,8 +180,17 @@ mod tests {
             table,
             source_group,
         } = back[0];
-        assert_eq!((ip, port, services, last_seen, table, source_group),
-                   (e.ip, e.port, e.services, e.last_seen, e.table, e.source_group));
+        assert_eq!(
+            (ip, port, services, last_seen, table, source_group),
+            (
+                e.ip,
+                e.port,
+                e.services,
+                e.last_seen,
+                e.table,
+                e.source_group
+            )
+        );
     }
 
     #[test]
@@ -203,7 +215,10 @@ mod tests {
                 "prefix of {cut} bytes was accepted"
             );
         }
-        assert!(decode(&bytes, CHAIN_ID).is_ok(), "the whole file must still load");
+        assert!(
+            decode(&bytes, CHAIN_ID).is_ok(),
+            "the whole file must still load"
+        );
     }
 
     #[test]
@@ -213,7 +228,10 @@ mod tests {
         for i in 0..bytes.len() {
             let mut b = bytes.clone();
             b[i] ^= 0x01;
-            assert!(decode(&b, CHAIN_ID).is_err(), "a flip at byte {i} was accepted");
+            assert!(
+                decode(&b, CHAIN_ID).is_err(),
+                "a flip at byte {i} was accepted"
+            );
         }
     }
 

@@ -226,11 +226,7 @@ impl BodyTrack {
             self.hol_since = None;
         }
 
-        let stale: Vec<u64> = self
-            .ready
-            .range(..=self.applied)
-            .map(|(h, _)| *h)
-            .collect();
+        let stale: Vec<u64> = self.ready.range(..=self.applied).map(|(h, _)| *h).collect();
         for h in stale {
             if let Some((_, b)) = self.ready.remove(&h) {
                 self.ready_bytes = self.ready_bytes.saturating_sub(b.len() as u64);
@@ -340,11 +336,7 @@ impl BodyTrack {
                             .map(|s| s.id)
                             .collect();
                         if peers.is_empty() {
-                            peers = suppliers
-                                .iter()
-                                .take(HOL_PARALLEL)
-                                .map(|s| s.id)
-                                .collect();
+                            peers = suppliers.iter().take(HOL_PARALLEL).map(|s| s.id).collect();
                         }
                         for p in peers {
                             self.requests_issued += 1;

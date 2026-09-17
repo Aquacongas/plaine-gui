@@ -74,7 +74,11 @@ pub(crate) async fn run(
         return;
     }
 
-    let port = if outbound { dialed_port } else { hello.listen_port };
+    let port = if outbound {
+        dialed_port
+    } else {
+        hello.listen_port
+    };
     if outbound {
         net.addrs
             .lock()
@@ -172,11 +176,7 @@ pub(crate) async fn run(
     read_loop(rh, reader, carried, ctx).await;
 
     let _ = kill_tx.send(true);
-    let _ = tokio::time::timeout(
-        std::time::Duration::from_millis(SHUTDOWN_DRAIN_MS),
-        writer,
-    )
-    .await;
+    let _ = tokio::time::timeout(std::time::Duration::from_millis(SHUTDOWN_DRAIN_MS), writer).await;
     net.peers.lock().expect("peers").remove(&id);
     if outbound {
         net.outbound.fetch_sub(1, Ordering::Relaxed);
@@ -433,7 +433,9 @@ fn ban_peer(ctx: &Ctx, ms: u64) {
 
 async fn on_frame(ctx: &Ctx, cmd: Cmd, payload: Vec<u8>, credit: Credit) -> bool {
     if !cmd.carries_headers() {
-        let wait = ctx.net.charge_read_global((FRAME_HEADER_BYTES + payload.len()) as u64);
+        let wait = ctx
+            .net
+            .charge_read_global((FRAME_HEADER_BYTES + payload.len()) as u64);
         if wait > 0 {
             tokio::time::sleep(std::time::Duration::from_millis(wait.min(1000))).await;
         }
@@ -543,15 +545,7 @@ async fn on_frame(ctx: &Ctx, cmd: Cmd, payload: Vec<u8>, credit: Credit) -> bool
         }
 
         Msg::Headers(raw) => {
-            return send_event(
-                ctx,
-                Event::Headers {
-                    peer: ctx.id,
-                    raw,
-                },
-                credit,
-            )
-            .await
+            return send_event(ctx, Event::Headers { peer: ctx.id, raw }, credit).await
         }
         Msg::Block(bytes) => {
             let Some((hash, height)) = block_ident(&bytes) else {
@@ -634,10 +628,11 @@ async fn on_frame(ctx: &Ctx, cmd: Cmd, payload: Vec<u8>, credit: Credit) -> bool
                 .sigs
                 .iter()
                 .filter_map(|(id, sig)| {
-                    keys.get(*id as usize).map(|pk| crate::traits::CheckpointSig {
-                        pubkey: *pk,
-                        sig: *sig,
-                    })
+                    keys.get(*id as usize)
+                        .map(|pk| crate::traits::CheckpointSig {
+                            pubkey: *pk,
+                            sig: *sig,
+                        })
                 })
                 .collect();
             return send_event(
@@ -721,9 +716,14 @@ async fn write_loop(
             half.write_all(&frame),
         )
         .await;
-        outbox_bytes.fetch_sub(n.min(outbox_bytes.load(Ordering::Relaxed)), Ordering::Relaxed);
-        net.outbox_pool
-            .fetch_sub(n.min(net.outbox_pool.load(Ordering::Relaxed)), Ordering::Relaxed);
+        outbox_bytes.fetch_sub(
+            n.min(outbox_bytes.load(Ordering::Relaxed)),
+            Ordering::Relaxed,
+        );
+        net.outbox_pool.fetch_sub(
+            n.min(net.outbox_pool.load(Ordering::Relaxed)),
+            Ordering::Relaxed,
+        );
         if !matches!(r, Ok(Ok(()))) {
             break;
         }

@@ -18,12 +18,19 @@ fn stopped_mid_sync(c: &Scenario) -> Rig {
 
     let prefix = c.fork_at(APPLIED);
     r.sync(&prefix, 1);
-    assert_eq!(r.height(), APPLIED, "premise: applied tip is where the node stopped");
+    assert_eq!(
+        r.height(),
+        APPLIED,
+        "premise: applied tip is where the node stopped"
+    );
 
     r.clock.set_unix(c.tip().time.max(T0));
     let raws: Vec<[u8; 132]> = c.raw_headers_from(APPLIED + 1);
     let a = r.cm.submit_headers_solicited(1, &raws).expect("not halted");
-    assert_eq!(a.connected, BACKLOG, "premise: the whole backlog is in the arena");
+    assert_eq!(
+        a.connected, BACKLOG,
+        "premise: the whole backlog is in the arena"
+    );
 
     assert_eq!(
         r.store.side_headers_written(),
@@ -56,7 +63,10 @@ fn restart_accepts_wanted_body() {
 
     r.restart();
 
-    assert!(r.cm.header_by_hash(&h).is_some(), "premise: the store still knows it");
+    assert!(
+        r.cm.header_by_hash(&h).is_some(),
+        "premise: the store still knows it"
+    );
 
     assert_eq!(
         r.cm.submit_block(&h, body),
@@ -75,15 +85,30 @@ fn restart_finishes_backlog() {
     let c = chain();
     let mut r = stopped_mid_sync(&c);
     r.restart();
-    assert_eq!(r.height(), APPLIED, "a restart never moves the tip by itself");
+    assert_eq!(
+        r.height(),
+        APPLIED,
+        "a restart never moves the tip by itself"
+    );
 
     for h in APPLIED + 1..=APPLIED + BACKLOG {
         let (hash, body) = body_of(&c, h);
         assert_eq!(r.cm.submit_block(&hash, body), Ok(()), "body at height {h}");
-        assert!(matches!(r.cm.advance(), Ok(Progress::Advanced { .. })), "apply at {h}");
+        assert!(
+            matches!(r.cm.advance(), Ok(Progress::Advanced { .. })),
+            "apply at {h}"
+        );
     }
-    assert_eq!(r.height(), APPLIED + BACKLOG, "the node reaches the tip it held headers for");
-    assert_eq!(r.cm.tip().hash, c.tip().hash, "it is the same chain, not a private one");
+    assert_eq!(
+        r.height(),
+        APPLIED + BACKLOG,
+        "the node reaches the tip it held headers for"
+    );
+    assert_eq!(
+        r.cm.tip().hash,
+        c.tip().hash,
+        "it is the same chain, not a private one"
+    );
 }
 
 #[test]
@@ -101,19 +126,38 @@ fn rebuilt_arena_names_missing_bodies() {
     let b = r.cm.branch_report();
     assert_eq!(
         b.verdict,
-        BranchVerdict::NeedBodies { missing: BACKLOG as usize },
+        BranchVerdict::NeedBodies {
+            missing: BACKLOG as usize
+        },
         "the node can say which of the four predicaments it is in"
     );
     assert_eq!(b.tip, APPLIED);
-    assert_eq!(b.best, APPLIED + BACKLOG, "it knows how far the branch it holds reaches");
-    assert_eq!(b.fork_height, APPLIED, "a pure extension forks at our own tip");
-    assert_eq!(b.depth, 0, "therefore discards nothing, so the reorg cap is not involved");
+    assert_eq!(
+        b.best,
+        APPLIED + BACKLOG,
+        "it knows how far the branch it holds reaches"
+    );
+    assert_eq!(
+        b.fork_height, APPLIED,
+        "a pure extension forks at our own tip"
+    );
+    assert_eq!(
+        b.depth, 0,
+        "therefore discards nothing, so the reorg cap is not involved"
+    );
 
     let p = r.cm.advance();
     assert!(matches!(p, Ok(Progress::NeedBodies(_))), "got {p:?}");
     let want = r.cm.wanted_bodies().to_vec();
-    assert!(!want.is_empty(), "a pass that found nothing to commit must say what it needs");
-    assert_eq!(want[0], c.blocks[APPLIED as usize + 1].rec.hash, "starting at the first gap");
+    assert!(
+        !want.is_empty(),
+        "a pass that found nothing to commit must say what it needs"
+    );
+    assert_eq!(
+        want[0],
+        c.blocks[APPLIED as usize + 1].rec.hash,
+        "starting at the first gap"
+    );
 }
 
 #[test]
@@ -189,7 +233,10 @@ fn no_side_enum_still_drains_backlog() {
     for h in APPLIED + 1..=APPLIED + BACKLOG {
         let (hash, body) = body_of(&c, h);
         assert_eq!(r.cm.submit_block(&hash, body), Ok(()), "body at height {h}");
-        assert!(matches!(r.cm.advance(), Ok(Progress::Advanced { .. })), "apply at {h}");
+        assert!(
+            matches!(r.cm.advance(), Ok(Progress::Advanced { .. })),
+            "apply at {h}"
+        );
     }
     assert_eq!(r.height(), APPLIED + BACKLOG);
     assert_eq!(
@@ -212,7 +259,10 @@ fn no_side_enum_cannot_self_diagnose() {
         "with a short arena the node believes it is on the best branch it holds"
     );
     assert!(matches!(r.cm.advance(), Ok(Progress::NoChange)));
-    assert!(r.cm.wanted_bodies().is_empty(), "it can name no body to ask for");
+    assert!(
+        r.cm.wanted_bodies().is_empty(),
+        "it can name no body to ask for"
+    );
 }
 
 #[test]
@@ -226,7 +276,11 @@ fn unknown_header_body_refused_after_restart() {
         Err(Reject::BodyNotAdmissible { hash: bogus }),
         "the store cannot produce a header for it, so it is not admissible"
     );
-    assert_eq!(r.cm.stats().headers_readmitted, 0, "nothing was put into the arena");
+    assert_eq!(
+        r.cm.stats().headers_readmitted,
+        0,
+        "nothing was put into the arena"
+    );
 }
 
 #[test]
@@ -237,7 +291,10 @@ fn link_repair_refuses_orphan_body() {
     r.restart();
 
     let (hash, body) = body_of(&c, APPLIED + 2);
-    assert!(r.cm.header_by_hash(&hash).is_some(), "premise: the store knows this header");
+    assert!(
+        r.cm.header_by_hash(&hash).is_some(),
+        "premise: the store knows this header"
+    );
     assert_eq!(
         r.cm.submit_block(&hash, body),
         Err(Reject::BodyNotAdmissible { hash }),
@@ -268,7 +325,10 @@ fn invalid_branch_not_wanted_after_restart() {
     );
 
     let p = r.cm.advance();
-    assert!(matches!(p, Ok(Progress::NoChange)), "a poisoned branch is not a candidate: {p:?}");
+    assert!(
+        matches!(p, Ok(Progress::NoChange)),
+        "a poisoned branch is not a candidate: {p:?}"
+    );
     assert!(
         r.cm.wanted_bodies().is_empty(),
         "no body of an invalid branch is requested"

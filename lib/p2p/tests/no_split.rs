@@ -1,6 +1,6 @@
 use plaine_p2p::constants::*;
 use plaine_p2p::mock::{Behaviour, Sim};
-use plaine_p2p::sync::body_track::{BodyAction, BodyTrack, BState, Supplier};
+use plaine_p2p::sync::body_track::{BState, BodyAction, BodyTrack, Supplier};
 use plaine_p2p::sync::Action;
 use plaine_p2p::traits::*;
 
@@ -16,8 +16,14 @@ fn h(n: u64) -> Hash32 {
 
 fn suppliers() -> Vec<Supplier> {
     vec![
-        Supplier { id: PeerId(1), horizon: 10_000 },
-        Supplier { id: PeerId(2), horizon: 10_000 },
+        Supplier {
+            id: PeerId(1),
+            horizon: 10_000,
+        },
+        Supplier {
+            id: PeerId(2),
+            horizon: 10_000,
+        },
     ]
 }
 
@@ -117,7 +123,10 @@ fn report_stops_on_arrival() {
             .filter(|a| matches!(a, BodyAction::Say(Condition::BodiesUnappliable { .. })))
             .count();
     }
-    assert!(before >= 1, "fixture: the condition never fired, so there is nothing to stop");
+    assert!(
+        before >= 1,
+        "fixture: the condition never fired, so there is nothing to stop"
+    );
 
     b.on_body(h(1), vec![0u8; 64], 1, t);
     b.drain_applicable(|_, _, _| true, t);
@@ -297,7 +306,6 @@ fn stream_recovers_when_kept() {
 
 #[test]
 fn kept_all_no_loss() {
-
     let mut sim = Sim::new(1, T0);
     let chain = sim.extension(60);
     let p = sim.add_peer(Behaviour::Honest, chain);
@@ -316,7 +324,9 @@ fn kept_all_no_loss() {
          if that is racy on a working node the condition is noise."
     );
     assert!(
-        !sim.actions.iter().any(|a| matches!(a, Action::Score { .. })),
+        !sim.actions
+            .iter()
+            .any(|a| matches!(a, Action::Score { .. })),
         "the peer feeding the canonical chain was scored"
     );
 }

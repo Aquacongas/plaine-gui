@@ -28,9 +28,14 @@ fn parked_header_not_memoised() {
     );
 
     let top = chain.iter().map(|h| h.height).max().unwrap_or(0);
-    let parked: Vec<&HeaderRec> =
-        chain.iter().filter(|h| h.height > AT && h.height < top).collect();
-    assert!(!parked.is_empty(), "fixture: no header above {AT} in the peer's chain");
+    let parked: Vec<&HeaderRec> = chain
+        .iter()
+        .filter(|h| h.height > AT && h.height < top)
+        .collect();
+    assert!(
+        !parked.is_empty(),
+        "fixture: no header above {AT} in the peer's chain"
+    );
     let still_locked: Vec<u64> = parked
         .iter()
         .filter(|h| sim.engine.deduplicates(&h.hash))
@@ -103,7 +108,10 @@ fn parked_body_not_wanted() {
         .map(|h| h.height)
         .collect();
     // the chain cannot admit a body for a header it has not connected.
-    assert!(still.is_empty(), "engine still wants bodies of parked headers at {still:?}");
+    assert!(
+        still.is_empty(),
+        "engine still wants bodies of parked headers at {still:?}"
+    );
 }
 
 #[test]
@@ -118,7 +126,10 @@ fn no_parking_no_forget() {
         0,
         "a chain that connected every header reported one as parked"
     );
-    assert!(sim.engine.known_len() > 0, "fixture: nothing was ever memoised");
+    assert!(
+        sim.engine.known_len() > 0,
+        "fixture: nothing was ever memoised"
+    );
     assert!(
         sim.chain.accepted_headers() >= 40,
         "fixture: only {} headers reached the sink",
@@ -144,7 +155,10 @@ fn audit_breaks_residual_lock() {
     let p = sim.add_peer(Behaviour::Honest, chain.clone());
     sim.connect(p);
     sim.run(WINDOW_MS, 1_000);
-    let top = *chain.iter().max_by_key(|h| h.height).expect("chain is not empty");
+    let top = *chain
+        .iter()
+        .max_by_key(|h| h.height)
+        .expect("chain is not empty");
     assert!(
         sim.engine.deduplicates(&top.hash),
         "fixture: the top header was already forgotten inside the audit window"

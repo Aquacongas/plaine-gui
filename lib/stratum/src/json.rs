@@ -101,8 +101,7 @@ impl Doc {
     }
 
     fn str_of(&self, s: Span) -> &str {
-        core::str::from_utf8(&self.strings[s.off as usize..(s.off + s.len) as usize])
-            .unwrap_or("")
+        core::str::from_utf8(&self.strings[s.off as usize..(s.off + s.len) as usize]).unwrap_or("")
     }
 
     pub fn root(&self) -> ValueId {
@@ -581,8 +580,10 @@ mod tests {
 
     #[test]
     fn parses_a_submit() {
-        let d = p(r#"{"id":7,"method":"mining.submit","params":["a.rig","0000002b","2a00000003f2a300"]}"#)
-            .unwrap();
+        let d = p(
+            r#"{"id":7,"method":"mining.submit","params":["a.rig","0000002b","2a00000003f2a300"]}"#,
+        )
+        .unwrap();
         let r = d.root();
         assert_eq!(d.as_u64(d.obj_get(r, "id").unwrap()), Some(7));
         assert_eq!(
@@ -632,16 +633,23 @@ mod tests {
 
     #[test]
     fn number_overflow_is_named_not_wrapped() {
-        assert_eq!(p(r#"{"a":18446744073709551616}"#).err(), Some(JsonError::NumberOverflow)
+        assert_eq!(
+            p(r#"{"a":18446744073709551616}"#).err(),
+            Some(JsonError::NumberOverflow)
         );
         assert!(p(r#"{"a":18446744073709551615}"#).is_ok());
 
-        assert_eq!(p(r#"{"a":111111111111111111111}"#).err(), Some(JsonError::BadNumber));
+        assert_eq!(
+            p(r#"{"a":111111111111111111111}"#).err(),
+            Some(JsonError::BadNumber)
+        );
     }
 
     #[test]
     fn rejects_duplicate_keys() {
-        assert_eq!(p(r#"{"id":1,"id":2}"#).err(), Some(JsonError::DuplicateKey),
+        assert_eq!(
+            p(r#"{"id":1,"id":2}"#).err(),
+            Some(JsonError::DuplicateKey),
             "last-wins vs first-wins is a parser differential; refuse instead"
         );
     }
@@ -695,7 +703,10 @@ mod tests {
             Err(JsonError::TooLong)
         );
 
-        let s = format!(r#"{{"a":"{}"}}"#, "x".repeat(limits::JSON_MAX_STRING_BYTES + 1));
+        let s = format!(
+            r#"{{"a":"{}"}}"#,
+            "x".repeat(limits::JSON_MAX_STRING_BYTES + 1)
+        );
         assert_eq!(
             parse(&mut d, s.as_bytes(), limits::MAX_LINE_POST_AUTH),
             Err(JsonError::StringTooLong)
@@ -967,10 +978,7 @@ mod tests {
         let mut out = Vec::new();
         write_u64(&mut out, 0);
         write_u64(&mut out, u64::MAX);
-        assert_eq!(
-            String::from_utf8(out).unwrap(),
-            "018446744073709551615"
-        );
+        assert_eq!(String::from_utf8(out).unwrap(), "018446744073709551615");
         let mut out = Vec::new();
         write_hex_u64(&mut out, 0x2b, 8);
         assert_eq!(String::from_utf8(out).unwrap(), "0000002b");
@@ -981,9 +989,19 @@ mod tests {
 
     #[test]
     fn object_recursion_bound_enforced() {
-        assert_eq!(limits::JSON_MAX_DEPTH, 3, "the tests below are written for depth 3");
-        assert!(p(r#"{"a":{"b":{"c":1}}}"#).is_ok(), "depth 3 of objects must pass");
-        assert_eq!(p(r#"{"a":{"b":{"c":{"d":1}}}}"#).err(), Some(JsonError::Depth));
+        assert_eq!(
+            limits::JSON_MAX_DEPTH,
+            3,
+            "the tests below are written for depth 3"
+        );
+        assert!(
+            p(r#"{"a":{"b":{"c":1}}}"#).is_ok(),
+            "depth 3 of objects must pass"
+        );
+        assert_eq!(
+            p(r#"{"a":{"b":{"c":{"d":1}}}}"#).err(),
+            Some(JsonError::Depth)
+        );
 
         assert_eq!(p(r#"{"a":[{"b":{"c":1}}]}"#).err(), Some(JsonError::Depth));
         assert_eq!(p(r#"{"a":{"b":[[1]]}}"#).err(), Some(JsonError::Depth));
@@ -996,7 +1014,10 @@ mod tests {
     #[test]
     fn string_limit_on_escape_path() {
         let n = limits::JSON_MAX_STRING_BYTES;
-        assert!(p(&format!(r#"{{"a":"{}"}}"#, r"\n".repeat(n))).is_ok(), "exactly the limit");
+        assert!(
+            p(&format!(r#"{{"a":"{}"}}"#, r"\n".repeat(n))).is_ok(),
+            "exactly the limit"
+        );
         assert_eq!(
             p(&format!(r#"{{"a":"{}"}}"#, r"\n".repeat(n + 1))).err(),
             Some(JsonError::StringTooLong)
@@ -1007,19 +1028,35 @@ mod tests {
         );
 
         assert_eq!(
-            p(&format!(r#"{{"a":"{}"}}"#, r"\uD83D\uDE00".repeat(n / 4 + 1))).err(),
+            p(&format!(
+                r#"{{"a":"{}"}}"#,
+                r"\uD83D\uDE00".repeat(n / 4 + 1)
+            ))
+            .err(),
             Some(JsonError::StringTooLong)
         );
     }
 
     #[test]
     fn surrogate_pair_must_be_a_pair() {
-        assert_eq!(p(r#"{"a":"\ud83dXude00"}"#).err(), Some(JsonError::BadEscape));
-        assert_eq!(p(r#"{"a":"\ud83d\Xde00"}"#).err(), Some(JsonError::BadEscape));
-        assert_eq!(p(r#"{"a":"\ud83d\ud83d"}"#).err(), Some(JsonError::BadEscape));
+        assert_eq!(
+            p(r#"{"a":"\ud83dXude00"}"#).err(),
+            Some(JsonError::BadEscape)
+        );
+        assert_eq!(
+            p(r#"{"a":"\ud83d\Xde00"}"#).err(),
+            Some(JsonError::BadEscape)
+        );
+        assert_eq!(
+            p(r#"{"a":"\ud83d\ud83d"}"#).err(),
+            Some(JsonError::BadEscape)
+        );
 
         let d = p(r#"{"a":"\ud83d\ude00"}"#).unwrap();
-        assert_eq!(d.as_str(d.obj_get(d.root(), "a").unwrap()), Some("\u{1F600}"));
+        assert_eq!(
+            d.as_str(d.obj_get(d.root(), "a").unwrap()),
+            Some("\u{1F600}")
+        );
     }
 
     #[test]

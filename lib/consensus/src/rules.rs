@@ -181,7 +181,11 @@ pub struct Anchor {
     pub hash: Hash32,
 }
 
-pub fn candidate_meets_anchor(anchor: &Anchor, start_height: u64, candidate: &[HeaderInfo]) -> bool {
+pub fn candidate_meets_anchor(
+    anchor: &Anchor,
+    start_height: u64,
+    candidate: &[HeaderInfo],
+) -> bool {
     if anchor.height == 0 || anchor.hash == ZERO_HASH {
         return false;
     }
@@ -406,9 +410,7 @@ pub fn evaluate_reorg_with_cap<C: ChainView>(
     let cum_work = view.cumulative_work();
     let mut discarded = Work::ZERO;
     for h in start_height..chain_len {
-        let hd = view
-            .header_at(h)
-            .expect("ChainView contract: height < len");
+        let hd = view.header_at(h).expect("ChainView contract: height < len");
         discarded = discarded
             .checked_add(&work_from_target(&hd.target))
             .expect("work sum cannot overflow 512 bits");
@@ -460,8 +462,7 @@ pub fn check_block_time(mtp: u64, time: u64, local_time: u64) -> Result<(), Rule
 }
 
 pub fn coinbase_is_mature(coinbase_height: u64, spend_height: u64) -> bool {
-    spend_height >= coinbase_height
-        && spend_height - coinbase_height >= COINBASE_MATURITY
+    spend_height >= coinbase_height && spend_height - coinbase_height >= COINBASE_MATURITY
 }
 
 pub fn spendable_balance(balance: u128, immature: u128) -> u128 {
@@ -665,7 +666,10 @@ mod tests {
         let deep = branch(too_deep_fork, tip + 60, tip - 51, HEAVY_M);
         assert_eq!(
             evaluate_reorg(&chain, too_deep_fork, &deep, &p),
-            Err(RuleError::ReorgTooDeep { depth: cap + 1, cap: MAX_REORG_DEPTH })
+            Err(RuleError::ReorgTooDeep {
+                depth: cap + 1,
+                cap: MAX_REORG_DEPTH
+            })
         );
 
         let at_cap = branch(tip - cap, tip + 60, tip - 51, HEAVY_M);
@@ -684,8 +688,11 @@ mod tests {
         let deep = branch(fork, cap + 10, 99, HEAVY_M);
         let tip_time = chain.tip().time;
 
-        let synced =
-            ReorgParams { anchor: None, checkpoints: &[], local_time: tip_time };
+        let synced = ReorgParams {
+            anchor: None,
+            checkpoints: &[],
+            local_time: tip_time,
+        };
         assert!(matches!(
             evaluate_reorg(&chain, fork, &deep, &synced),
             Err(RuleError::ReorgTooDeep { .. })
@@ -709,7 +716,10 @@ mod tests {
         }
 
         let anchored_at = *deep.last().expect("non-empty branch");
-        let anchor = Anchor { height: anchored_at.height, hash: anchored_at.hash };
+        let anchor = Anchor {
+            height: anchored_at.height,
+            hash: anchored_at.hash,
+        };
         let with_anchor = ReorgParams {
             anchor: Some(&anchor),
             checkpoints: &[],
@@ -752,28 +762,53 @@ mod tests {
         let cand_tip = *cand.last().unwrap();
         let now = chain.tip().time;
 
-        let p_none = ReorgParams { anchor: None, checkpoints: &[], local_time: now };
+        let p_none = ReorgParams {
+            anchor: None,
+            checkpoints: &[],
+            local_time: now,
+        };
         assert_eq!(
             evaluate_reorg_with_cap(&chain, start, &cand, &p_none, 1),
             Err(RuleError::ReorgTooDeep { depth: 2, cap: 1 })
         );
 
-        let zero_anchor = Anchor { height: cand_tip.height, hash: ZERO_HASH };
-        let p_zero = ReorgParams { anchor: Some(&zero_anchor), checkpoints: &[], local_time: now };
+        let zero_anchor = Anchor {
+            height: cand_tip.height,
+            hash: ZERO_HASH,
+        };
+        let p_zero = ReorgParams {
+            anchor: Some(&zero_anchor),
+            checkpoints: &[],
+            local_time: now,
+        };
         assert_eq!(
             evaluate_reorg_with_cap(&chain, start, &cand, &p_zero, 1),
             Err(RuleError::ReorgTooDeep { depth: 2, cap: 1 })
         );
 
-        let good_anchor = Anchor { height: cand_tip.height, hash: cand_tip.hash };
-        let p_good = ReorgParams { anchor: Some(&good_anchor), checkpoints: &[], local_time: now };
+        let good_anchor = Anchor {
+            height: cand_tip.height,
+            hash: cand_tip.hash,
+        };
+        let p_good = ReorgParams {
+            anchor: Some(&good_anchor),
+            checkpoints: &[],
+            local_time: now,
+        };
         assert_eq!(
             evaluate_reorg_with_cap(&chain, start, &cand, &p_good, 1),
             Ok(ReorgVerdict::StrictlyMoreWork)
         );
 
-        let high_anchor = Anchor { height: cand_tip.height + 50, hash: fake_hash(7, 7) };
-        let p_high = ReorgParams { anchor: Some(&high_anchor), checkpoints: &[], local_time: now };
+        let high_anchor = Anchor {
+            height: cand_tip.height + 50,
+            hash: fake_hash(7, 7),
+        };
+        let p_high = ReorgParams {
+            anchor: Some(&high_anchor),
+            checkpoints: &[],
+            local_time: now,
+        };
         assert_eq!(
             evaluate_reorg_with_cap(&chain, start, &cand, &p_high, 1),
             Err(RuleError::ReorgTooDeep { depth: 2, cap: 1 })
@@ -786,22 +821,40 @@ mod tests {
         let t = cand[3];
         assert_eq!(t.height, 4);
 
-        let ok = Anchor { height: t.height, hash: t.hash };
+        let ok = Anchor {
+            height: t.height,
+            hash: t.hash,
+        };
         assert!(candidate_meets_anchor(&ok, 1, &cand));
 
-        let wrong_hash = Anchor { height: t.height, hash: fake_hash(1234, 1) };
+        let wrong_hash = Anchor {
+            height: t.height,
+            hash: fake_hash(1234, 1),
+        };
         assert!(!candidate_meets_anchor(&wrong_hash, 1, &cand));
 
-        let zero_height = Anchor { height: 0, hash: t.hash };
+        let zero_height = Anchor {
+            height: 0,
+            hash: t.hash,
+        };
         assert!(!candidate_meets_anchor(&zero_height, 1, &cand));
 
-        let below_range = Anchor { height: 0, hash: t.hash };
+        let below_range = Anchor {
+            height: 0,
+            hash: t.hash,
+        };
         assert!(!candidate_meets_anchor(&below_range, 1, &cand));
 
-        let beyond_range = Anchor { height: t.height + 100, hash: t.hash };
+        let beyond_range = Anchor {
+            height: t.height + 100,
+            hash: t.hash,
+        };
         assert!(!candidate_meets_anchor(&beyond_range, 1, &cand));
 
-        let empty_hash = Anchor { height: t.height, hash: ZERO_HASH };
+        let empty_hash = Anchor {
+            height: t.height,
+            hash: ZERO_HASH,
+        };
         assert!(!candidate_meets_anchor(&empty_hash, 1, &cand));
     }
 
@@ -810,23 +863,44 @@ mod tests {
         let h1 = fake_hash(1, 10);
         let h2 = fake_hash(2, 10);
         let h3 = fake_hash(3, 11);
-        let a10 = Anchor { height: 10, hash: h1 };
+        let a10 = Anchor {
+            height: 10,
+            hash: h1,
+        };
         assert!(anchor_supersedes(None, &a10));
-        let a10b = Anchor { height: 10, hash: h2 };
+        let a10b = Anchor {
+            height: 10,
+            hash: h2,
+        };
         assert!(!anchor_supersedes(Some(&a10), &a10b));
-        let a11 = Anchor { height: 11, hash: h3 };
+        let a11 = Anchor {
+            height: 11,
+            hash: h3,
+        };
         assert!(anchor_supersedes(Some(&a10), &a11));
-        let a9 = Anchor { height: 9, hash: h3 };
+        let a9 = Anchor {
+            height: 9,
+            hash: h3,
+        };
         assert!(!anchor_supersedes(Some(&a10), &a9));
 
-        assert!(!anchor_supersedes(None, &Anchor { height: 0, hash: h1 }));
-        assert!(!anchor_supersedes(None, &Anchor { height: 12, hash: ZERO_HASH }));
+        assert!(!anchor_supersedes(
+            None,
+            &Anchor {
+                height: 0,
+                hash: h1
+            }
+        ));
+        assert!(!anchor_supersedes(
+            None,
+            &Anchor {
+                height: 12,
+                hash: ZERO_HASH
+            }
+        ));
     }
 
-    fn coarse_prefix_predicate_rejects(
-        checkpoints: &[(u64, Hash32)],
-        start_height: u64,
-    ) -> bool {
+    fn coarse_prefix_predicate_rejects(checkpoints: &[(u64, Hash32)], start_height: u64) -> bool {
         checkpoints.iter().any(|&(h, _)| h >= start_height)
     }
 
@@ -1008,7 +1082,11 @@ mod tests {
 
         let mut bad = sign_checkpoint(&sk2, 100, &hash);
         bad.sig[0] ^= 0xff;
-        let corrupted = SignedCheckpoint { height: 100, hash, sigs: vec![bad] };
+        let corrupted = SignedCheckpoint {
+            height: 100,
+            hash,
+            sigs: vec![bad],
+        };
         assert!(!verify_checkpoint(&corrupted, &keys, 1));
 
         let replay = SignedCheckpoint {
@@ -1047,14 +1125,28 @@ mod tests {
         let hash = fake_hash(7, 100);
         let good = sign_checkpoint(&sk1, 100, &hash);
 
-        let honest = SignedCheckpoint { height: 100, hash, sigs: vec![good] };
-        assert!(verify_checkpoint(&honest, &keys, 1), "the honest shape must survive the bound");
+        let honest = SignedCheckpoint {
+            height: 100,
+            hash,
+            sigs: vec![good],
+        };
+        assert!(
+            verify_checkpoint(&honest, &keys, 1),
+            "the honest shape must survive the bound"
+        );
 
         let mut junk = Vec::new();
         for i in 0..15u8 {
-            junk.push(CheckpointSig { pubkey: pk1, sig: [i ^ 0xA5; 64] });
+            junk.push(CheckpointSig {
+                pubkey: pk1,
+                sig: [i ^ 0xA5; 64],
+            });
         }
-        let flood = SignedCheckpoint { height: 100, hash, sigs: junk };
+        let flood = SignedCheckpoint {
+            height: 100,
+            hash,
+            sigs: junk,
+        };
         assert!(!verify_checkpoint(&flood, &keys, 1));
 
         let doubled = SignedCheckpoint {
@@ -1076,7 +1168,10 @@ mod tests {
             height: 100,
             hash,
             sigs: vec![
-                CheckpointSig { pubkey: pk1, sig: [0x11; 64] },
+                CheckpointSig {
+                    pubkey: pk1,
+                    sig: [0x11; 64],
+                },
                 sign_checkpoint(&sk1, 100, &hash),
             ],
         };
@@ -1086,7 +1181,10 @@ mod tests {
             height: 100,
             hash,
             sigs: vec![
-                CheckpointSig { pubkey: pk1, sig: [0x11; 64] },
+                CheckpointSig {
+                    pubkey: pk1,
+                    sig: [0x11; 64],
+                },
                 sign_checkpoint(&sk2, 100, &hash),
             ],
         };
@@ -1103,14 +1201,20 @@ mod tests {
         let one = SignedCheckpoint {
             height: 100,
             hash,
-            sigs: vec![CheckpointSig { pubkey: pk1, sig: [0x5C; 64] }],
+            sigs: vec![CheckpointSig {
+                pubkey: pk1,
+                sig: [0x5C; 64],
+            }],
         };
 
         let flood = SignedCheckpoint {
             height: 100,
             hash,
             sigs: (0..15u8)
-                .map(|i| CheckpointSig { pubkey: pk1, sig: [i ^ 0x5C; 64] })
+                .map(|i| CheckpointSig {
+                    pubkey: pk1,
+                    sig: [i ^ 0x5C; 64],
+                })
                 .collect(),
         };
         assert!(!verify_checkpoint(&one, &keys, 1));
@@ -1170,8 +1274,14 @@ mod tests {
         );
 
         let h2 = chain.header_at(2).unwrap().hash;
-        assert_eq!(checkpoint_admission(&chain, 2, &h2), CheckpointAdmission::Admit);
-        assert_eq!(checkpoint_admission(&chain, 2, &h2), CheckpointAdmission::Admit);
+        assert_eq!(
+            checkpoint_admission(&chain, 2, &h2),
+            CheckpointAdmission::Admit
+        );
+        assert_eq!(
+            checkpoint_admission(&chain, 2, &h2),
+            CheckpointAdmission::Admit
+        );
     }
 
     fn tie_fixture() -> (MockChain, HeaderInfo, MockChain, HeaderInfo) {
@@ -1299,11 +1409,17 @@ mod tests {
 
         assert_eq!(
             check_block_time(mtp, 1_000, 2_000),
-            Err(RuleError::TimestampTooOld { mtp: 1_000, time: 1_000 })
+            Err(RuleError::TimestampTooOld {
+                mtp: 1_000,
+                time: 1_000
+            })
         );
         assert_eq!(
             check_block_time(mtp, 999, 2_000),
-            Err(RuleError::TimestampTooOld { mtp: 1_000, time: 999 })
+            Err(RuleError::TimestampTooOld {
+                mtp: 1_000,
+                time: 999
+            })
         );
         assert_eq!(check_block_time(mtp, 1_001, 2_000), Ok(()));
     }
@@ -1312,7 +1428,10 @@ mod tests {
     fn future_drift_boundary_600s() {
         let now = 10_000;
 
-        assert_eq!(check_block_time(0, now + MAX_FUTURE_DRIFT_SECS, now), Ok(()));
+        assert_eq!(
+            check_block_time(0, now + MAX_FUTURE_DRIFT_SECS, now),
+            Ok(())
+        );
 
         assert_eq!(
             check_block_time(0, now + MAX_FUTURE_DRIFT_SECS + 1, now),
@@ -1365,7 +1484,10 @@ mod tests {
         let attack = branch(h, depth + 5, 666, HEAVY_M);
         assert_eq!(
             evaluate_reorg(&chain, h, &attack, &p),
-            Err(RuleError::ReorgTooDeep { depth, cap: MAX_REORG_DEPTH })
+            Err(RuleError::ReorgTooDeep {
+                depth,
+                cap: MAX_REORG_DEPTH
+            })
         );
 
         let shallow_start = h + (depth - MAX_REORG_DEPTH);

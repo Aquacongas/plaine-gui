@@ -24,9 +24,7 @@ pub struct ShareWork {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verdict {
-    Accepted {
-        block: Option<SealOutcome>,
-    },
+    Accepted { block: Option<SealOutcome> },
     LowDifficulty,
     InternalError,
 }
@@ -402,9 +400,7 @@ mod tests {
         let got = seen.lock().unwrap_or_else(|e| e.into_inner()).clone();
         assert_eq!(got.len(), 20, "the pool stopped answering");
         assert_eq!(
-            got.iter()
-                .filter(|v| **v == Verdict::InternalError)
-                .count(),
+            got.iter().filter(|v| **v == Verdict::InternalError).count(),
             10
         );
 

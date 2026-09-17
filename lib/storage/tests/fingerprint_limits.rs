@@ -74,12 +74,25 @@ fn h1_rewritten_undo_still_mints() {
     assert_eq!(rep.headers_truncated_to, Some(299));
 
     let got = r.account(&addr).unwrap();
-    println!("  account {:02x?}.. balance after rollback : {}", &addr[..4], got.balance);
+    println!(
+        "  account {:02x?}.. balance after rollback : {}",
+        &addr[..4],
+        got.balance
+    );
     println!("  forged pre-image                        : {forged}");
     println!("  issued after rolling back one height    : {}", r.issued());
-    println!("  issued a correct rollback would give    : {}", 299 * SUBSIDY);
-    println!("  open() integrity.is_clean()             : {}", rep.integrity.is_clean());
-    println!("  verify_state_fingerprint()              : {:?}", r.verify_state_fingerprint().is_ok());
+    println!(
+        "  issued a correct rollback would give    : {}",
+        299 * SUBSIDY
+    );
+    println!(
+        "  open() integrity.is_clean()             : {}",
+        rep.integrity.is_clean()
+    );
+    println!(
+        "  verify_state_fingerprint()              : {:?}",
+        r.verify_state_fingerprint().is_ok()
+    );
 
     assert_eq!(got.balance, forged, "the forged pre-image was not restored");
     assert_eq!(
@@ -127,7 +140,10 @@ fn h1b_impossible_issued_named_error() {
         Err(e) => println!("  open REFUSED: {e}"),
     }
     match res {
-        Err(StoreError::EmissionMismatch { stored_mile, formula_mile }) => {
+        Err(StoreError::EmissionMismatch {
+            stored_mile,
+            formula_mile,
+        }) => {
             assert_eq!(stored_mile, 300 * SUBSIDY);
             assert_eq!(formula_mile, u128::MAX / 2);
         }
@@ -167,8 +183,14 @@ fn h2_fingerprint_forgeable_from_public() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     println!("  balance {before} -> {after}");
-    println!("  open() integrity.is_clean()  : {}", rep.integrity.is_clean());
-    println!("  account balance served       : {}", r.account(&addr).unwrap().balance);
+    println!(
+        "  open() integrity.is_clean()  : {}",
+        rep.integrity.is_clean()
+    );
+    println!(
+        "  account balance served       : {}",
+        r.account(&addr).unwrap().balance
+    );
     println!(
         "  verify_state_fingerprint()   : {:?}  <- public, and the caller's to call",
         r.verify_state_fingerprint().is_ok()
@@ -190,7 +212,12 @@ fn h2_fingerprint_forgeable_from_public() {
         let mut fp = {
             let txn = db.begin_read().unwrap();
             let t = txn.open_table(META).unwrap();
-            let v = t.get("state_fingerprint").unwrap().unwrap().value().to_vec();
+            let v = t
+                .get("state_fingerprint")
+                .unwrap()
+                .unwrap()
+                .value()
+                .to_vec();
             let mut a = [0u8; 32];
             a.copy_from_slice(&v);
             a
@@ -222,9 +249,18 @@ fn h2_fingerprint_forgeable_from_public() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     println!("  after patching the fingerprint:");
-    println!("    integrity.is_clean()        : {}", rep.integrity.is_clean());
-    println!("    verify_state_fingerprint()  : {:?}", r.verify_state_fingerprint().is_ok());
-    println!("    balance served              : {}", r.account(&addr).unwrap().balance);
+    println!(
+        "    integrity.is_clean()        : {}",
+        rep.integrity.is_clean()
+    );
+    println!(
+        "    verify_state_fingerprint()  : {:?}",
+        r.verify_state_fingerprint().is_ok()
+    );
+    println!(
+        "    balance served              : {}",
+        r.account(&addr).unwrap().balance
+    );
     assert!(
         r.verify_state_fingerprint().is_ok(),
         "fingerprint is XOR-of-BLAKE3 over public inputs, so it can always be patched back"

@@ -58,9 +58,7 @@ impl Rotator {
             return false;
         }
         match self.designated_at {
-            Some(t) => {
-                now.expired(t, PROBE_GRANT_MS) || self.grant_headers >= PROBE_GRANT_HEADERS
-            }
+            Some(t) => now.expired(t, PROBE_GRANT_MS) || self.grant_headers >= PROBE_GRANT_HEADERS,
             None => false,
         }
     }
@@ -115,9 +113,7 @@ impl Rotator {
         if now.expired(started, SYNC_ELIGIBILITY_FLOOR_MS) {
             let victim = peers
                 .iter()
-                .filter(|s| {
-                    s.outbound && s.is_ready() && !s.score.sync_disqualified() && ahead(s)
-                })
+                .filter(|s| s.outbound && s.is_ready() && !s.score.sync_disqualified() && ahead(s))
                 .min_by_key(|s| s.last_penalised.unwrap_or(Mono::ZERO));
             if let Some(v) = victim {
                 self.since_none_eligible = None;

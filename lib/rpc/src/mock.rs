@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use crate::json::Json;
 use crate::views::{
-    AccountRecord, Address20, AuthorKeyStatus, AuthorNote, AuthorNotesPage, BlockRecord, BudgetView,
-    Budgets, ChainInfo, ChainView, CheckpointLink, CheckpointStatus, CheckpointSubmit,
-    EmissionAudit, FeeSuggestion,
-    Hash32, HeaderRecord, KeySource, MempoolInfo, MempoolView, NetView, Network, Node, NotesCursor,
-    PeerInfo, PolicyView, StratumSession, StratumView, SubmitError, SyncStatus, TxLookup, TxRecord,
-    Verbosity,
+    AccountRecord, Address20, AuthorKeyStatus, AuthorNote, AuthorNotesPage, BlockRecord,
+    BudgetView, Budgets, ChainInfo, ChainView, CheckpointLink, CheckpointStatus, CheckpointSubmit,
+    EmissionAudit, FeeSuggestion, Hash32, HeaderRecord, KeySource, MempoolInfo, MempoolView,
+    NetView, Network, Node, NotesCursor, PeerInfo, PolicyView, StratumSession, StratumView,
+    SubmitError, SyncStatus, TxLookup, TxRecord, Verbosity,
 };
 
 #[derive(Clone)]
@@ -120,9 +119,13 @@ impl MockNode {
     }
 
     pub fn with_notes_sharing_a_height(mut self) -> MockNode {
-        for (i, text) in ["first in the block", "second in the block", "third in the block"]
-            .iter()
-            .enumerate()
+        for (i, text) in [
+            "first in the block",
+            "second in the block",
+            "third in the block",
+        ]
+        .iter()
+        .enumerate()
         {
             self.notes.push(AuthorNote {
                 seq: self.notes.len() as u64,
@@ -363,8 +366,17 @@ impl ChainView for MockNode {
         let more = filtered.len() > limit;
         let notes: Vec<AuthorNote> = filtered.into_iter().take(limit).collect();
 
-        let next_seq = if more { notes.last().map(|n| n.seq) } else { None };
-        AuthorNotesPage { notes, more, total: self.notes.len() as u64, next_seq }
+        let next_seq = if more {
+            notes.last().map(|n| n.seq)
+        } else {
+            None
+        };
+        AuthorNotesPage {
+            notes,
+            more,
+            total: self.notes.len() as u64,
+            next_seq,
+        }
     }
 }
 

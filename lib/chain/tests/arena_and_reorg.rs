@@ -34,7 +34,13 @@ fn reorg_rolls_nonce_back_tx_mineable() {
     let honest = Scenario::genesis(&p, T0).with_miner(miner).extend(20);
     let mut r = Rig::new(&honest, p);
     r.sync(&honest, 1);
-    r.store.set_account(s_addr, Account { balance: 50_000_000, nonce: 0 });
+    r.store.set_account(
+        s_addr,
+        Account {
+            balance: 50_000_000,
+            nonce: 0,
+        },
+    );
     let s_before = r.store.account(&s_addr);
     assert_eq!(s_before.nonce, 0);
 
@@ -56,7 +62,11 @@ fn reorg_rolls_nonce_back_tx_mineable() {
     assert_eq!(after.nonce, s_before.nonce, "the nonce restored");
     assert_eq!(after, s_before);
 
-    assert_eq!(r.cm.mempool().len(), 1, "the disconnected transfer came back");
+    assert_eq!(
+        r.cm.mempool().len(),
+        1,
+        "the disconnected transfer came back"
+    );
     let id = r.cm.mempool().executable_ids();
     assert_eq!(id.len(), 1, "it is mineable, not stranded as stale");
 }
@@ -72,7 +82,13 @@ fn partial_rollback_restores_nonce() {
     let honest = Scenario::genesis(&p, T0).with_miner(miner).extend(20);
     let mut r = Rig::new(&honest, p);
     r.sync(&honest, 1);
-    r.store.set_account(s_addr, Account { balance: 50_000_000, nonce: 0 });
+    r.store.set_account(
+        s_addr,
+        Account {
+            balance: 50_000_000,
+            nonce: 0,
+        },
+    );
 
     let mut branch_a = honest.fork_at(20).with_miner(miner);
     branch_a.push_block(&[signed_transfer(&sender, to, 1_000, 2_000_000, 0)]);
@@ -108,27 +124,57 @@ fn competing_branch_reuses_rolled_nonce() {
     let honest = Scenario::genesis(&p, T0).with_miner(miner).extend(20);
     let mut r = Rig::new(&honest, p);
     r.sync(&honest, 1);
-    r.store.set_account(s_addr, Account { balance: 50_000_000, nonce: 0 });
+    r.store.set_account(
+        s_addr,
+        Account {
+            balance: 50_000_000,
+            nonce: 0,
+        },
+    );
 
     let mut branch_a = honest.fork_at(20).with_miner(miner);
-    branch_a.push_block(&[signed_transfer(&sender, addr_of(&user_key(0x84)), 1_000, 2_000_000, 0)]);
+    branch_a.push_block(&[signed_transfer(
+        &sender,
+        addr_of(&user_key(0x84)),
+        1_000,
+        2_000_000,
+        0,
+    )]);
     r.offer(3, &blocks_above(&branch_a, 20));
     r.cm.advance().expect("adopted");
     assert_eq!(r.store.account(&s_addr).nonce, 1);
 
     let mut branch_b = honest.fork_at(20).with_miner(miner).spacing(1);
-    branch_b.push_block(&[signed_transfer(&sender, addr_of(&user_key(0x85)), 7_000, 2_000_000, 0)]);
+    branch_b.push_block(&[signed_transfer(
+        &sender,
+        addr_of(&user_key(0x85)),
+        7_000,
+        2_000_000,
+        0,
+    )]);
     let branch_b = branch_b.extend(2);
     r.offer(4, &blocks_above(&branch_b, 20));
     r.cm.advance().expect("the competing branch must validate");
-    assert_eq!(r.cm.tip().hash, branch_b.tip().hash, "the heavier branch was adopted");
-    assert_eq!(r.store.account(&s_addr).nonce, 1, "B's transfer consumed nonce 0");
+    assert_eq!(
+        r.cm.tip().hash,
+        branch_b.tip().hash,
+        "the heavier branch was adopted"
+    );
+    assert_eq!(
+        r.store.account(&s_addr).nonce,
+        1,
+        "B's transfer consumed nonce 0"
+    );
     assert_eq!(
         r.store.account(&s_addr).balance,
         50_000_000 - 7_000 - 2_000_000,
         "it moved B's amount, not A's"
     );
-    assert_eq!(r.store.account(&addr_of(&user_key(0x84))).balance, 0, "A's payee is unpaid");
+    assert_eq!(
+        r.store.account(&addr_of(&user_key(0x84))).balance,
+        0,
+        "A's payee is unpaid"
+    );
     assert_eq!(r.store.account(&addr_of(&user_key(0x85))).balance, 7_000);
 }
 
@@ -145,16 +191,23 @@ fn child_of_invalid_born_poisoned() {
     let raws: Vec<[u8; 132]> = side_blocks.iter().map(|b| b.rec.raw).collect();
     r.cm.submit_headers_solicited(5, &raws).expect("headers");
     let mid = side_blocks[3].rec.hash;
-    assert!(r.cm.index().get(&mid).is_some(), "the side branch is in the arena");
+    assert!(
+        r.cm.index().get(&mid).is_some(),
+        "the side branch is in the arena"
+    );
 
     r.cm.invalidate(&mid);
     let validated_before = r.cm.stats().bodies_validated;
 
     let mut deeper = side.clone();
     let child = deeper.push_block(&[]);
-    r.cm.submit_headers_solicited(5, &[child.rec.raw]).expect("headers");
+    r.cm.submit_headers_solicited(5, &[child.rec.raw])
+        .expect("headers");
     let node = r.cm.index().get(&child.rec.hash).expect("connected");
-    assert!(node.invalid(), "a child of a poisoned ancestor is born poisoned");
+    assert!(
+        node.invalid(),
+        "a child of a poisoned ancestor is born poisoned"
+    );
 
     assert_eq!(r.cm.advance().expect("no error"), Progress::NoChange);
     assert_eq!(
@@ -188,9 +241,14 @@ fn staged_terminal_is_lower_hash_sibling() {
              that clears S6 is the lower-hash one either way"
         );
 
-        r.cm.submit_block(&winner.rec.hash, winner.body.clone()).expect("admissible");
+        r.cm.submit_block(&winner.rec.hash, winner.body.clone())
+            .expect("admissible");
         assert!(matches!(r.cm.advance(), Ok(Progress::Advanced { .. })));
-        assert_eq!(r.tip_hash(), winner.rec.hash, "the lower-hash sibling is adopted");
+        assert_eq!(
+            r.tip_hash(),
+            winner.rec.hash,
+            "the lower-hash sibling is adopted"
+        );
     }
 }
 
@@ -203,7 +261,11 @@ fn headers_from_respects_cap() {
     assert!(r.height() > MAX_HEADERS_PER_MSG as u64);
 
     assert_eq!(r.cm.headers_from(0, 100_000).len(), MAX_HEADERS_PER_MSG);
-    assert_eq!(r.cm.headers_from(0, 10).len(), 10, "a smaller request is honoured");
+    assert_eq!(
+        r.cm.headers_from(0, 10).len(),
+        10,
+        "a smaller request is honoured"
+    );
 }
 
 #[test]
@@ -216,7 +278,10 @@ fn over_length_batch_refused() {
     let over: Vec<[u8; 132]> = (0..=MAX_HEADERS_PER_MSG).map(|_| one).collect();
     assert_eq!(
         r.cm.submit_headers(8, &over),
-        Err(Reject::BatchTooLong { got: MAX_HEADERS_PER_MSG + 1, cap: MAX_HEADERS_PER_MSG })
+        Err(Reject::BatchTooLong {
+            got: MAX_HEADERS_PER_MSG + 1,
+            cap: MAX_HEADERS_PER_MSG
+        })
     );
     assert!(r.cm.submit_headers(8, &over[..MAX_HEADERS_PER_MSG]).is_ok());
 }
@@ -235,11 +300,21 @@ fn every_arena_entry_is_pow_verified() {
     let _ = r.cm.advance();
 
     let idx = r.cm.index();
-    assert!(idx.len() > 60, "the fixture must actually populate the arena");
+    assert!(
+        idx.len() > 60,
+        "the fixture must actually populate the arena"
+    );
     for i in idx.indices() {
-        assert!(idx.node(i).pow_ok(), "arena entry {i} was never PoW-verified");
+        assert!(
+            idx.node(i).pow_ok(),
+            "arena entry {i} was never PoW-verified"
+        );
     }
-    assert_eq!(r.cm.pow_verified_floor(), 0, "which is why the floor is genesis");
+    assert_eq!(
+        r.cm.pow_verified_floor(),
+        0,
+        "which is why the floor is genesis"
+    );
 }
 
 #[test]
@@ -288,9 +363,15 @@ fn depth_one_tie_break_after_reorg() {
     assert_eq!(r.tip_hash(), branch.tip().hash);
 
     let rival = sibling_with_hash(&branch, addr_of(&user_key(0x93)), r.tip_hash(), true);
-    let a = r.cm.submit_headers(7, &[rival.rec.raw]).expect("not halted");
-    assert_eq!(a.connected, 1, "a depth-1 sibling of the new tip must still be reachable");
-    r.cm.submit_block(&rival.rec.hash, rival.body.clone()).expect("admissible");
+    let a =
+        r.cm.submit_headers(7, &[rival.rec.raw])
+            .expect("not halted");
+    assert_eq!(
+        a.connected, 1,
+        "a depth-1 sibling of the new tip must still be reachable"
+    );
+    r.cm.submit_block(&rival.rec.hash, rival.body.clone())
+        .expect("admissible");
     assert!(matches!(r.cm.advance(), Ok(Progress::Advanced { .. })));
     assert_eq!(r.tip_hash(), rival.rec.hash);
 }
@@ -298,7 +379,10 @@ fn depth_one_tie_break_after_reorg() {
 #[test]
 fn resplit_forward_nonce_drops_consumed() {
     let floor = 1_000_000u128;
-    let mut pool = Mempool::new(MempoolParams { relay_fee_floor: floor, ..Default::default() });
+    let mut pool = Mempool::new(MempoolParams {
+        relay_fee_floor: floor,
+        ..Default::default()
+    });
     let mut ob = |_: plaine_chain::error::Condition| {};
     let key = [0x77u8; 32];
     let sender = plaine_consensus::crypto::address_payload(&key);
@@ -309,7 +393,10 @@ fn resplit_forward_nonce_drops_consumed() {
     for n in 0..5u64 {
         pool.submit(
             plaine_chain::mock::unsigned_transfer(key, to, 1_000, floor, n),
-            Account { balance: budget, nonce: 0 },
+            Account {
+                balance: budget,
+                nonce: 0,
+            },
             budget,
             0,
             SigProof::from_validated_block(),
@@ -319,13 +406,19 @@ fn resplit_forward_nonce_drops_consumed() {
     }
     assert_eq!(pool.sender_len(&sender), 5);
 
-    let mut acct = |_: &Address| Account { balance: budget, nonce: 2 };
+    let mut acct = |_: &Address| Account {
+        balance: budget,
+        nonce: 2,
+    };
     pool.resplit_all(&mut acct);
     assert_eq!(pool.sender_len(&sender), 3, "the consumed nonces are gone");
 
     pool.submit(
         plaine_chain::mock::unsigned_transfer(key, to, 1_000, floor, 5),
-        Account { balance: budget, nonce: 2 },
+        Account {
+            balance: budget,
+            nonce: 2,
+        },
         budget,
         0,
         SigProof::from_validated_block(),
@@ -337,7 +430,10 @@ fn resplit_forward_nonce_drops_consumed() {
 
 #[test]
 fn side_header_cap_does_not_stall() {
-    let p = ChainParams { max_side_headers: 2, ..params() };
+    let p = ChainParams {
+        max_side_headers: 2,
+        ..params()
+    };
     let honest = Scenario::genesis(&p, T0).extend(20);
     let mut r = Rig::with_mode(&honest, p, PowMode::AlwaysOk);
     r.sync(&honest, 1);
@@ -353,7 +449,9 @@ fn side_header_cap_does_not_stall() {
 
     for tick in 0..10 {
         match r.cm.advance() {
-            Ok(Progress::NoChange) | Ok(Progress::NeedBodies(_)) | Ok(Progress::Advanced { .. }) => {}
+            Ok(Progress::NoChange)
+            | Ok(Progress::NeedBodies(_))
+            | Ok(Progress::Advanced { .. }) => {}
             Err(e) => panic!("tick {tick} returned a hard error: {e:?}"),
         }
     }

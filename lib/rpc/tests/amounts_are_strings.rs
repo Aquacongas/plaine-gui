@@ -5,7 +5,13 @@ use plaine_rpc::mock::MockNode;
 use plaine_rpc::views::Node;
 
 const NAMED_AMOUNTS: &[&str] = &[
-    "balance", "immature", "spendable", "amount", "fee", "reward", "fees",
+    "balance",
+    "immature",
+    "spendable",
+    "amount",
+    "fee",
+    "reward",
+    "fees",
 ];
 
 fn is_decimal_integer(s: &str) -> bool {
@@ -148,7 +154,13 @@ fn no_amount_is_a_json_number() {
 fn emission_difference_is_signed() {
     let node = MockNode::synced().into_node();
     let v = call(&node, "emission_audit", vec![]).expect("emission_audit answers");
-    let issued: i128 = v.get("issuedMile").unwrap().as_str().unwrap().parse().unwrap();
+    let issued: i128 = v
+        .get("issuedMile")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
     let expected: i128 = v
         .get("expectedByFormulaMile")
         .unwrap()
@@ -164,7 +176,11 @@ fn emission_difference_is_signed() {
         .parse()
         .unwrap();
 
-    assert_eq!(diff, issued - expected, "differenceMile must be issued - expected");
+    assert_eq!(
+        diff,
+        issued - expected,
+        "differenceMile must be issued - expected"
+    );
     assert_eq!(
         v.get("matchesFormula").unwrap().as_bool().unwrap(),
         diff == 0,

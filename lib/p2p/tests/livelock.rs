@@ -70,7 +70,12 @@ fn repair_walk_reaches_link() {
     );
 }
 
-fn ms_to_converge(sim: &mut Sim, branch: &[HeaderRec], budget_ms: u64, step_ms: u64) -> Option<u64> {
+fn ms_to_converge(
+    sim: &mut Sim,
+    branch: &[HeaderRec],
+    budget_ms: u64,
+    step_ms: u64,
+) -> Option<u64> {
     let mut elapsed = 0;
     while elapsed < budget_ms {
         sim.run(step_ms, step_ms);
@@ -87,13 +92,14 @@ fn ms_to_converge(sim: &mut Sim, branch: &[HeaderRec], budget_ms: u64, step_ms: 
 fn heal_within_one_audit() {
     let (mut sim, branch) = stranded();
     sim.chain.keep_all_headers();
-    let ms = ms_to_converge(&mut sim, &branch, 10 * TRACKING_AUDIT_MS, 1_000).unwrap_or_else(|| {
-        panic!(
-            "the chain started keeping headers again and the competing branch never \
+    let ms =
+        ms_to_converge(&mut sim, &branch, 10 * TRACKING_AUDIT_MS, 1_000).unwrap_or_else(|| {
+            panic!(
+                "the chain started keeping headers again and the competing branch never \
              arrived in {} s of virtual time.",
-            10 * TRACKING_AUDIT_MS / 1_000
-        )
-    });
+                10 * TRACKING_AUDIT_MS / 1_000
+            )
+        });
     assert!(
         ms <= TRACKING_AUDIT_MS,
         "healed partition took {ms} ms to converge, over one audit interval of {TRACKING_AUDIT_MS} ms; the link at height {} waits out an audit per block",
@@ -140,9 +146,12 @@ const MUST_SAY_WITHIN_MS: u64 = 5 * TRACKING_AUDIT_MS;
 fn stuck_break_reported() {
     let sim = permanently_swallowing(MUST_SAY_WITHIN_MS);
     let stuck = sim.engine.conditions().iter().find_map(|c| match c {
-        Condition::HeaderRepairStuck { height, repeats, our_tip, .. } => {
-            Some((*height, *repeats, *our_tip))
-        }
+        Condition::HeaderRepairStuck {
+            height,
+            repeats,
+            our_tip,
+            ..
+        } => Some((*height, *repeats, *our_tip)),
         _ => None,
     });
     let (height, repeats, our_tip) = stuck.unwrap_or_else(|| {
@@ -204,7 +213,11 @@ fn healthy_sync_not_stuck() {
         "a sync that reached height {} was reported as a wedge",
         sim.chain.tip().height
     );
-    assert_eq!(sim.chain.tip().height, 60, "fixture: the sync must have worked");
+    assert_eq!(
+        sim.chain.tip().height,
+        60,
+        "fixture: the sync must have worked"
+    );
 }
 
 #[test]

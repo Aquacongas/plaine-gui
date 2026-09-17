@@ -99,7 +99,9 @@ fn find_up(start: &Path, name: &str) -> Option<PathBuf> {
 }
 
 fn from_git(root: &Path, workspace: &Path) -> Option<(String, String)> {
-    let sha = git(root, &["rev-parse", "HEAD"])?.trim().to_ascii_lowercase();
+    let sha = git(root, &["rev-parse", "HEAD"])?
+        .trim()
+        .to_ascii_lowercase();
     if !is_sha(&sha) {
         return None;
     }
@@ -115,7 +117,10 @@ fn from_git(root: &Path, workspace: &Path) -> Option<(String, String)> {
         }
     }
 
-    if let Some(list) = git(root, &["ls-files", "-z", "--", &workspace.to_string_lossy()]) {
+    if let Some(list) = git(
+        root,
+        &["ls-files", "-z", "--", &workspace.to_string_lossy()],
+    ) {
         for f in list.split('\0').filter(|s| !s.is_empty()) {
             declare(root, f);
         }
@@ -147,14 +152,23 @@ fn from_git(root: &Path, workspace: &Path) -> Option<(String, String)> {
 
 fn declare(root: &Path, p: &str) {
     let p = Path::new(p);
-    let abs = if p.is_absolute() { p.to_path_buf() } else { root.join(p) };
+    let abs = if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        root.join(p)
+    };
     if abs.exists() {
         println!("cargo:rerun-if-changed={}", abs.display());
     }
 }
 
 fn git(root: &Path, args: &[&str]) -> Option<String> {
-    let o = Command::new("git").arg("-C").arg(root).args(args).output().ok()?;
+    let o = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .ok()?;
     if !o.status.success() {
         return None;
     }

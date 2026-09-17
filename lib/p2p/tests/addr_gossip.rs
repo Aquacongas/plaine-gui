@@ -227,11 +227,7 @@ impl Raw {
         }
     }
 
-    fn handshake_claiming(
-        &mut self,
-        chain_id: [u8; 4],
-        nonce: u64,
-    ) -> (Option<Hello>, bool) {
+    fn handshake_claiming(&mut self, chain_id: [u8; 4], nonce: u64) -> (Option<Hello>, bool) {
         let ours = Msg::Hello(Hello {
             proto_ver: PROTO_VER,
             min_proto: MIN_PROTO,
@@ -282,7 +278,6 @@ fn flood_cannot_evict_honest_addr() {
     let mut accepted = 0usize;
     for i in 0..20_000u32 {
         let ip = v4(
-
             100 + (i >> 12) as u8 % 60,
             (i >> 4) as u8,
             (i & 0xf) as u8,
@@ -358,7 +353,12 @@ fn full_book_refuses_until_aged() {
     'outer: for s in 0..64u32 {
         let src = grp(10, s as u8);
         for i in 0..ADDR_PER_SOURCE_GROUP_MAX as u32 {
-            let ip = v4(30 + (s >> 4) as u8, (s & 0xf) as u8, (i >> 8) as u8, (i & 0xff) as u8);
+            let ip = v4(
+                30 + (s >> 4) as u8,
+                (s & 0xf) as u8,
+                (i >> 8) as u8,
+                (i & 0xff) as u8,
+            );
             if am.add_from_peer(ip, 9256, 1, now, src, now, false) != Ingest::Added {
                 break;
             }
@@ -368,7 +368,11 @@ fn full_book_refuses_until_aged() {
             }
         }
     }
-    assert_eq!(am.count(Table::New), ADDR_NEW_MAX, "fixture did not fill (placed {placed})");
+    assert_eq!(
+        am.count(Table::New),
+        ADDR_NEW_MAX,
+        "fixture did not fill (placed {placed})"
+    );
 
     let fresh_src = grp(11, 1);
     assert_eq!(
@@ -380,7 +384,11 @@ fn full_book_refuses_until_aged() {
 
     let later = now + ADDR_MAX_AGE_SECS + 86_400;
     let reaped = am.reap_expired(later);
-    assert!(reaped > 0, "nothing aged out after {} days", (later - now) / 86_400);
+    assert!(
+        reaped > 0,
+        "nothing aged out after {} days",
+        (later - now) / 86_400
+    );
     assert_eq!(
         am.add_from_peer(v4(60, 1, 1, 1), 9256, 1, later, fresh_src, later, false),
         Ingest::Added,
@@ -396,8 +404,14 @@ fn aging_never_reaps_an_operator_seed() {
     am.add(v4(51, 1, 1, 1), 9256, true, now);
     am.add_from_peer(v4(51, 2, 2, 2), 9256, 1, now, grp(203, 0), now, false);
     am.reap_expired(now + ADDR_MAX_AGE_SECS * 2);
-    assert!(am.get(&v4(51, 1, 1, 1), 9256).is_some(), "the seed was reaped");
-    assert!(am.get(&v4(51, 2, 2, 2), 9256).is_none(), "a stale gossiped address survived");
+    assert!(
+        am.get(&v4(51, 1, 1, 1), 9256).is_some(),
+        "the seed was reaped"
+    );
+    assert!(
+        am.get(&v4(51, 2, 2, 2), 9256).is_none(),
+        "a stale gossiped address survived"
+    );
 }
 
 #[test]
@@ -406,7 +420,15 @@ fn future_clamped_ancient_refused() {
     let now = 1_800_000_000u64;
     let src = grp(203, 0);
     assert_eq!(
-        am.add_from_peer(v4(51, 1, 1, 1), 9256, 1, now + 10 * 365 * 86_400, src, now, false),
+        am.add_from_peer(
+            v4(51, 1, 1, 1),
+            9256,
+            1,
+            now + 10 * 365 * 86_400,
+            src,
+            now,
+            false
+        ),
         Ingest::Added
     );
     assert_eq!(
@@ -415,7 +437,15 @@ fn future_clamped_ancient_refused() {
         "a claimed `time` ten years in the future was stored as claimed"
     );
     assert_eq!(
-        am.add_from_peer(v4(51, 2, 2, 2), 9256, 1, now - ADDR_MAX_AGE_SECS - 1, src, now, false),
+        am.add_from_peer(
+            v4(51, 2, 2, 2),
+            9256,
+            1,
+            now - ADDR_MAX_AGE_SECS - 1,
+            src,
+            now,
+            false
+        ),
         Ingest::TooOld,
         "the 7-day window is not enforced on ingest"
     );
@@ -502,7 +532,10 @@ fn unroutable_never_booked() {
         (v4(172, 16, 5, 5), "RFC1918 172.16/12"),
         (v4(172, 31, 5, 5), "RFC1918 172.31/12, the top of the range"),
         (v4(192, 168, 1, 1), "RFC1918 192.168/16"),
-        (v4(169, 254, 169, 254), "link-local - the cloud metadata address"),
+        (
+            v4(169, 254, 169, 254),
+            "link-local - the cloud metadata address",
+        ),
         (v4(100, 64, 0, 1), "CGNAT 100.64/10"),
         (v4(100, 127, 255, 1), "CGNAT top of range"),
         (v4(192, 0, 0, 1), "192.0.0/24 IETF protocol assignments"),
@@ -730,7 +763,12 @@ fn one_seed_reaches_unknown_peers() {
         fresh.node.net().addr_count()
     );
     assert!(
-        fresh.node.net().addrs_learned.load(std::sync::atomic::Ordering::Relaxed) > 0,
+        fresh
+            .node
+            .net()
+            .addrs_learned
+            .load(std::sync::atomic::Ordering::Relaxed)
+            > 0,
         "no address was counted as learned from the wire"
     );
 
@@ -927,7 +965,10 @@ fn inbound_booked_at_advertised_port() {
         .addrs
         .lock()
         .expect("addrs")
-        .get(&ip_bytes(&SocketAddr::from(([127, 0, 0, 1], 41_234))), 41_234)
+        .get(
+            &ip_bytes(&SocketAddr::from(([127, 0, 0, 1], 41_234))),
+            41_234,
+        )
         .is_some();
     assert!(
         known,
@@ -1010,7 +1051,8 @@ fn pipelined_request_not_dropped() {
     }))
     .expect("hello");
     assert!(
-        raw.wait_for(|m| matches!(m, Msg::Hello(_)), 10_000).is_some(),
+        raw.wait_for(|m| matches!(m, Msg::Hello(_)), 10_000)
+            .is_some(),
         "no HELLO from the node"
     );
 
@@ -1235,13 +1277,20 @@ fn own_addr_not_reloaded() {
     assert_eq!(donor.len(), 2, "the donor book did not build");
     let bytes = plaine_p2p::addr::persist::encode(donor.entries(), gossip_cfg().chain_id);
 
-    let st = node.node.net().load_addrs(&bytes).expect("our own file decodes");
+    let st = node
+        .node
+        .net()
+        .load_addrs(&bytes)
+        .expect("our own file decodes");
     assert_eq!(st.loaded, 1, "the reload took {} records, not 1", st.loaded);
     assert!(
         !node.knows(&me),
         "the node reloaded its own listening address out of peers.dat"
     );
-    assert!(node.knows(&other), "the reload dropped the address that was not ours");
+    assert!(
+        node.knows(&other),
+        "the reload dropped the address that was not ours"
+    );
     assert_book_is_loopback(&node);
 
     let fd = Arc::clone(&node.fd);

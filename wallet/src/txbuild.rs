@@ -2,7 +2,7 @@ use crate::error::{Result, WalletError};
 use crate::secret::Secret32;
 use crate::sig;
 use plaine_consensus::codec::{AnnouncementTx, TransferTx};
-use plaine_consensus::constants::{FEE_FLOOR_MILE, Network};
+use plaine_consensus::constants::{Network, FEE_FLOOR_MILE};
 use plaine_consensus::crypto;
 use plaine_consensus::tx;
 
@@ -51,9 +51,9 @@ fn build_transfer_signed_by(
     check_fee(fee)?;
     let to = crypto::decode_address(to)
         .map_err(|e| WalletError::format(format!("--to is not a valid Plaine address: {e}")))?;
-    amount.checked_add(fee).ok_or_else(|| {
-        WalletError::usage("amount + fee overflows u128".to_string())
-    })?;
+    amount
+        .checked_add(fee)
+        .ok_or_else(|| WalletError::usage("amount + fee overflows u128".to_string()))?;
 
     let msg = crypto::signing_message(network, &from_pub, &to, amount, fee, nonce);
     let sig_bytes = sign(&msg);
@@ -132,8 +132,9 @@ fn build_announcement_signed_by(
         )));
     }
 
-    let msg = crypto::announcement_signing_message(network, &from_pub, fee, nonce, encoding, payload)
-        .map_err(|e| WalletError::format(format!("announcement payload rejected: {e}")))?;
+    let msg =
+        crypto::announcement_signing_message(network, &from_pub, fee, nonce, encoding, payload)
+            .map_err(|e| WalletError::format(format!("announcement payload rejected: {e}")))?;
     let sig_bytes = sign(&msg);
     let tx = AnnouncementTx {
         from_pub,
@@ -220,13 +221,19 @@ mod tests {
 
         let mut m = tx;
         m.amount += 1;
-        assert!(crypto::verify_transfer_signature(MAIN, &m).is_err(), "amount");
+        assert!(
+            crypto::verify_transfer_signature(MAIN, &m).is_err(),
+            "amount"
+        );
         let mut m = tx;
         m.fee += 1;
         assert!(crypto::verify_transfer_signature(MAIN, &m).is_err(), "fee");
         let mut m = tx;
         m.nonce += 1;
-        assert!(crypto::verify_transfer_signature(MAIN, &m).is_err(), "nonce");
+        assert!(
+            crypto::verify_transfer_signature(MAIN, &m).is_err(),
+            "nonce"
+        );
         let mut m = tx;
         m.to[0] ^= 1;
         assert!(crypto::verify_transfer_signature(MAIN, &m).is_err(), "to");
@@ -252,7 +259,10 @@ mod tests {
         let err = build_announcement(MAIN, &mine, &author, b"hello", 0x01, 5, 0).unwrap_err();
         assert_eq!(err.kind(), "refused");
         assert!(err.to_string().contains("not the author key"));
-        assert!(err.to_string().contains("block"), "must state the real cost");
+        assert!(
+            err.to_string().contains("block"),
+            "must state the real cost"
+        );
     }
 
     #[test]
@@ -271,10 +281,22 @@ mod tests {
     fn payload_bounds_enforced_before_signing() {
         let sk = seed(b"txbuild bounds");
         let author = sig::public_key_of(&sk);
-        assert!(build_announcement(MAIN, &sk, &author, b"", 0, 1, 0).is_err(), "0 bytes");
-        assert!(build_announcement(MAIN, &sk, &author, &[0x41; 1], 0, 1, 0).is_ok(), "1 byte");
-        assert!(build_announcement(MAIN, &sk, &author, &[0x41; 1024], 0, 1, 0).is_ok(), "1024");
-        assert!(build_announcement(MAIN, &sk, &author, &[0x41; 1025], 0, 1, 0).is_err(), "1025");
+        assert!(
+            build_announcement(MAIN, &sk, &author, b"", 0, 1, 0).is_err(),
+            "0 bytes"
+        );
+        assert!(
+            build_announcement(MAIN, &sk, &author, &[0x41; 1], 0, 1, 0).is_ok(),
+            "1 byte"
+        );
+        assert!(
+            build_announcement(MAIN, &sk, &author, &[0x41; 1024], 0, 1, 0).is_ok(),
+            "1024"
+        );
+        assert!(
+            build_announcement(MAIN, &sk, &author, &[0x41; 1025], 0, 1, 0).is_err(),
+            "1025"
+        );
     }
 
     #[test]
@@ -285,22 +307,40 @@ mod tests {
 
         let mut m = tx.clone();
         m.fee += 1;
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "fee");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "fee"
+        );
         let mut m = tx.clone();
         m.nonce += 1;
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "nonce");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "nonce"
+        );
         let mut m = tx.clone();
         m.encoding ^= 1;
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "encoding");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "encoding"
+        );
         let mut m = tx.clone();
         m.payload[0] ^= 1;
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "payload");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "payload"
+        );
         let mut m = tx.clone();
         m.payload.push(0x41);
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "length");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "length"
+        );
         let mut m = tx.clone();
         m.sig[63] ^= 1;
-        assert!(crypto::verify_announcement_signature(MAIN, &m).is_err(), "sig");
+        assert!(
+            crypto::verify_announcement_signature(MAIN, &m).is_err(),
+            "sig"
+        );
     }
 
     #[test]
@@ -310,7 +350,8 @@ mod tests {
         let to = crypto::address_from_pubkey(&[0x24u8; 32]);
 
         let wrong_message = |_: &[u8; 32]| sig::sign(&sk, &[0x77u8; 32]);
-        let err = build_transfer_signed_by(MAIN, from_pub, &wrong_message, &to, 1_000, 7, 3).unwrap_err();
+        let err =
+            build_transfer_signed_by(MAIN, from_pub, &wrong_message, &to, 1_000, 7, 3).unwrap_err();
         assert_eq!(err.kind(), "crypto");
         assert!(err.to_string().contains("self-verification"), "{err}");
 
@@ -330,13 +371,19 @@ mod tests {
                 .unwrap_err();
         assert_eq!(err.kind(), "crypto");
         assert!(err.to_string().contains("self-verification"), "{err}");
-        assert!(build_announcement_signed_by(MAIN, from_pub, &zeros, &from_pub, b"x", 1, 5, 0).is_err());
-        assert!(build_announcement_signed_by(MAIN, from_pub, &flipped, &from_pub, b"x", 1, 5, 0).is_err());
+        assert!(
+            build_announcement_signed_by(MAIN, from_pub, &zeros, &from_pub, b"x", 1, 5, 0).is_err()
+        );
+        assert!(
+            build_announcement_signed_by(MAIN, from_pub, &flipped, &from_pub, b"x", 1, 5, 0)
+                .is_err()
+        );
 
         let good = |m: &[u8; 32]| sig::sign(&sk, m);
         let tx = build_transfer_signed_by(MAIN, from_pub, &good, &to, 1_000, 7, 3).unwrap();
         crypto::verify_transfer_signature(MAIN, &tx).unwrap();
-        let ann = build_announcement_signed_by(MAIN, from_pub, &good, &from_pub, b"x", 1, 5, 0).unwrap();
+        let ann =
+            build_announcement_signed_by(MAIN, from_pub, &good, &from_pub, b"x", 1, 5, 0).unwrap();
         tx::check_announcement_stateless(MAIN, &ann, &from_pub).unwrap();
     }
 

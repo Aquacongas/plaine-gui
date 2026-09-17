@@ -52,7 +52,10 @@ impl HeaderSweepReport {
         if self.judged.is_empty() {
             return SweepVerdict::NothingJudged;
         }
-        SweepVerdict::Clean { segments: self.judged.len(), links: self.links }
+        SweepVerdict::Clean {
+            segments: self.judged.len(),
+            links: self.links,
+        }
     }
 
     pub fn is_clean(&self) -> bool {
@@ -101,7 +104,11 @@ impl HeaderSweepReport {
                 self.links += n;
 
                 self.bytes_read += layout::HDR_SEG_BYTES
-                    + if n >= layout::SEG_BLOCKS { HEADER_BYTES_U64 } else { 0 };
+                    + if n >= layout::SEG_BLOCKS {
+                        HEADER_BYTES_U64
+                    } else {
+                        0
+                    };
             }
             Ok(None) => self.unjudged += 1,
             Err(StoreError::LinkageBroken { height, .. }) => {
@@ -125,7 +132,10 @@ pub fn sweep_segments(
     trigger: SweepTrigger,
 ) -> HeaderSweepReport {
     let t0 = Instant::now();
-    let mut out = HeaderSweepReport { trigger: Some(trigger), ..Default::default() };
+    let mut out = HeaderSweepReport {
+        trigger: Some(trigger),
+        ..Default::default()
+    };
     for &seg in segs {
         out.absorb(seg, reader.verify_segment_headers(seg));
     }
@@ -160,7 +170,11 @@ impl Default for HeaderSweeper {
 
 impl HeaderSweeper {
     pub fn new(budget_segments: u32) -> Self {
-        Self { cursor: 0, cycles: 0, budget: budget_segments.max(1) }
+        Self {
+            cursor: 0,
+            cycles: 0,
+            budget: budget_segments.max(1),
+        }
     }
 
     pub fn cycles(&self) -> u64 {
@@ -173,7 +187,10 @@ impl HeaderSweeper {
 
     pub fn step(&mut self, reader: &StoreReader) -> HeaderSweepReport {
         let t0 = Instant::now();
-        let mut out = HeaderSweepReport { trigger: Some(SweepTrigger::Periodic), ..Default::default() };
+        let mut out = HeaderSweepReport {
+            trigger: Some(SweepTrigger::Periodic),
+            ..Default::default()
+        };
 
         for seg in reader.take_header_sweep_targets() {
             out.absorb(seg, reader.verify_segment_headers(seg));

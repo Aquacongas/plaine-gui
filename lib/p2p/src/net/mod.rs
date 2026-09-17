@@ -3,8 +3,8 @@ pub mod limits;
 pub mod node;
 pub mod sock;
 
-pub use limits::{ip_bytes, BanSet, ConnLimits, Refusal};
 pub use crate::engine::host::{NetNode, NetOptions, TickMode};
+pub use limits::{ip_bytes, BanSet, ConnLimits, Refusal};
 pub use node::{Net, PeerRow, PeerStat, Tier};
 
 use crate::traits::{Clock, Mono};

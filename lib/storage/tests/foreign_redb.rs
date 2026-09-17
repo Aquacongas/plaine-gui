@@ -51,7 +51,11 @@ fn i1_missing_redb_refused() {
     let s = seed("sweep-i1", 3 * 4_096 + 500);
     let before_bytes = segment_bytes(&s);
     let before_files = segment_files(&s);
-    println!("  before: {} files, {} B of segments", before_files.len(), before_bytes);
+    println!(
+        "  before: {} files, {} B of segments",
+        before_files.len(),
+        before_bytes
+    );
     assert!(before_bytes > 4_000_000);
 
     std::fs::remove_file(s.0.join("chain.redb")).unwrap();
@@ -61,12 +65,26 @@ fn i1_missing_redb_refused() {
         Ok((_, r, _)) => println!("  open OK -> tip {}", r.tip().height),
         Err(e) => println!("  open REFUSED: {e}"),
     }
-    println!("  after: {} files, {} B", segment_files(&s).len(), segment_bytes(&s));
+    println!(
+        "  after: {} files, {} B",
+        segment_files(&s).len(),
+        segment_bytes(&s)
+    );
     match res {
-        Err(StoreError::OrphanSegments { hdr_segments, body_segments, bytes }) => {
-            assert_eq!(hdr_segments, 4, "3*4096+500 blocks span four header segments");
+        Err(StoreError::OrphanSegments {
+            hdr_segments,
+            body_segments,
+            bytes,
+        }) => {
+            assert_eq!(
+                hdr_segments, 4,
+                "3*4096+500 blocks span four header segments"
+            );
             assert_eq!(body_segments, 4);
-            assert!(bytes > 4_000_000, "the error must state the size of what it saved");
+            assert!(
+                bytes > 4_000_000,
+                "the error must state the size of what it saved"
+            );
         }
         other => panic!(
             "expected OrphanSegments, got {:?}",
@@ -98,9 +116,16 @@ fn i2_foreign_redb_no_meta_refused() {
     }
 
     let res = open(cfg_of(&s));
-    println!("  foreign redb -> {:?}", res.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  foreign redb -> {:?}",
+        res.as_ref().err().map(|e| e.to_string())
+    );
     assert!(matches!(res, Err(StoreError::OrphanSegments { .. })));
-    assert_eq!(segment_files(&s), before, "segments changed under a foreign redb");
+    assert_eq!(
+        segment_files(&s),
+        before,
+        "segments changed under a foreign redb"
+    );
 }
 
 #[test]
@@ -127,7 +152,10 @@ fn i3_deleted_meta_row_keeps_chain() {
     }
 
     let res = open(cfg_of(&s));
-    println!("  one missing meta row -> {:?}", res.as_ref().err().map(|e| e.to_string()));
+    println!(
+        "  one missing meta row -> {:?}",
+        res.as_ref().err().map(|e| e.to_string())
+    );
     assert!(matches!(res, Err(StoreError::OrphanSegments { .. })));
     assert_eq!(segment_files(&s), before, "one lost meta row cost segments");
 }
@@ -154,7 +182,10 @@ fn i5_fresh_store_opens() {
         drop(r);
     }
     std::fs::remove_file(s.0.join("chain.redb")).unwrap();
-    assert!(matches!(open(cfg_of(&s)), Err(StoreError::OrphanSegments { .. })));
+    assert!(matches!(
+        open(cfg_of(&s)),
+        Err(StoreError::OrphanSegments { .. })
+    ));
     std::fs::rename(s.0.join("segments"), s.0.join("segments.aside")).unwrap();
     let (c, r, rep) = open(cfg_of(&s)).expect("the remedy in the error message must work");
     println!("  after moving segments aside: tip {}", r.tip().height);
@@ -199,12 +230,16 @@ fn i4_short_alien_redb_destroys_nothing() {
     );
     assert_eq!(before, 600 * 132);
     assert_eq!(
-        after, before,
+        after,
+        before,
         "the error says nothing was truncated; {} headers went missing",
         (before - after) / 132
     );
 
-    assert!(matches!(open(cfg_of(&a)), Err(StoreError::TipNotInSegments { .. })));
+    assert!(matches!(
+        open(cfg_of(&a)),
+        Err(StoreError::TipNotInSegments { .. })
+    ));
     assert_eq!(std::fs::metadata(&hseg).unwrap().len(), before);
 }
 
@@ -228,7 +263,11 @@ fn i6_torn_redb_named_not_panic() {
 
         let res = open(cfg_of(&s));
         match &res {
-            Err(StoreError::DatabaseAsserted { path, file_len, detail }) => {
+            Err(StoreError::DatabaseAsserted {
+                path,
+                file_len,
+                detail,
+            }) => {
                 assert_eq!(path, &db);
                 assert_eq!(*file_len, before_db - cut);
                 assert!(!detail.is_empty(), "the assertion text must be carried");
@@ -266,7 +305,9 @@ fn i7_flipped_redb_no_wrong_header() {
 
     let (truth, accounts) = {
         let (c, r, _) = open(cfg_of(&s)).expect("open pristine");
-        let hashes: Vec<[u8; 32]> = (0..N).map(|h| r.hash_at(h).unwrap().expect("hash")).collect();
+        let hashes: Vec<[u8; 32]> = (0..N)
+            .map(|h| r.hash_at(h).unwrap().expect("hash"))
+            .collect();
         for h in &hashes {
             assert!(r.header_by_hash(h).unwrap().is_some(), "hash_index seeded");
         }

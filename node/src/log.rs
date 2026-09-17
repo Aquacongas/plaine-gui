@@ -28,7 +28,13 @@ pub fn log(level: LogLevel, target: &str, message: &str) {
     if !enabled(level) {
         return;
     }
-    let line = format!("{} {} {:<8} {}\n", timestamp(), level.label(), target, message);
+    let line = format!(
+        "{} {} {:<8} {}\n",
+        timestamp(),
+        level.label(),
+        target,
+        message
+    );
     let mut err = std::io::stderr().lock();
 
     let _ = err.write_all(line.as_bytes());
@@ -74,7 +80,10 @@ pub fn blank() {
 }
 
 pub fn timestamp() -> String {
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     format_unix(secs)
 }
 

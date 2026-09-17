@@ -91,7 +91,9 @@ impl core::fmt::Display for StartError {
 // half the cores, capped at 8. Past 8 the share verifiers contend more than
 // they help.
 pub fn cpu_pool_threads() -> usize {
-    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2);
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(2);
     (cores / 2).clamp(2, 8)
 }
 
@@ -138,7 +140,10 @@ mod param_tests {
 
         assert_eq!(p.network, plaine_consensus::constants::Network::Main);
         assert_eq!(p.network, c.network.to_consensus());
-        assert_ne!(p.author_pubkey, [0u8; 32], "the embedded default must be a real key");
+        assert_ne!(
+            p.author_pubkey, [0u8; 32],
+            "the embedded default must be a real key"
+        );
         assert_eq!(p.authority_keys, c.checkpoints.keys());
         assert_eq!(p.checkpoint_threshold, c.checkpoint_threshold);
     }
@@ -148,7 +153,10 @@ mod param_tests {
         let mut c = cfg();
         c.max_peers = 1;
         let p = chain_params(&c, 2);
-        assert!(p.max_sources <= p.max_peers, "max_sources must be clamped to max_peers");
+        assert!(
+            p.max_sources <= p.max_peers,
+            "max_sources must be clamped to max_peers"
+        );
         assert!(
             p.class_reserve_is_survivable(crate::wire::pow::INTERPRETER_COST_MICROS),
             "the class reserve must survive one interpreter call per 30 s at max_peers = 1"
@@ -207,11 +215,12 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
 
     store_cfg.ibd_batch_blocks = Some(RING_MAX_BLOCKS as u32);
 
-    let (mut committer, reader, report) =
-        plaine_storage::open(store_cfg).map_err(|e| StartError::Storage(format!(
+    let (mut committer, reader, report) = plaine_storage::open(store_cfg).map_err(|e| {
+        StartError::Storage(format!(
             "cannot open the chain database under {}: {e:?}",
             paths.chain_dir.display()
-        )))?;
+        ))
+    })?;
     if let Some(h) = report.headers_truncated_to {
         log::warn(
             "storage",
@@ -268,7 +277,10 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
                 ),
             );
         }
-        log::info("storage", format!("{} in {:?}", r.line(), started.elapsed()));
+        log::info(
+            "storage",
+            format!("{} in {:?}", r.line(), started.elapsed()),
+        );
 
         let started = Instant::now();
         let h = l3h_header_sweep(&reader);
@@ -284,7 +296,10 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
                 ),
             );
         }
-        log::info("storage", format!("{} in {:?}", h.line(), started.elapsed()));
+        log::info(
+            "storage",
+            format!("{} in {:?}", h.line(), started.elapsed()),
+        );
     }
 
     match reader.invalid_census() {
@@ -323,10 +338,12 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
     let ring = new_ring();
     let notes = NoteIndex::new();
 
-    let genesis = crate::genesis::for_network(cfg.network)
-        .map_err(|e| StartError::Genesis(e.to_string()))?;
+    let genesis =
+        crate::genesis::for_network(cfg.network).map_err(|e| StartError::Genesis(e.to_string()))?;
     if !crate::genesis::verify_pow(&interp, &genesis.header_bytes) {
-        return Err(StartError::Genesis(crate::genesis::GenesisError::PowFailed.to_string()));
+        return Err(StartError::Genesis(
+            crate::genesis::GenesisError::PowFailed.to_string(),
+        ));
     }
     // Empty store: write block 0. A populated store has to match the genesis this
     // binary carries; if it does not, it is another network's chain (checked below).
@@ -346,7 +363,9 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
             .extend(&[plan])
             .map_err(|e| StartError::Genesis(format!("{e:?}")))?;
 
-        committer.flush().map_err(|e| StartError::Genesis(format!("{e:?}")))?;
+        committer
+            .flush()
+            .map_err(|e| StartError::Genesis(format!("{e:?}")))?;
         log::info(
             "chain",
             format!(
@@ -380,7 +399,12 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
     }
 
     let store = Arc::new(NodeStore::new(reader.clone(), Arc::clone(&ring)));
-    let sink = Arc::new(CommitSink::new(committer, reader.clone(), Arc::clone(&ring), notes.clone()));
+    let sink = Arc::new(CommitSink::new(
+        committer,
+        reader.clone(),
+        Arc::clone(&ring),
+        notes.clone(),
+    ));
     let params = chain_params(cfg, p);
     let manager: Manager = plaine_chain::ChainManager::new(
         Arc::clone(&store),
@@ -388,7 +412,6 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
         Arc::clone(&interp),
         Arc::clone(&clock),
         params,
-
         Some(Box::new(|c| {
             if chain_condition_needs_an_operator(&c) {
                 log::warn("chain", format!("{c:?}"))
@@ -576,7 +599,6 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
             cfg.max_peers,
             literals.len(),
             names,
-
             if placeholders > 0 {
                 format!(", {placeholders} build placeholder(s) ignored")
             } else {
@@ -637,7 +659,10 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
                 );
             })
             .expect("spawning the seed bootstrap thread");
-        Bootstrapper { stop, handle: Some(handle) }
+        Bootstrapper {
+            stop,
+            handle: Some(handle),
+        }
     };
 
     let io = tokio::runtime::Builder::new_multi_thread()
@@ -680,7 +705,11 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
     server_cfg.vardiff_fixed_diff = cfg.stratum_vardiff_fixed_diff;
     server_cfg.vardiff_max_diff = cfg.stratum_vardiff_max_diff;
     let mut caps = plaine_stratum::Caps::for_mode(plaine_stratum::Mode::Solo);
-    caps.max_connections = if cfg.stratum_enforcement { cfg.stratum_max_connections } else { 0 };
+    caps.max_connections = if cfg.stratum_enforcement {
+        cfg.stratum_max_connections
+    } else {
+        0
+    };
     caps.max_per_ip = cfg.stratum_max_per_ip;
     caps.new_conns_per_ip_per_min = cfg.stratum_new_conns_per_ip_per_min;
     caps.global_accept_per_sec = cfg.stratum_global_accept_per_sec;
@@ -694,9 +723,13 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
         )
     };
     let shared = Arc::new(plaine_stratum::Shared {
-        bans: Mutex::new(plaine_stratum::abuse::BanTable::with_policy(cfg.stratum_bans)),
+        bans: Mutex::new(plaine_stratum::abuse::BanTable::with_policy(
+            cfg.stratum_bans,
+        )),
         e1: std::sync::Arc::new(Mutex::new(plaine_stratum::nonce::E1Allocator::new())),
-        diffs: Mutex::new(plaine_stratum::abuse::DiffCache::with_policy(cfg.stratum_diff)),
+        diffs: Mutex::new(plaine_stratum::abuse::DiffCache::with_policy(
+            cfg.stratum_diff,
+        )),
         accept: Mutex::new(accept_bucket),
         jobs: jobs as Arc<dyn plaine_stratum::job::JobSource>,
         verifier,
@@ -708,7 +741,12 @@ pub fn start(cfg: &Config, paths: &Paths) -> Result<Node, StartError> {
     *stratum_gen.lock().expect("stratum handle") = Some(Arc::clone(&stratum));
     let listener = io
         .block_on(tokio::net::TcpListener::bind(cfg.stratum_listen))
-        .map_err(|e| StartError::Bind(format!("cannot bind stratum on {}: {e}", cfg.stratum_listen)))?;
+        .map_err(|e| {
+            StartError::Bind(format!(
+                "cannot bind stratum on {}: {e}",
+                cfg.stratum_listen
+            ))
+        })?;
     let stratum_addr = listener.local_addr().unwrap_or(cfg.stratum_listen);
     {
         let s = Arc::clone(&stratum);
@@ -795,8 +833,12 @@ impl Node {
                 relay_fee_mile: cfg.relay_fee_mile,
                 max_txs: cfg.mempool_max_txs,
             }),
-            net: Arc::new(RpcNet { peers: Arc::clone(&self.peer_info) }),
-            stratum: Arc::new(RpcStratum { server: self.stratum.clone() }),
+            net: Arc::new(RpcNet {
+                peers: Arc::clone(&self.peer_info),
+            }),
+            stratum: Arc::new(RpcStratum {
+                server: self.stratum.clone(),
+            }),
             policy: Arc::new(RpcPolicy {
                 checkpoint: plaine_rpc::views::CheckpointStatus {
                     enabled: cfg.checkpoints.is_enabled(),
@@ -838,7 +880,10 @@ impl Node {
         self.peers.store(n, Ordering::Relaxed);
 
         self.outbound.store(
-            self.net.as_ref().map(|net| net.outbound_count()).unwrap_or(0),
+            self.net
+                .as_ref()
+                .map(|net| net.outbound_count())
+                .unwrap_or(0),
             Ordering::Relaxed,
         );
         self.refresh_peer_info();
@@ -867,7 +912,10 @@ impl Node {
         let seen = self.conditions_seen.load(Ordering::Relaxed);
         let (fresh, next, missed) = net.conditions_since(seen);
         if missed > 0 {
-            log::warn("p2p", format!("{missed} conditions were evicted before they were read"));
+            log::warn(
+                "p2p",
+                format!("{missed} conditions were evicted before they were read"),
+            );
         }
         if fresh.is_empty() {
             return;
@@ -876,7 +924,9 @@ impl Node {
             match cond {
                 // Fork body catch-up is normal progress, not a fault. Show a calm
                 // one-liner at info and keep the struct for a debug session.
-                plaine_p2p::traits::Condition::ForkBodiesWanted { applied, missing, .. } => {
+                plaine_p2p::traits::Condition::ForkBodiesWanted {
+                    applied, missing, ..
+                } => {
                     log::info(
                         "p2p",
                         format!(
@@ -965,7 +1015,9 @@ impl Node {
     }
 
     fn refresh_share_rate(&self) {
-        let Some(s) = self.stratum.as_ref() else { return };
+        let Some(s) = self.stratum.as_ref() else {
+            return;
+        };
         let now = Instant::now();
         let total = plaine_stratum::metrics::Metrics::get(&s.shared().metrics.shares_accepted);
         let mut last = self.shares_sample.lock().expect("share sample");
@@ -978,7 +1030,9 @@ impl Node {
     }
 
     pub fn save_peers(&self, force: bool) -> bool {
-        let Some(net) = self.net.as_ref() else { return false };
+        let Some(net) = self.net.as_ref() else {
+            return false;
+        };
         {
             let mut last = self.last_peers_save.lock().expect("peers save clock");
             if !force && last.elapsed() < Duration::from_secs(PEERS_SAVE_SECS) {
@@ -1078,10 +1132,7 @@ impl Node {
                 internal_errors: M::get(&m.verify_internal_errors),
                 throttled: M::get(&m.rej_throttled),
                 server_busy: M::get(&m.rej_server_busy),
-                verify_queue: self
-                    .verifier
-                    .as_ref()
-                    .map_or(0, |v| v.queue_len()),
+                verify_queue: self.verifier.as_ref().map_or(0, |v| v.queue_len()),
                 revocations: s.revocations_published(),
                 closed_idle: M::get(&m.closed_idle),
                 closed_auth_timeout: M::get(&m.closed_auth_timeout),
@@ -1095,8 +1146,8 @@ impl Node {
             }
         }
 
-        let branch = Ask::new(self.tx.clone())
-            .ask(validator::Query::Branch, Duration::from_millis(2_000));
+        let branch =
+            Ask::new(self.tx.clone()).ask(validator::Query::Branch, Duration::from_millis(2_000));
         let best_known_height =
             health::best_known(n, self.best_known.load(Ordering::Relaxed), t.height);
 
@@ -1126,8 +1177,10 @@ impl Node {
         let v = health::assess(&obs);
         health::emit(&obs, &v, uptime);
 
-        *self.verdict.lock().expect("verdict cell") =
-            Some(health::Latched { obs, at: Instant::now() });
+        *self.verdict.lock().expect("verdict cell") = Some(health::Latched {
+            obs,
+            at: Instant::now(),
+        });
         v
     }
 
@@ -1221,7 +1274,6 @@ impl StratumCounts {
             || self.bad_json > 0
             || self.bans > 0
             || self.saturated > 0
-
             || self.internal_errors > 0
             || self.revocations > 0
     }
@@ -1253,7 +1305,10 @@ impl L2Sweep {
 pub fn l2_frame_sweep(reader: &plaine_storage::StoreReader) -> L2Sweep {
     let first = plaine_storage::seg_of(reader.prune_floor());
     let last = plaine_storage::seg_of(reader.tip().height).max(first);
-    let mut out = L2Sweep { range: (first, last), ..Default::default() };
+    let mut out = L2Sweep {
+        range: (first, last),
+        ..Default::default()
+    };
     for seg in first..=last {
         match reader.verify_segment_frames(seg) {
             Ok(Some(true)) => out.verified += 1,
@@ -1292,7 +1347,10 @@ impl L3HSweep {
 pub fn l3h_header_sweep(reader: &plaine_storage::StoreReader) -> L3HSweep {
     let first = plaine_storage::seg_of(reader.prune_floor());
     let last = plaine_storage::seg_of(reader.tip().height).max(first);
-    let mut out = L3HSweep { range: (first, last), ..Default::default() };
+    let mut out = L3HSweep {
+        range: (first, last),
+        ..Default::default()
+    };
     for seg in first..=last {
         match reader.verify_segment_headers(seg) {
             Ok(Some(n)) => out.links += n,
@@ -1415,7 +1473,10 @@ mod stratum_line_tests {
             ("slice", 23),
             ("unknown-job", 29),
         ] {
-            assert!(line.contains(&format!("{label} {want}")), "lost {label}: {line}");
+            assert!(
+                line.contains(&format!("{label} {want}")),
+                "lost {label}: {line}"
+            );
         }
         assert!(line.contains("shares 3/5 accepted"), "{line}");
     }
@@ -1440,9 +1501,13 @@ mod stratum_line_tests {
     #[test]
     fn our_failure_precedes_miner_blame() {
         let line = stratum_line(&distinct());
-        let ours = line.find("internal-error").expect("internal-error on the line");
+        let ours = line
+            .find("internal-error")
+            .expect("internal-error on the line");
         for label in ["stale ", "dup ", "lowdiff ", "slice ", "unknown-job "] {
-            let theirs = line.find(label).unwrap_or_else(|| panic!("{label} on the line"));
+            let theirs = line
+                .find(label)
+                .unwrap_or_else(|| panic!("{label} on the line"));
             assert!(ours < theirs, "`{label}` precedes internal-error: {line}");
         }
     }
@@ -1472,15 +1537,23 @@ mod stratum_line_tests {
         let line = stratum_line(&distinct());
         let closes = line.find("closed idle").expect("closes");
         for label in ["internal-error", "throttled", "server-busy", "bans "] {
-            let f = line.find(label).unwrap_or_else(|| panic!("{label}: {line}"));
-            assert!(f < closes, "`{label}` must precede the close reasons: {line}");
+            let f = line
+                .find(label)
+                .unwrap_or_else(|| panic!("{label}: {line}"));
+            assert!(
+                f < closes,
+                "`{label}` must precede the close reasons: {line}"
+            );
         }
     }
 
     #[test]
     fn heartbeat_reads_close_counters() {
         let whole = include_str!("node.rs");
-        let body = whole.split("mod stratum_line_tests").next().expect("the module body");
+        let body = whole
+            .split("mod stratum_line_tests")
+            .next()
+            .expect("the module body");
         for field in [
             "closed_idle",
             "closed_auth_timeout",
@@ -1507,10 +1580,22 @@ mod stratum_line_tests {
             "an idle node stays quiet"
         );
         for c in [
-            StratumCounts { bans: 1, ..Default::default() },
-            StratumCounts { bad_json: 1, ..Default::default() },
-            StratumCounts { saturated: 1, ..Default::default() },
-            StratumCounts { internal_errors: 1, ..Default::default() },
+            StratumCounts {
+                bans: 1,
+                ..Default::default()
+            },
+            StratumCounts {
+                bad_json: 1,
+                ..Default::default()
+            },
+            StratumCounts {
+                saturated: 1,
+                ..Default::default()
+            },
+            StratumCounts {
+                internal_errors: 1,
+                ..Default::default()
+            },
         ] {
             assert!(
                 c.worth_printing(),
@@ -1549,8 +1634,14 @@ mod condition_stamping {
 
     const NOW: u64 = 1_800_000_000;
 
-    fn cells() -> (crate::validator::StrandedFlag, crate::health::RepairStuckFlag) {
-        (crate::validator::StrandedFlag::default(), crate::health::RepairStuckFlag::default())
+    fn cells() -> (
+        crate::validator::StrandedFlag,
+        crate::health::RepairStuckFlag,
+    ) {
+        (
+            crate::validator::StrandedFlag::default(),
+            crate::health::RepairStuckFlag::default(),
+        )
     }
 
     #[test]
@@ -1590,7 +1681,11 @@ mod condition_stamping {
             &s,
             &r,
             NOW,
-            &Condition::StrandedBeyondReorgCap { our_tip: 424, their_tip: 495, depth: 11 },
+            &Condition::StrandedBeyondReorgCap {
+                our_tip: 424,
+                their_tip: 495,
+                depth: 11,
+            },
         );
         assert!(s.report().is_some(), "the stranded cell was not stamped");
         assert_eq!(r.report(), None, "a stranding stamped the repair cell");
@@ -1606,7 +1701,10 @@ mod condition_stamping {
             },
         );
         assert!(r.report().is_some(), "the repair cell was not stamped");
-        assert!(s.report().is_some(), "stamping the repair cell cleared the stranded one");
+        assert!(
+            s.report().is_some(),
+            "stamping the repair cell cleared the stranded one"
+        );
     }
 
     #[test]
@@ -1615,8 +1713,16 @@ mod condition_stamping {
         s.tick(NOW);
         r.tick(NOW);
         Node::stamp_condition(&s, &r, NOW, &Condition::BodyUnavailable { height: 9 });
-        assert_eq!(s.report(), None, "an unrelated condition stamped the stranded cell");
-        assert_eq!(r.report(), None, "an unrelated condition stamped the repair cell");
+        assert_eq!(
+            s.report(),
+            None,
+            "an unrelated condition stamped the stranded cell"
+        );
+        assert_eq!(
+            r.report(),
+            None,
+            "an unrelated condition stamped the repair cell"
+        );
     }
 }
 
@@ -1639,16 +1745,34 @@ mod chain_condition_visibility {
 
     #[test]
     fn promoted_conditions_stay_promoted() {
-        assert!(needs(&Condition::ReorgTooDeepRefused { depth: 40, our_tip: 100, their_tip: 140, fork_height: 60 }));
-        assert!(needs(&Condition::ResyncRequired { fork_height: 3, replay_floor: 9 }));
-        assert!(needs(&Condition::AnchorContradiction { height: 7, hash: [1u8; 32] }));
+        assert!(needs(&Condition::ReorgTooDeepRefused {
+            depth: 40,
+            our_tip: 100,
+            their_tip: 140,
+            fork_height: 60
+        }));
+        assert!(needs(&Condition::ResyncRequired {
+            fork_height: 3,
+            replay_floor: 9
+        }));
+        assert!(needs(&Condition::AnchorContradiction {
+            height: 7,
+            hash: [1u8; 32]
+        }));
         assert!(needs(&Condition::StorageFatal { detail: "torn" }));
     }
 
     #[test]
     fn ordinary_conditions_stay_debug() {
-        assert!(!needs(&Condition::DeepReplay { from: 1, to: 9, blocks: 8 }));
+        assert!(!needs(&Condition::DeepReplay {
+            from: 1,
+            to: 9,
+            blocks: 8
+        }));
         assert!(!needs(&Condition::ReorgOverlayExhausted { accounts: 4 }));
-        assert!(!needs(&Condition::BranchInvalidAt { height: 2, hash: [0u8; 32] }));
+        assert!(!needs(&Condition::BranchInvalidAt {
+            height: 2,
+            hash: [0u8; 32]
+        }));
     }
 }

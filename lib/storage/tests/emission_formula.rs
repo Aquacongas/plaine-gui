@@ -39,7 +39,11 @@ fn consensus_reward_verifies() {
 
     let by_hand: u128 = (0..N).map(block_reward).sum();
     assert_eq!(issued, by_hand, "fixture did not pay block_reward");
-    assert_eq!(issued, issued_through(N - 1), "issued_through is the total paid");
+    assert_eq!(
+        issued,
+        issued_through(N - 1),
+        "issued_through is the total paid"
+    );
 
     verdict.expect("an honest chain must not be reported as an emission mismatch");
 }
@@ -48,7 +52,11 @@ fn consensus_reward_verifies() {
 fn closed_form_off_by_one_block() {
     let paid: u128 = (0..N).map(block_reward).sum();
 
-    assert_eq!(issued_through(N - 1), paid, "issued_through is the total paid");
+    assert_eq!(
+        issued_through(N - 1),
+        paid,
+        "issued_through is the total paid"
+    );
 
     assert_eq!(cumulative_issued(N - 1), paid - block_reward(N - 1));
 
@@ -74,7 +82,10 @@ fn single_mile_inflation_reported() {
     let honest: u128 = (0..N).map(block_reward).sum();
     assert_eq!(issued, honest + 1);
     match verdict {
-        Err(StoreError::EmissionMismatch { stored_mile, formula_mile }) => {
+        Err(StoreError::EmissionMismatch {
+            stored_mile,
+            formula_mile,
+        }) => {
             assert_eq!(stored_mile, honest + 1);
             assert_eq!(formula_mile, honest);
         }

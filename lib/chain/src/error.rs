@@ -10,53 +10,149 @@ pub enum Permanence {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Reject {
-    BadHeaderLength { got: usize },
+    BadHeaderLength {
+        got: usize,
+    },
     ExtRootNotZero,
-    AuthorNoteLen { got: u32 },
-    BadVersion { got: u32 },
-    BadBits { got: u32 },
-    CheckpointMismatch { height: u64 },
-    UnknownParent { prev: Hash32 },
-    HeightNotParentPlusOne { got: u64, expected: u64 },
-    BitsNotAsert { got: u32, expected: u32 },
-    AsertAnchorUnavailable { height: u64 },
-    TimestampTooOld { mtp: u64, time: u64 },
-    TimestampTooFarInFuture { time: u64, limit: u64 },
-    ForkTooDeep { depth: u64, cap: u64 },
+    AuthorNoteLen {
+        got: u32,
+    },
+    BadVersion {
+        got: u32,
+    },
+    BadBits {
+        got: u32,
+    },
+    CheckpointMismatch {
+        height: u64,
+    },
+    UnknownParent {
+        prev: Hash32,
+    },
+    HeightNotParentPlusOne {
+        got: u64,
+        expected: u64,
+    },
+    BitsNotAsert {
+        got: u32,
+        expected: u32,
+    },
+    AsertAnchorUnavailable {
+        height: u64,
+    },
+    TimestampTooOld {
+        mtp: u64,
+        time: u64,
+    },
+    TimestampTooFarInFuture {
+        time: u64,
+        limit: u64,
+    },
+    ForkTooDeep {
+        depth: u64,
+        cap: u64,
+    },
     InsufficientClaimedWork,
-    PowInvalid { hash: Hash32 },
-    BudgetExhausted { source: SourceId },
-    DuplicateFlood { source: SourceId, count: u32 },
-    StagingFull { source: SourceId },
-    BatchTooLong { got: usize, cap: usize },
-    TooManySources { source: SourceId, cap: usize },
-    BodyNotAdmissible { hash: Hash32 },
-    BodyAlreadyHeld { hash: Hash32 },
-    BodyStructure { detail: &'static str },
+    PowInvalid {
+        hash: Hash32,
+    },
+    BudgetExhausted {
+        source: SourceId,
+    },
+    DuplicateFlood {
+        source: SourceId,
+        count: u32,
+    },
+    StagingFull {
+        source: SourceId,
+    },
+    BatchTooLong {
+        got: usize,
+        cap: usize,
+    },
+    TooManySources {
+        source: SourceId,
+        cap: usize,
+    },
+    BodyNotAdmissible {
+        hash: Hash32,
+    },
+    BodyAlreadyHeld {
+        hash: Hash32,
+    },
+    BodyStructure {
+        detail: &'static str,
+    },
     TxRootMismatch,
-    Tx { index: usize, err: TxError },
-    BadTransferSignature { index: usize },
-    FeeBelowFloor { index: usize },
-    BadNonce { index: usize, expected: u64, got: u64 },
-    InsufficientBalance { index: usize, need: u128, have: u128 },
+    Tx {
+        index: usize,
+        err: TxError,
+    },
+    BadTransferSignature {
+        index: usize,
+    },
+    FeeBelowFloor {
+        index: usize,
+    },
+    BadNonce {
+        index: usize,
+        expected: u64,
+        got: u64,
+    },
+    InsufficientBalance {
+        index: usize,
+        need: u128,
+        have: u128,
+    },
     ArithmeticOverflow,
     Rule(RuleError),
-    BranchInvalid { height: u64, hash: Hash32, cause: Box<Reject> },
-    ResyncRequired { fork_height: u64, replay_floor: u64 },
+    BranchInvalid {
+        height: u64,
+        hash: Hash32,
+        cause: Box<Reject>,
+    },
+    ResyncRequired {
+        fork_height: u64,
+        replay_floor: u64,
+    },
     Busy,
-    SinkRefused { detail: &'static str },
-    Halted { detail: &'static str },
-    BootInvariant { detail: &'static str },
+    SinkRefused {
+        detail: &'static str,
+    },
+    Halted {
+        detail: &'static str,
+    },
+    BootInvariant {
+        detail: &'static str,
+    },
     TxKnown,
-    TxStale { next: u64, got: u64 },
-    NonceGapTooLarge { next: u64, got: u64 },
-    TxTypeNotRelayable { type_byte: u8 },
-    BelowRelayFloor { fee: u128, floor: u128 },
-    ReplacementUnderpriced { need: u128, got: u128 },
+    TxStale {
+        next: u64,
+        got: u64,
+    },
+    NonceGapTooLarge {
+        next: u64,
+        got: u64,
+    },
+    TxTypeNotRelayable {
+        type_byte: u8,
+    },
+    BelowRelayFloor {
+        fee: u128,
+        floor: u128,
+    },
+    ReplacementUnderpriced {
+        need: u128,
+        got: u128,
+    },
     PoolFull,
-    SenderCap { cap: usize },
+    SenderCap {
+        cap: usize,
+    },
     TxDecode,
-    TxTooLarge { got: usize },
+    TxTooLarge {
+        got: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -227,18 +323,54 @@ impl From<RuleError> for Reject {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Condition {
-    ReorgTooDeepRefused { our_tip: u64, their_tip: u64, depth: u64, fork_height: u64 },
-    ReorgOverlayExhausted { accounts: usize },
-    ResyncRequired { fork_height: u64, replay_floor: u64 },
-    AnchorContradiction { height: u64, hash: Hash32 },
-    AnchorNotPersisted { height: u64, err: crate::traits::SinkError },
-    BranchInvalidAt { height: u64, hash: Hash32 },
-    DeepReplay { from: u64, to: u64, blocks: u64 },
-    MempoolEvicted { count: usize, reason: EvictReason },
-    BudgetExhausted { source: SourceId, class: BudgetClass },
-    DuplicateFlood { source: SourceId, count: u32 },
-    StorageFatal { detail: &'static str },
-    ImmatureSpendDropped { addr: Address },
+    ReorgTooDeepRefused {
+        our_tip: u64,
+        their_tip: u64,
+        depth: u64,
+        fork_height: u64,
+    },
+    ReorgOverlayExhausted {
+        accounts: usize,
+    },
+    ResyncRequired {
+        fork_height: u64,
+        replay_floor: u64,
+    },
+    AnchorContradiction {
+        height: u64,
+        hash: Hash32,
+    },
+    AnchorNotPersisted {
+        height: u64,
+        err: crate::traits::SinkError,
+    },
+    BranchInvalidAt {
+        height: u64,
+        hash: Hash32,
+    },
+    DeepReplay {
+        from: u64,
+        to: u64,
+        blocks: u64,
+    },
+    MempoolEvicted {
+        count: usize,
+        reason: EvictReason,
+    },
+    BudgetExhausted {
+        source: SourceId,
+        class: BudgetClass,
+    },
+    DuplicateFlood {
+        source: SourceId,
+        count: u32,
+    },
+    StorageFatal {
+        detail: &'static str,
+    },
+    ImmatureSpendDropped {
+        addr: Address,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

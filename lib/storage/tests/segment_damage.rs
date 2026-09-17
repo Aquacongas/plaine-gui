@@ -36,13 +36,19 @@ fn cfg_of(s: &Scratch) -> StoreConfig {
 }
 
 fn hdr(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("hdr").join(format!("{seg:06x}.hseg"))
+    s.0.join("segments")
+        .join("hdr")
+        .join(format!("{seg:06x}.hseg"))
 }
 fn bseg(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bseg"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bseg"))
 }
 fn bidx(s: &Scratch, seg: u32) -> std::path::PathBuf {
-    s.0.join("segments").join("body").join(format!("{seg:06x}.bidx"))
+    s.0.join("segments")
+        .join("body")
+        .join(format!("{seg:06x}.bidx"))
 }
 
 fn set_len(p: &std::path::Path, n: u64) {
@@ -88,7 +94,11 @@ fn m01_zero_len_sealed_hdr() {
     verdict("M1 zero-length sealed .hseg", &rep);
     assert_eq!(rep.integrity.header_damage.len(), 1, "{:?}", rep.integrity);
     let d = rep.integrity.header_damage[0];
-    assert_eq!(d.reason, DamageKind::Short, "a 0-byte file is not 'missing'");
+    assert_eq!(
+        d.reason,
+        DamageKind::Short,
+        "a 0-byte file is not 'missing'"
+    );
     assert_eq!((d.first_height, d.last_height), (SEG, 2 * SEG - 1));
     assert_eq!(d.actual_len, Some(0));
     assert_eq!(d.expected_len, HDR_SEG_BYTES);
@@ -139,7 +149,10 @@ fn m03_zero_filled_sealed_hdr() {
     assert_eq!(d.segment, 1);
     assert_eq!((d.first_height, d.last_height), (SEG, 2 * SEG - 1));
 
-    assert!(r.header_at(2 * SEG).unwrap().is_some(), "over-reported segment 2");
+    assert!(
+        r.header_at(2 * SEG).unwrap().is_some(),
+        "over-reported segment 2"
+    );
     assert_eq!(r.intact_header_floor(), 2 * SEG);
     drop(c);
 }
@@ -153,7 +166,10 @@ fn m04_duplicated_header_segment() {
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     verdict("M4 header segment 0 duplicated over 1", &rep);
     assert_eq!(rep.integrity.header_damage.len(), 1, "{:?}", rep.integrity);
-    assert_eq!(rep.integrity.header_damage[0].reason, DamageKind::LinkBroken);
+    assert_eq!(
+        rep.integrity.header_damage[0].reason,
+        DamageKind::LinkBroken
+    );
     assert!(matches!(
         r.header_at(SEG + 100),
         Err(StoreError::SegmentDamaged { .. })
@@ -172,7 +188,10 @@ fn m05_foreign_hdr_segment() {
     let (c, r, rep) = open(cfg_of(&victim)).expect("open");
     verdict("M5 .hseg from another store", &rep);
     assert_eq!(rep.integrity.header_damage.len(), 1, "{:?}", rep.integrity);
-    assert_eq!(rep.integrity.header_damage[0].reason, DamageKind::LinkBroken);
+    assert_eq!(
+        rep.integrity.header_damage[0].reason,
+        DamageKind::LinkBroken
+    );
     assert!(matches!(
         r.header_at(SEG + 100),
         Err(StoreError::SegmentDamaged { .. })
@@ -190,7 +209,11 @@ fn m14_stray_segment_above_wm() {
 
     let (c, _r, rep) = open(cfg_of(&s)).expect("open");
     verdict("M14 stray segment 0x0000ff", &rep);
-    assert!(rep.integrity.is_clean(), "scratch was called damage: {:?}", rep.integrity);
+    assert!(
+        rep.integrity.is_clean(),
+        "scratch was called damage: {:?}",
+        rep.integrity
+    );
     assert!(!hdr(&s, 0xFF).exists(), "stray .hseg survived");
     assert!(!bseg(&s, 0xFF).exists(), "stray .bseg survived");
     assert!(!bidx(&s, 0xFF).exists(), "stray .bidx survived");
@@ -246,7 +269,10 @@ fn m09_sidecar_rotated_by_one_slot() {
     assert_eq!((d.first_height, d.last_height), (SEG, 2 * SEG - 1));
     let mut got = Vec::new();
     assert!(
-        matches!(r.body_at(SEG, &mut got), Err(StoreError::SegmentDamaged { .. })),
+        matches!(
+            r.body_at(SEG, &mut got),
+            Err(StoreError::SegmentDamaged { .. })
+        ),
         "the next height's body was served as this one's"
     );
     assert!(r.is_degraded());
@@ -280,18 +306,30 @@ fn m10_foreign_body_pair() {
 
     let (c, r, rep) = open(cfg_of(&victim)).expect("open");
     verdict("M10 matched .bseg+.bidx pair from another store", &rep);
-    assert!(!rep.integrity.is_clean(), "an alien body segment was accepted");
+    assert!(
+        !rep.integrity.is_clean(),
+        "an alien body segment was accepted"
+    );
     assert_eq!(rep.integrity.body_damage.len(), 1, "{:?}", rep.integrity);
-    assert_eq!(rep.integrity.body_damage[0].reason, DamageKind::AnchorMismatch);
+    assert_eq!(
+        rep.integrity.body_damage[0].reason,
+        DamageKind::AnchorMismatch
+    );
     let mut got = Vec::new();
     assert!(
-        matches!(r.body_at(SEG, &mut got), Err(StoreError::SegmentDamaged { .. })),
+        matches!(
+            r.body_at(SEG, &mut got),
+            Err(StoreError::SegmentDamaged { .. })
+        ),
         "another chain's bytes were served with a valid CRC"
     );
     assert!(r.is_degraded());
     assert_eq!(r.damaged_ranges().len(), 1);
 
-    assert!(r.body_anchor(1).unwrap().is_some(), "the anchor row is still there");
+    assert!(
+        r.body_anchor(1).unwrap().is_some(),
+        "the anchor row is still there"
+    );
     println!(
         "      body_at(4096) refused; anchor row intact and unreproducible; is_degraded={}",
         r.is_degraded()
@@ -315,7 +353,10 @@ fn m11_alien_body_no_sidecar() {
 
     let (c, r, rep) = open(cfg_of(&victim)).expect("open");
     verdict("M11 alien .bseg, sidecar deleted (rebuild path)", &rep);
-    assert!(!rep.integrity.is_clean(), "the rebuild adopted an alien segment");
+    assert!(
+        !rep.integrity.is_clean(),
+        "the rebuild adopted an alien segment"
+    );
     assert_eq!(rep.integrity.body_damage.len(), 1, "{:?}", rep.integrity);
     assert_eq!(
         rep.integrity.body_damage[0].reason,
@@ -326,7 +367,10 @@ fn m11_alien_body_no_sidecar() {
         !rep.bidx_rebuilt_segments.contains(&1),
         "a sidecar was written to fit a segment that is not ours"
     );
-    assert!(!bidx(&victim, 1).exists(), "the alien was given a fresh index");
+    assert!(
+        !bidx(&victim, 1).exists(),
+        "the alien was given a fresh index"
+    );
     let mut got = Vec::new();
     assert!(matches!(
         r.body_at(SEG, &mut got),
@@ -360,12 +404,21 @@ fn m12_duplicated_body_segment_pair() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     verdict("M12 body segment 0 duplicated over 1", &rep);
-    assert!(!rep.integrity.is_clean(), "a duplicated body segment was accepted");
+    assert!(
+        !rep.integrity.is_clean(),
+        "a duplicated body segment was accepted"
+    );
     assert_eq!(rep.integrity.body_damage.len(), 1, "{:?}", rep.integrity);
-    assert_eq!(rep.integrity.body_damage[0].reason, DamageKind::AnchorMismatch);
+    assert_eq!(
+        rep.integrity.body_damage[0].reason,
+        DamageKind::AnchorMismatch
+    );
     let mut got = Vec::new();
     assert!(
-        matches!(r.body_at(SEG, &mut got), Err(StoreError::SegmentDamaged { .. })),
+        matches!(
+            r.body_at(SEG, &mut got),
+            Err(StoreError::SegmentDamaged { .. })
+        ),
         "height 0's body was served as height 4096's"
     );
     assert!(got != at0 || got.is_empty());
@@ -402,7 +455,10 @@ fn m18_sidecar_gone_segment_short() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     verdict("M18 .bidx deleted + .bseg halved", &rep);
-    assert!(!rep.integrity.is_clean(), "a half-segment was rebuilt as if whole");
+    assert!(
+        !rep.integrity.is_clean(),
+        "a half-segment was rebuilt as if whole"
+    );
     assert_eq!(rep.integrity.body_damage.len(), 1, "{:?}", rep.integrity);
     assert!(
         !rep.bidx_rebuilt_segments.contains(&1),
@@ -426,7 +482,11 @@ fn m15_interior_sidecar_byte_flip() {
     verdict("M15 interior .bidx byte flip (slot 2000)", &rep);
     assert_eq!(rep.integrity.body_damage.len(), 1, "{:?}", rep.integrity);
     let d = rep.integrity.body_damage[0];
-    assert_eq!(d.reason, DamageKind::AnchorMismatch, "caught at boot, not at read");
+    assert_eq!(
+        d.reason,
+        DamageKind::AnchorMismatch,
+        "caught at boot, not at read"
+    );
     assert_eq!((d.first_height, d.last_height), (SEG, 2 * SEG - 1));
     let mut buf = Vec::new();
     assert!(matches!(
@@ -449,9 +509,21 @@ fn m16_overlong_sealed_body_segment() {
 
     let (c, r, rep) = open(cfg_of(&s)).expect("open");
     verdict("M16 sealed .bseg grew by 104,096 B", &rep);
-    assert_eq!(rep.integrity.overlong_truncated.len(), 1, "{:?}", rep.integrity);
-    assert!(rep.integrity.is_clean(), "a lossless repair was reported as damage");
-    assert_eq!(len_of(&bseg(&s, 1)), before, "the file was not truncated back");
+    assert_eq!(
+        rep.integrity.overlong_truncated.len(),
+        1,
+        "{:?}",
+        rep.integrity
+    );
+    assert!(
+        rep.integrity.is_clean(),
+        "a lossless repair was reported as damage"
+    );
+    assert_eq!(
+        len_of(&bseg(&s, 1)),
+        before,
+        "the file was not truncated back"
+    );
     assert!(rep.body_scratch_discarded >= 100_000);
     let mut buf = Vec::new();
     assert!(body(&r, SEG + 7, &mut buf) > 0);
@@ -537,7 +609,10 @@ fn m06_foreign_chain_redb() {
         "      header bytes {before} -> {after} ({} of {n} headers destroyed by open() itself)",
         before.saturating_sub(after) / 132
     );
-    assert_eq!(after, before, "open() truncated segments it could not reconcile");
+    assert_eq!(
+        after, before,
+        "open() truncated segments it could not reconcile"
+    );
     assert!(ms < 30_000, "open() took {ms} ms");
 }
 
@@ -563,10 +638,18 @@ fn m19_last_header_lost() {
                 rep.headers_truncated_to,
                 rep.integrity.is_clean()
             );
-            assert_eq!(r.hdr_watermark(), n - 1, "the watermark did not stop at the loss");
+            assert_eq!(
+                r.hdr_watermark(),
+                n - 1,
+                "the watermark did not stop at the loss"
+            );
             assert_eq!(rep.headers_truncated_to, Some(n - 1));
             assert_eq!(r.tip().height, n - 2);
-            assert_eq!(after, before - 132, "more than the lost header was discarded");
+            assert_eq!(
+                after,
+                before - 132,
+                "more than the lost header was discarded"
+            );
             assert!(r.header_at(n - 2).unwrap().is_some());
             drop(c);
         }

@@ -333,7 +333,10 @@ impl AddrMan {
             }
             let key = (
                 e.source_group != [0u8; 4],
-                self.new_by_source.get(&e.source_group).copied().unwrap_or(0),
+                self.new_by_source
+                    .get(&e.source_group)
+                    .copied()
+                    .unwrap_or(0),
                 by_addr_group.get(&group_of(&e.ip)).copied().unwrap_or(0),
             );
             let better = match victim {
@@ -541,8 +544,16 @@ impl AddrMan {
     }
 
     pub fn counters_consistent(&self) -> bool {
-        let n_new = self.entries.iter().filter(|e| e.table == Table::New).count();
-        let n_tried = self.entries.iter().filter(|e| e.table == Table::Tried).count();
+        let n_new = self
+            .entries
+            .iter()
+            .filter(|e| e.table == Table::New)
+            .count();
+        let n_tried = self
+            .entries
+            .iter()
+            .filter(|e| e.table == Table::Tried)
+            .count();
         if n_new != self.n_new || n_tried != self.n_tried {
             return false;
         }

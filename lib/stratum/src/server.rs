@@ -116,7 +116,12 @@ impl StratumServer {
     /// A snapshot of every live session. Read-only; safe to call from the RPC
     /// thread. Pair each card's monotonic-ms timestamps with `now_ms()`.
     pub fn session_cards(&self) -> Vec<crate::session::SessionCard> {
-        self.cards.lock().expect("cards mutex").values().cloned().collect()
+        self.cards
+            .lock()
+            .expect("cards mutex")
+            .values()
+            .cloned()
+            .collect()
     }
 
     pub fn now_ms(&self) -> u64 {
@@ -138,7 +143,10 @@ impl StratumServer {
     }
 
     pub fn notify_revocation(&self) {
-        let n = self.revoke_seq.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let n = self
+            .revoke_seq
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
         self.revoke_tx.send_replace(n);
     }
 
@@ -236,7 +244,10 @@ impl StratumServer {
             session: Session::new(id, ip, self.now_ms(), &self.shared),
         };
         let session = &mut guard.session;
-        self.cards.lock().expect("cards mutex").insert(id, session.card());
+        self.cards
+            .lock()
+            .expect("cards mutex")
+            .insert(id, session.card());
 
         let tick_ms = self.shared.cfg.tick_ms.max(1);
         let tick = Duration::from_millis(tick_ms);
@@ -323,7 +334,10 @@ impl StratumServer {
                     break Some(CloseReason::ReadTimeout);
                 }
                 session.on_tick(now, &self.shared);
-                self.cards.lock().expect("cards mutex").insert(id, session.card());
+                self.cards
+                    .lock()
+                    .expect("cards mutex")
+                    .insert(id, session.card());
             }
 
             for action in session.take_actions() {
@@ -535,7 +549,11 @@ mod tests {
         ) -> impl std::future::Future<Output = io::Result<(TcpStream, std::net::SocketAddr)>> + Send
         {
             let n = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
-            let k = if n >= self.fatal_after { io::ErrorKind::InvalidInput } else { self.kind };
+            let k = if n >= self.fatal_after {
+                io::ErrorKind::InvalidInput
+            } else {
+                self.kind
+            };
             async move { Err(io::Error::from(k)) }
         }
     }
@@ -549,7 +567,9 @@ mod tests {
             calls: Arc::clone(&calls),
             fatal_after: 4,
         };
-        assert!(!is_fatal_accept_error(&io::Error::from(io::ErrorKind::ConnectionAborted)));
+        assert!(!is_fatal_accept_error(&io::Error::from(
+            io::ErrorKind::ConnectionAborted
+        )));
 
         let t0 = Instant::now();
         let r = timeout(Duration::from_secs(10), Arc::clone(&srv).serve_on(acc))
@@ -559,7 +579,10 @@ mod tests {
         assert!(r.is_err(), "the scripted fatal error did not end the loop");
 
         let n = calls.load(Ordering::SeqCst);
-        assert_eq!(n, 4, "the loop did not make the four accept calls the script hands it");
+        assert_eq!(
+            n, 4,
+            "the loop did not make the four accept calls the script hands it"
+        );
         assert!(
             took >= Duration::from_millis(250),
             "three transient errors took {took:?}; the backoff is not being applied ({:?}/retry)",
@@ -569,7 +592,9 @@ mod tests {
             took < Duration::from_secs(5),
             "three retries took {took:?}; backoff has grown unbounded"
         );
-        println!("  S2: 4 accept() calls, 3 backoffs, {took:?} (ACCEPT_BACKOFF {ACCEPT_BACKOFF:?})");
+        println!(
+            "  S2: 4 accept() calls, 3 backoffs, {took:?} (ACCEPT_BACKOFF {ACCEPT_BACKOFF:?})"
+        );
     }
 
     #[tokio::test]
@@ -581,23 +606,37 @@ mod tests {
             calls: Arc::clone(&calls),
             fatal_after: usize::MAX,
         };
-        assert!(is_fatal_accept_error(&io::Error::from(io::ErrorKind::InvalidInput)));
+        assert!(is_fatal_accept_error(&io::Error::from(
+            io::ErrorKind::InvalidInput
+        )));
 
         let r = timeout(Duration::from_secs(3), Arc::clone(&srv).serve_on(acc))
             .await
             .expect("serve_on never returned on a fatal accept error");
         let e = r.expect_err("serve_on returned Ok on a fatal accept error");
-        assert_eq!(e.kind(), io::ErrorKind::InvalidInput, "the error was not the one accept gave");
+        assert_eq!(
+            e.kind(),
+            io::ErrorKind::InvalidInput,
+            "the error was not the one accept gave"
+        );
         assert_eq!(
             calls.load(Ordering::SeqCst),
             1,
             "a fatal accept error was retried before the loop gave up"
         );
-        println!("  S3: fatal accept error returned Err({:?}) after 1 call", e.kind());
+        println!(
+            "  S3: fatal accept error returned Err({:?}) after 1 call",
+            e.kind()
+        );
     }
 
-    async fn unspawned(cfg: ServerConfig) -> (Arc<StratumServer>, TcpListener, std::net::SocketAddr) {
-        let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(1 << 40)));
+    async fn unspawned(
+        cfg: ServerConfig,
+    ) -> (Arc<StratumServer>, TcpListener, std::net::SocketAddr) {
+        let src = Arc::new(MockJobSource::new(
+            184_602,
+            Target::from_difficulty(1 << 40),
+        ));
         let router = Arc::new(Router::new());
         let verifier = Arc::new(ThreadPoolVerifier::new(
             2,
@@ -627,7 +666,10 @@ mod tests {
         caps: Caps,
         e1: Arc<dyn crate::nonce::SliceSource>,
     ) -> Rig {
-        let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(1 << 40)));
+        let src = Arc::new(MockJobSource::new(
+            184_602,
+            Target::from_difficulty(1 << 40),
+        ));
         let router = Arc::new(Router::new());
         let verifier = Arc::new(ThreadPoolVerifier::new(
             2,
@@ -1006,7 +1048,10 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         assert_eq!(r.srv.revocations_published(), 1);
-        assert_eq!(Metrics::get(&r.srv.shared().metrics.closed_slice_revoked), 1);
+        assert_eq!(
+            Metrics::get(&r.srv.shared().metrics.closed_slice_revoked),
+            1
+        );
         r.srv.stop();
     }
 
@@ -1088,7 +1133,10 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
         assert!(acks >= 10, "only {acks} heartbeats round-tripped");
-        assert_eq!(Metrics::get(&r.srv.shared().metrics.keepalives), acks as u64);
+        assert_eq!(
+            Metrics::get(&r.srv.shared().metrics.keepalives),
+            acks as u64
+        );
 
         expect_closed(
             qlines.get_mut(),
@@ -1285,7 +1333,9 @@ mod tests {
 
         let mut ok = vec![b'y'; OUT_BUF_CAP];
         assert!(
-            flush(&mut w, &mut ok, WRITE_TIMEOUT, OUT_BUF_CAP).await.is_ok(),
+            flush(&mut w, &mut ok, WRITE_TIMEOUT, OUT_BUF_CAP)
+                .await
+                .is_ok(),
             "the cap is a ceiling, not a fence one byte below itself"
         );
     }
@@ -1308,7 +1358,10 @@ mod tests {
                 Err(e) => panic!("unexpected write error while filling: {e}"),
             }
         }
-        assert!(filled > 0, "nothing was written; the rig is not in the state under test");
+        assert!(
+            filled > 0,
+            "nothing was written; the rig is not in the state under test"
+        );
 
         let deadline = Duration::from_millis(200);
         let mut out = vec![b'q'; 64];
@@ -1339,7 +1392,9 @@ mod tests {
         }
         let mut small = vec![b'k'; 8];
         assert!(
-            flush(&mut w, &mut small, Duration::from_secs(5), OUT_BUF_CAP).await.is_ok(),
+            flush(&mut w, &mut small, Duration::from_secs(5), OUT_BUF_CAP)
+                .await
+                .is_ok(),
             "a socket that is being read must flush inside its deadline"
         );
         assert!(small.is_empty(), "a successful write must clear the buffer");
@@ -1494,7 +1549,11 @@ mod tests {
             Ok(Ok(_)) => {}
         }
 
-        expect_closed(&mut rd, "a socket that said nothing outlived the read deadline").await;
+        expect_closed(
+            &mut rd,
+            "a socket that said nothing outlived the read deadline",
+        )
+        .await;
         let took = t0.elapsed();
         assert!(
             took < Duration::from_millis(640),
@@ -1544,7 +1603,13 @@ mod tests {
     fn fatal_vs_transient_accept_error() {
         use io::ErrorKind::*;
 
-        for k in [ConnectionAborted, ConnectionReset, Interrupted, WouldBlock, TimedOut] {
+        for k in [
+            ConnectionAborted,
+            ConnectionReset,
+            Interrupted,
+            WouldBlock,
+            TimedOut,
+        ] {
             assert!(
                 !is_fatal_accept_error(&io::Error::from(k)),
                 "{k:?} must be retried, not fatal: the server would die on one bad peer"
@@ -1607,16 +1672,24 @@ mod tests {
         let mut dead = false;
         for _ in 0..64 {
             let mut probe = vec![b'p'; 32];
-            if flush(&mut w, &mut probe, WRITE_TIMEOUT, OUT_BUF_CAP).await.is_err() {
+            if flush(&mut w, &mut probe, WRITE_TIMEOUT, OUT_BUF_CAP)
+                .await
+                .is_err()
+            {
                 dead = true;
                 break;
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
-        assert!(dead, "the peer never reported as gone; the rig is not in the state under test");
+        assert!(
+            dead,
+            "the peer never reported as gone; the rig is not in the state under test"
+        );
         let mut empty: Vec<u8> = Vec::new();
         assert!(
-            flush(&mut w, &mut empty, WRITE_TIMEOUT, OUT_BUF_CAP).await.is_ok(),
+            flush(&mut w, &mut empty, WRITE_TIMEOUT, OUT_BUF_CAP)
+                .await
+                .is_ok(),
             "an empty buffer must not be written to a dead socket, or to any socket"
         );
     }
@@ -1657,9 +1730,11 @@ mod tests {
         let (rd, mut wr) = stream.into_split();
         let mut lines = BufReader::new(rd).lines();
 
-        wr.write_all(b"zzz not json\n{\"id\":9,\"method\":\"mining.subscribe\",\"params\":[\"t\"]}\n")
-            .await
-            .expect("write");
+        wr.write_all(
+            b"zzz not json\n{\"id\":9,\"method\":\"mining.subscribe\",\"params\":[\"t\"]}\n",
+        )
+        .await
+        .expect("write");
         let mut seen = Vec::new();
         for _ in 0..4 {
             match timeout(Duration::from_secs(5), lines.next_line()).await {
@@ -1790,7 +1865,9 @@ mod tests {
         let stream = TcpStream::connect(r.addr).await.expect("connect");
 
         #[allow(deprecated)]
-        stream.set_linger(Some(Duration::ZERO)).expect("set_linger(0) was refused by the OS");
+        stream
+            .set_linger(Some(Duration::ZERO))
+            .expect("set_linger(0) was refused by the OS");
         #[allow(deprecated)]
         let back = stream.linger().expect("linger() was refused by the OS");
         assert_eq!(
@@ -1866,7 +1943,10 @@ mod tests {
     }
 
     async fn rig_verifier(v: Arc<dyn crate::verify::ShareVerifier>) -> Rig {
-        let src = Arc::new(MockJobSource::new(184_602, Target::from_difficulty(1 << 40)));
+        let src = Arc::new(MockJobSource::new(
+            184_602,
+            Target::from_difficulty(1 << 40),
+        ));
         let router = Arc::new(Router::new());
         let shared = Arc::new(Shared {
             bans: Mutex::new(crate::abuse::BanTable::new()),
@@ -1913,7 +1993,9 @@ mod tests {
 
             let answer = timeout(Duration::from_secs(5), lines.next_line())
                 .await
-                .unwrap_or_else(|_| panic!("submit {i} was never answered: the connection is wedged"))
+                .unwrap_or_else(|_| {
+                    panic!("submit {i} was never answered: the connection is wedged")
+                })
                 .expect("io")
                 .expect("line");
             assert!(

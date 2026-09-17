@@ -467,10 +467,7 @@ impl DiffCache {
         let start = self.pol.start_diff;
         let ttl = self.pol.cache_ttl_ms;
         match self.map.get_mut(addr) {
-            Some(s)
-                if now_ms.saturating_sub(s.updated_ms) <= ttl
-                    && s.last_difficulty > 0 =>
-            {
+            Some(s) if now_ms.saturating_sub(s.updated_ms) <= ttl && s.last_difficulty > 0 => {
                 (s.last_difficulty, s.pinned_floor)
             }
             // stale or empty entry: warm up from the default. The storm floor is
@@ -689,7 +686,10 @@ mod tests {
             assert_eq!(t.admit(ip(9), now, &caps, i, &mut accept), Admit::Ok);
         }
         now += 60_001;
-        assert_eq!(t.admit(ip(9), now, &caps, 64, &mut accept), Admit::PerIpLimit);
+        assert_eq!(
+            t.admit(ip(9), now, &caps, 64, &mut accept),
+            Admit::PerIpLimit
+        );
     }
 
     #[test]
@@ -712,7 +712,10 @@ mod tests {
         let mut accept = TokenBucket::new(1000.0, 1000.0, 0);
         t.throttle(ip(12), 0);
         assert_eq!(t.admit(ip(12), 0, &caps, 0, &mut accept), Admit::Throttled);
-        assert_eq!(t.admit(ip(12), 30_000, &caps, 0, &mut accept), Admit::Throttled);
+        assert_eq!(
+            t.admit(ip(12), 30_000, &caps, 0, &mut accept),
+            Admit::Throttled
+        );
         assert_eq!(t.admit(ip(12), 60_001, &caps, 0, &mut accept), Admit::Ok);
     }
 
@@ -822,10 +825,7 @@ mod tests {
             t.is_banned(banned, 1_000),
             "a ban with 599 s to run was evicted by connection churn"
         );
-        assert_eq!(
-            t.admit(banned, 1_000, &caps, 0, &mut accept),
-            Admit::Banned
-        );
+        assert_eq!(t.admit(banned, 1_000, &caps, 0, &mut accept), Admit::Banned);
         assert_eq!(
             t.admit(holder, 1_000, &caps, 0, &mut accept),
             Admit::PerIpLimit,
@@ -993,7 +993,11 @@ mod tests {
             "the decay clock started at boot, so this IP was forgiven a point \
              for time it was not here for"
         );
-        assert_eq!(b.score(peer, first + step), 49, "and one step later, exactly one");
+        assert_eq!(
+            b.score(peer, first + step),
+            49,
+            "and one step later, exactly one"
+        );
     }
 
     #[test]
@@ -1004,7 +1008,11 @@ mod tests {
         b.penalise(peer, SOFT_SCORE_CAP + 15, Severity::Soft, 1_000);
         b.penalise(peer, 60, Severity::Hard, 1_000);
         let before = b.score(peer, 1_000);
-        assert_eq!(before, 60 + SOFT_SCORE_CAP, "effective = hard + min(soft, cap)");
+        assert_eq!(
+            before,
+            60 + SOFT_SCORE_CAP,
+            "effective = hard + min(soft, cap)"
+        );
 
         assert_eq!(
             b.score(peer, 1_000 + step),
@@ -1045,7 +1053,11 @@ mod tests {
         let first = b
             .penalise(peer, BAN_THRESHOLD, Severity::Hard, 1_000)
             .expect("the threshold must ban");
-        assert_eq!(first, BAN_BASE.as_millis() as u64, "the first ban is the base");
+        assert_eq!(
+            first,
+            BAN_BASE.as_millis() as u64,
+            "the first ban is the base"
+        );
 
         for i in 0..25 {
             assert_eq!(
